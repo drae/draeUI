@@ -28,7 +28,7 @@ local infoBarPlugins = {}
 do
 	local initOrder = {"DraeUIFPS", "DraeUIMem", "DraeUILatency", "DraeUIDurability", "DraeUICoin", "DraeUIExp", "DraeUIArtifact", "DraeUIAzerite", "DraeUIRes"}
 
-	InfoBar.RepositionPlugins = function(self)
+	InfoBar.RepositionPlugins = function()
 		local startLeft = 10
 		local v_prev = nil
 

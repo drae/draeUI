@@ -57,12 +57,12 @@ do
 		end)
 	end
 
-	LDB.OnLeave = function(self)
+	LDB.OnLeave = function()
 		tooltipUpdate:Cancel()
 		GameTooltip:Hide()
 	end
 end
 
-PING.OnInitialize = function(self)
+PING.OnInitialize = function()
 	C_Timer.NewTicker(1, UpdateLatency)
 end

@@ -2,7 +2,7 @@ std = "lua51"
 max_line_length = false
 exclude_files = {
 	"libs/",
-	".luacheckrc"
+	".luacheckrc",
 }
 
 ignore = {
@@ -34,8 +34,11 @@ read_globals = {
 	"LibStub",
 
 	-- API functions
+	"C_AddOns",
 	"C_IncomingSummon",
+	"C_Spell",
 	"C_Timer",
+
 	"CancelUnitBuff",
 	"CanHearthAndResurrectFromArea",
 	"CheckInteractDistance",
@@ -45,6 +48,7 @@ read_globals = {
 	"GetArenaOpponentSpec",
 	"GetBuildInfo",
 	"GetComboPoints",
+	"GetDifficultyInfo",
 	"GetCVar",
 	"GetDisplayPower",
 	"GetInventoryItemTexture",
@@ -53,6 +57,9 @@ read_globals = {
 	"GetItemQualityColor",
 	"GetLocale",
 	"GetLootMethod",
+	"GetMaxPlayerLevel",
+	"GetMaxLevelForPlayerExpansion",
+	"GetNetStats",
 	"GetNumArenaOpponentSpecs",
 	"GetNumGroupMembers",
 	"GetNumAddOns",
@@ -229,5 +236,11 @@ read_globals = {
 	"MAX_TOTEMS",
 	"NUM_RAID_GROUPS",
 	"STANDARD_TOTEM_PRIORITIES",
-	"UNKNOWN"
+	"UNKNOWN",
+	"MAX_WATCHED_TOKENS",
+	"CHAT_FONT_HEIGHTS",
+
+	"CURRENCY",
+	"COPPER_PER_SILVER",
+	"SILVER_PER_GOLD",
 }

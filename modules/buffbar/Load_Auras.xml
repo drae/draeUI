@@ -1,0 +1,10 @@
+<Ui xmlns='http://www.blizzard.com/wow/ui/'>
+	<Button name='DraeUIAuraTemplate' inherits='SecureActionButtonTemplate, BackdropTemplate' virtual='true' framelevel='4'>
+		<Size x='25' y='25'/>
+		<Scripts><OnLoad>DraeUI:GetModule('BuffBar'):CreateAuraButton(self)</OnLoad></Scripts>
+		<Attributes><Attribute name='type' value='cancelaura'/></Attributes>
+	</Button> <!-- framelevel 4 for Masque support -->
+
+	<!-- Oh, Look! A file we need to load -->
+	<Script file='init.lua'/>
+</Ui>

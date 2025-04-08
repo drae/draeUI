@@ -27,27 +27,22 @@ do
 		end
 
 		pcall(object.Hide, object)
+
+		object:SetParent(hiddenFrame)
 	end
 end
 
 local StripTextures = function(object, option)
-    if ((not object.GetNumRegions) or (object.Panel and (not object.Panel.CanBeRemoved))) then return end
+    if not object.GetNumRegions or (object.Panel and not object.Panel.CanBeRemoved) then return end
 
-    local region, layer, texture
     for i = 1, object:GetNumRegions() do
-        region = select(i, object:GetRegions())
-        if (region and (region:GetObjectType() == "Texture")) then
-
-            layer = region:GetDrawLayer()
-            texture = region:GetTexture()
-
-            if (option) then
-                if (type(option) == "boolean") then
-                    region:Kill()
-                elseif (type(option) == "string" and ((layer == option) or (texture ~= option))) then
-                    region:SetTexture(nil)
-                end
-            else
+        local region = select(i, object:GetRegions())
+        if region and region:GetObjectType() == "Texture" then
+            if not option then
+                region:SetTexture(nil)
+            elseif type(option) == "boolean" then
+                region:Kill()
+            elseif type(option) == "string" and (region:GetDrawLayer() == option or region:GetTexture() ~= option) then
                 region:SetTexture(nil)
             end
         end

@@ -7,5 +7,4 @@
 	<Script file="AceDB-3.0\AceDB-3.0.lua" />
 	<Script file="LibDataBroker-1.1.lua" />
 	<Script file="LibSharedMedia-3.0\LibSharedMedia-3.0.lua" />
-	<Script file="LibRangeCheck-3.0\LibRangeCheck-3.0.lua" />
 </Ui>

@@ -7,40 +7,47 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local RES = IB:NewModule("Res", "AceEvent-3.0")
 
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("DraeUIRes", { type = "DraeUI", icon = nil, label = "DraeUIRes" })
+local LDB =
+	LibStub("LibDataBroker-1.1"):NewDataObject("DraeUIRes", { type = "DraeUI", icon = nil, label = "DraeUIRes" })
 
 --
-local C_Timer, GetSpellInfo, GetSpellCharges, GetInstanceInfo, GetDifficultyInfo, GetTime = C_Timer, GetSpellInfo, GetSpellCharges, GetInstanceInfo, GetDifficultyInfo, GetTime
-local mfloor, mmod, format = math.floor, mod, string.format
+local C_Timer, C_Spell, GetSpellInfo, GetInstanceInfo, GetDifficultyInfo, GetTime =
+	C_Timer, C_Spell, GetSpellInfo, GetInstanceInfo, GetDifficultyInfo, GetTime
+local mfloor, mmod, format = math.floor, math.fmod, string.format
 
 --[[
 
 --]]
 local UpdateTimer = function()
-	local charges, maxCharges, started, duration = GetSpellCharges(20484) -- Rebirth
+	local info = C_Spell.GetSpellCharges(20484) -- Rebirth)
 
-	if (started) then
-		local time = duration - (GetTime() - started)
+	if info and info.started then
+		local time = info.duration - (GetTime() - info.started)
 		local min = mfloor(time / 60)
 		local sec = mmod(time, 60)
 
-		LDB.text = format(charges == 0 and "|cffff0000%d|rres (%d:%02d)" or "|cff00ff00%d|rres (%d:%02d)", charges, min, sec)
+		LDB.text = format(
+			info.charges == 0 and "|cffff0000%d|rres (%d:%02d)" or "|cff00ff00%d|rres (%d:%02d)",
+			info.charges,
+			min,
+			sec
+		)
 	else
 		LDB.text = format("|cff00ff000|rres (0:00)")
 	end
 end
 
 do
-	local is_raid, is_mythic_plus, timer_running
+	local is_raid, timer_running
 
-	RES.CheckEnableTimer = function(self, event)
-		if (is_raid) then
-			if (event == "ENCOUNTER_START") then
+	RES.CheckEnableTimer = function(_, event)
+		if is_raid then
+			if event == "ENCOUNTER_START" then
 				LDB.ShowPlugin = true
 				timer_running = C_Timer.NewTicker(1.0, UpdateTimer)
-			elseif (event == "ENCOUNTER_END") then
+			elseif event == "ENCOUNTER_END" then
 				LDB.ShowPlugin = false
-				if (timer_running) then
+				if timer_running then
 					timer_running:Cancel()
 				end
 			end
@@ -48,19 +55,16 @@ do
 			local _, instanceType, difficulty = GetInstanceInfo()
 			local isChallengeMode = select(4, GetDifficultyInfo(difficulty))
 
-			if (instanceType == "raid") then
+			if instanceType == "raid" then
 				is_raid = true
-			elseif (isChallengeMode) then
-				is_mythic_plus = true
-
+			elseif isChallengeMode then
 				LDB.ShowPlugin = true
 				timer_running = C_Timer.NewTicker(1.0, UpdateTimer)
 			else
-				is_mythic_plus = nil
 				is_raid = nil
 
 				LDB.ShowPlugin = false
-				if (timer_running) then
+				if timer_running then
 					timer_running:Cancel()
 				end
 			end

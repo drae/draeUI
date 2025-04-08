@@ -1,4 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Script file="framehighlight.lua" />
-	<Script file="spellrange.lua" />
-</Ui>

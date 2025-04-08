@@ -1,7 +1,6 @@
-## Interface: 100002
+## Interface: 100200
 ## Author: Drae
 ## Title: draeUI
-## Version: 9.0.1
 ## SavedVariables: draeUIDB
 ## SavedVariablesPerCharacter: draeUICharDB
 ## OptionalDeps: SharedMedia
@@ -10,39 +9,23 @@
 
 libs\libs.xml
 media\media.xml
-oUF\oUF.xml
 
 init.lua
 
 config\config.defaults.lua
 
-functions\colours.lua
 functions\functions.lua
 functions\toolkit.lua
 
-# Unitframes
-modules\unitframes\auras.xml
-modules\unitframes\init.lua
-modules\unitframes\common.lua
-#modules\unitframes\castbar.lua
-modules\unitframes\tags.lua
-modules\unitframes\units\player.lua
-modules\unitframes\units\pet.lua
-modules\unitframes\units\target.lua
-modules\unitframes\units\targettarget.lua
-modules\unitframes\units\focus.lua
-modules\unitframes\units\focustarget.lua
-modules\unitframes\units\boss.lua
-modules\unitframes\elements\embed.xml
+# BuffBar
+modules\buffbar\Load_Auras.xml
 
 # Infobar
 modules\infobar\init.lua
 modules\infobar\plugin.lua
 modules\infobar\ldb\fps.lua
-modules\infobar\ldb\mem.lua
 modules\infobar\ldb\xp.lua
 modules\infobar\ldb\latency.lua
 modules\infobar\ldb\gold.lua
 modules\infobar\ldb\durability.lua
 modules\infobar\ldb\res.lua
-modules\infobar\ldb\azerite.lua
