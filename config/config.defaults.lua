@@ -24,7 +24,27 @@ DraeUI.config = {
 		fontsize2 = 12,
 		fontsize3 = 10,
 
-		texcoords = { 0.1, 0.9, 0.1, 0.9 }
+		texcoords = { 0.1, 0.9, 0.1, 0.9 },
+
+		colours = {
+			power = {
+				[0]  = { 46 / 255, 158 / 255, 255 / 255 }, -- MANA
+				[1]  = { 199 / 255, 64 / 255, 64 / 255 }, -- RAGE
+				[2]  = { 255 / 255, 128 / 255, 64 / 255 }, -- FOCUS
+				[3]  = { 255 / 255, 249 / 255, 105 / 255 }, -- ENERGY
+				[6]  = { 0 / 255, 204 / 255, 255 / 255 }, -- RUNIC_POWER
+				[8]  = { 77 / 255, 133 / 255, 230 / 255 }, -- LUNAR_POWER
+				[11] = { 0, 128 / 255, 255 / 255 }, -- MAELSTROM
+				[13] = { 102 / 255, 0, 204 / 255 }, -- INSANITY
+				[17] = { 201 / 255, 66 / 255, 252 / 255 }, -- FURY
+				[18] = { 255 / 255, 156 / 255, 0 }, -- PAIN
+			},
+			reaction = {
+				[2] = { 255 / 255, 0, 0 }, -- Hostile
+				[4] = { 255 / 255, 255 / 255, 0 }, -- Neutral
+				[5] = { 0 / 255, 255 / 255, 0 }, -- Friendly
+			}
+		}
 	},
 
 	infobar = {
@@ -36,9 +56,12 @@ DraeUI.config = {
 
 	-- Unit Frame settings
 	frames = {
-		numFormatLong = false,
 		-- Display or hide frames
 		showBoss = true, -- Boss frames
+		-- Dimension of frames, large applies to player/target, small everything else
+		-- don't change these, change the scale
+		largeWidth = 280,
+		smallWidth = 140,
 		-- Player and Target are positioned relative to center of screen,
 		-- all other frames are positioned relative to those
 		playerXoffset = -430,
@@ -57,13 +80,6 @@ DraeUI.config = {
 		bossYoffset = 200,
 		arenaXoffset = 0,  -- Relative to left of target
 		arenaYoffset = 300,
-		largeScale = 1.0,
-		mediumScale = 1.0,
-		smallScale = 1.0,
-		-- Dimension of frames, large applies to player/target, small everything else
-		-- don't change these, change the scale
-		largeWidth = 280,
-		smallWidth = 140,
 		-- Aura settings
 		auras = {
 			-- Large are debuffs on players, buffs on targets, Sml are buffs on player,
@@ -104,22 +120,6 @@ DraeUI.config = {
 			showDebuffsOnFriends = true,
 			showBuffsOnEnemies = true,
 			showDebuffsOnEnemies = false,
-			-- These auras are never displayed regardless of any other settings
-			blacklistAuraFilter = {
-				["Chill of the Throne"] = true,
-				["Strength of Wrynn"] = true,
-				["Grasping Tendrils"] = true
-			},
-			filterType = "WHITELIST", -- dictates which filter we"ll use
-			-- If debuff filtering is enabled only the debuffs in the following list will appear on targets
-			whiteListFilter = {
-				["DEBUFF"] = {},
-				["BUFF"] = {}
-			},
-			blackListFilter = {
-				["DEBUFF"] = {},
-				["BUFF"] = {}
-			}
 		}
 	},
 }

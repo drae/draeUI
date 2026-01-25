@@ -3,6 +3,7 @@
 
 --]]
 local addon, DraeUI = ...
+local oUF = DraeUI.oUF or oUF
 
 LibStub("AceAddon-3.0"):NewAddon(DraeUI, addon, "AceEvent-3.0")
 
@@ -69,10 +70,65 @@ DraeUI.OnEnable = function(self)
 	self.screenWidth = mfloor(GetScreenWidth() * 100 + 0.5) / 100
 	self.uiScale = tonumber(GetCVar("uiScale"))
 
-	self:RegisterEvent("ADDON_LOADED", "ADDON_LOADED")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "UpdateFonts")
+	self:RegisterEvent("ADDON_LOADED", function(this)
+		if C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") and OrderHallCommandBar ~= nil then
+			OrderHallCommandBar:Hide()
+			OrderHallCommandBar:UnregisterAllEvents()
+			OrderHallCommandBar.Show = OrderHallCommandBar.Hide
+		end
 
-	self:ADDON_LOADED()
+		-- Hide ArenaUI
+		if C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and this.db.frames.showArena then
+			SetCVar("showArenaEnemyFrames", "0", "SHOW_ARENA_ENEMY_FRAMES_TEXT")
+
+			ArenaPrepFrames.Show = ArenaPrepFrames.Hide
+			ArenaPrepFrames:UnregisterAllEvents()
+			ArenaPrepFrames:Hide()
+
+			ArenaEnemyFrames.Show = ArenaEnemyFrames.Hide
+			ArenaEnemyFrames:UnregisterAllEvents()
+			ArenaEnemyFrames:Hide()
+		end
+	end)
+
+	oUF.colors.power["MANA"]        = oUF:CreateColor(46 / 255, 158 / 255, 255 / 255)
+	oUF.colors.power["RAGE"]        = oUF:CreateColor(199 / 255, 64 / 255, 64 / 255)
+	oUF.colors.power["FOCUS"]       = oUF:CreateColor(255 / 255, 128 / 255, 64 / 255)
+	oUF.colors.power["ENERGY"]      = oUF:CreateColor(255 / 255, 249 / 255, 105 / 255)
+	oUF.colors.power["RUNIC_POWER"] = oUF:CreateColor(0 / 255, 204 / 255, 255 / 255)
+	oUF.colors.power["LUNAR_POWER"] = oUF:CreateColor(77 / 255, 133 / 255, 230 / 255) --, atlas = '_Druid-LunarBar)
+	oUF.colors.power["MAELSTROM"]   = oUF:CreateColor(0, 128 / 255, 255 / 255)     --, atlas = '_Shaman-MaelstromBar)
+	oUF.colors.power["INSANITY"]    = oUF:CreateColor(102 / 255, 0, 204 / 255)     --, atlas = '_Priest-InsanityBar)
+	oUF.colors.power["FURY"]        = oUF:CreateColor(201 / 255, 66 / 255, 252 / 255) --, atlas = '_DemonHunter-DemonicFuryBar)
+	oUF.colors.power["PAIN"]        = oUF:CreateColor(255 / 255, 156 / 255, 0)     --, atlas = '_DemonHunter-DemonicPainBar)
+	oUF.colors.power["ALT_POWER"]   = oUF:CreateColor(51 / 255, 102 / 255, 204 / 255)
+
+	oUF.colors.power[0]             = oUF:CreateColor(46 / 255, 158 / 255, 255 / 255)
+	oUF.colors.power[1]             = oUF:CreateColor(199 / 255, 64 / 255, 64 / 255)
+	oUF.colors.power[2]             = oUF:CreateColor(255 / 255, 128 / 255, 64 / 255)
+	oUF.colors.power[3]             = oUF:CreateColor(255 / 255, 249 / 255, 105 / 255)
+	oUF.colors.power[6]             = oUF:CreateColor(0 / 255, 204 / 255, 255 / 255)
+	oUF.colors.power[8]             = oUF:CreateColor(77 / 255, 133 / 255, 230 / 255) --, atlas = '_Druid-LunarBar)
+	oUF.colors.power[11]            = oUF:CreateColor(0, 128 / 255, 255 / 255) --, atlas = '_Shaman-MaelstromBar)
+	oUF.colors.power[13]            = oUF:CreateColor(102 / 255, 0, 204 / 255) --, atlas = '_Priest-InsanityBar)
+	oUF.colors.power[17]            = oUF:CreateColor(201 / 255, 66 / 255, 252 / 255) --, atlas = '_DemonHunter-DemonicFuryBar)
+	oUF.colors.power[18]            = oUF:CreateColor(255 / 255, 156 / 255, 0) --, atlas = '_DemonHunter-DemonicPainBar)
+
+	oUF.colors.reaction[2]          = oUF:CreateColor(255 / 255, 0, 0)
+	oUF.colors.reaction[4]          = oUF:CreateColor(255 / 255, 255 / 255, 0)
+	oUF.colors.reaction[5]          = oUF:CreateColor(0 / 255, 255 / 255, 0)
+
+	oUF.colors.charmed              = oUF:CreateColor(255 / 255, 0, 102 / 255)
+	oUF.colors.disconnected         = oUF:CreateColor(230 / 255, 230 / 255, 230 / 255)
+	oUF.colors.tapped               = oUF:CreateColor(153 / 255, 153 / 255, 153 / 255)
+
+	oUF.colors.debuffTypes          = {
+		["Magic"] = oUF:CreateColor(51 / 255, 153 / 255, 255 / 255),
+		["Curse"] = oUF:CreateColor(153 / 255, 0, 255 / 255),
+		["Disease"] = oUF:CreateColor(153 / 255, 102 / 255, 0),
+		["Poison"] = oUF:CreateColor(0, 153 / 255, 0)
+	}
 end
 
 do
@@ -205,26 +261,6 @@ do
 	end
 end
 
-DraeUI.ADDON_LOADED = function(self)
-	if C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") and OrderHallCommandBar ~= nil then
-		OrderHallCommandBar:Hide()
-		OrderHallCommandBar:UnregisterAllEvents()
-		OrderHallCommandBar.Show = OrderHallCommandBar.Hide
-	end
-
-	-- Hide ArenaUI
-	if C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and self.db.frames.showArena then
-		SetCVar("showArenaEnemyFrames", "0", "SHOW_ARENA_ENEMY_FRAMES_TEXT")
-
-		ArenaPrepFrames.Show = ArenaPrepFrames.Hide
-		ArenaPrepFrames:UnregisterAllEvents()
-		ArenaPrepFrames:Hide()
-
-		ArenaEnemyFrames.Show = ArenaEnemyFrames.Hide
-		ArenaEnemyFrames:UnregisterAllEvents()
-		ArenaEnemyFrames:Hide()
-	end
-end
 
 -- Console commands
 do

@@ -17,7 +17,6 @@ config\config.defaults.lua
 
 functions\functions.lua
 functions\toolkit.lua
-functions\colours.lua
 
 # BuffBar
 modules\buffbar\Load_Auras.xml
@@ -36,7 +35,7 @@ modules\infobar\ldb\res.lua
 modules\unitframes\auras.xml
 modules\unitframes\init.lua
 modules\unitframes\common.lua
-#modules\unitframes\castbar.lua
+modules\unitframes\castbar.lua
 modules\unitframes\tags.lua
 modules\unitframes\units\player.lua
 modules\unitframes\units\pet.lua

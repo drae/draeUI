@@ -20,7 +20,7 @@ local SetTooltip = function(button)
 
         GameTooltip:SetUnitAura(button.header:GetAttribute('unit'), button:GetID(), button.filter)
 
-        if (button.caster and UnitExists(button.caster)) then
+        if (issecretvalue and not issecretvalue(button.caster) and UnitExists(button.caster)) then
             local color
 
             if (UnitIsPlayer(button.caster)) then
@@ -233,7 +233,7 @@ BuffBar.CreateAuraButton = function(_, button)
     button:SetScript("OnLeave", Button_OnLeave)
     button:SetScript("OnUpdate", Button_OnUpdate)
     button:SetScript('OnAttributeChanged', Button_OnAttributeChanged)
-    button:RegisterForClicks('RightButtonUp', 'RightButtonDown')
+    --    button:RegisterForClicks('RightButtonUp', 'RightButtonDown')
 end
 
 local UpdateHeader = function(header)

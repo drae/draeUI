@@ -50,7 +50,7 @@ UF.CommonPostInit = function(self, size, noRaidIcons)
 		self.RaidTargetIndicator = raidIcon
 	end
 
-	self.Range = {
+	self.SpellRange = {
 		insideAlpha = 1.0,
 		outsideAlpha = 0.33
 	}
@@ -59,7 +59,7 @@ end
 UF.CreateTargetArrow = function(frame)
 	local arrow = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
 	arrow:SetSize(14, 30)
-	arrow:SetPoint("RIGHT", frame, "LEFT", -7, 0)
+	arrow:SetPoint("RIGHT", frame, "LEFT", -7, -4)
 	arrow:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\unitframe_right_arrow")
 end
 
@@ -310,7 +310,7 @@ UF.FlagIcons = function(frame, reverse)
 	-- pvp icon
 	local pvp = frame:CreateTexture(nil, "OVERLAY", nil, 1)
 	pvp:SetSize(48, 48)
-	pvp:SetPoint("CENTER", frame, reverse and "LEFT" or "RIGHT", -12, 0)
+	pvp:SetPoint("CENTER", frame, reverse and "LEFT" or "RIGHT", -12, -4)
 	frame.PvPIndicator = pvp
 
 	-- Leader icon
@@ -493,8 +493,20 @@ do
 		buffs.growthX = growthx
 		buffs.growthY = growthy
 		buffs.filter = "HELPFUL" -- Explicitly set the filter or the first customFilter call won"t work
+		buffs.showType = true
 		buffs.showBuffType = true
 		buffs.showStealableBuffs = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
+
+		buffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
+		buffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+		for _, dispelIndex in next, oUF.Enum.DispelType do
+			if (oUF.colors.dispel[dispelIndex]) then
+				buffs.dispelColorCurve:AddPoint(dispelIndex, oUF.colors.dispel[dispelIndex])
+			end
+		end
+
+
+
 
 		--		buffs.FilterAura = CustomFilter
 		buffs.CreateButton = CreateButton

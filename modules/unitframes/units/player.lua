@@ -40,6 +40,8 @@ local StyleDrae_Player = function(frame)
 	UF.AddDebuffs(frame, "TOPRIGHT", frame.Health, "BOTTOMRIGHT", 0, -22,
 		DraeUI.config["frames"].auras.maxPlayerDebuff or 6, DraeUI.config["frames"].auras.auraLrg, 8, "LEFT", "DOWN")
 
+	UF.CreateCastBar(frame, 220, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15, true)
+
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)
 end

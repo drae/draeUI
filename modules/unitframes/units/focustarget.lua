@@ -19,14 +19,17 @@ local StyleDrae_FocusTarget = function(frame)
 	UF.CreateUnitFrameBackground(frame)
 	UF.CreateTargetArrow(frame)
 
-	frame.Health.value = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "LEFT", 5, 10)
+	frame.Health.value = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
+		"LEFT", 5, 10)
 
-	local info = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "RIGHT", -5, 10)
+	local info = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "RIGHT",
+		-5, 10)
 	info:SetSize(95, 20)
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
 	-- Auras - just debuffs for target of target
-	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22, DraeUI.config["frames"].auras.maxFocusTargetBuff or 15, DraeUI.config["frames"].auras.auraSml, 8, "RIGHT", "DOWN")
+	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22,
+		DraeUI.config["frames"].auras.maxFocusTargetBuff or 15, DraeUI.config["frames"].auras.auraSml, 8, "RIGHT", "DOWN")
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

@@ -14,9 +14,9 @@ local UnitChannelInfo = UnitChannelInfo
 
 
 -- color
-local CastingColor 		= { 0.3, 0.3, 1.0 }
-local ChannelingColor 	= { 1.0, 0.3, 0.3 }
-local FailColor 		= { 0.3, 0.3, 0.3 }
+local CastingColor    = { 0.3, 0.3, 1.0 }
+local ChannelingColor = { 1.0, 0.3, 0.3 }
+local FailColor       = { 0.3, 0.3, 0.3 }
 
 --[[
 		Castbar functions
@@ -26,8 +26,8 @@ local PostCastStart = function(self, unit)
 end
 
 local PostCastFail = function(self, unit, spellId)
-	self:SetStatusBarColor(unpack(FailColor))
-	self:SetValue(self.max)
+	--	self:SetStatusBarColor(unpack(FailColor))
+	--	self:SetValue(self.max)
 end
 
 --[[
@@ -47,33 +47,26 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	castbar.PostCastStart = PostCastStart
 	castbar.PostCastFail = PostCastFail
 
-	-- Border
-	local border = CreateFrame("Frame", nil, castbar, BackdropTemplateMixin and "BackdropTemplate")
-	border:SetPoint("TOPLEFT", -2, 2)
-	border:SetPoint("BOTTOMRIGHT", 2, -2)
-	border:SetFrameStrata("BACKGROUND")
-	border:SetBackdrop {
-		bgFile = "Interface\\BUTTONS\\WHITE8X8",
-		edgeFile = "Interface\\Buttons\\White8x8",
-		tile = false,
-		edgeSize = 2
-	}
-	border:SetBackdropColor(0, 0, 0)
-	border:SetBackdropBorderColor(0, 0, 0)
-	castbar.border = border
+
+	local backdrop = CreateFrame("Frame", nil, castbar, BackdropTemplateMixin and "BackdropTemplate")
+	backdrop:SetPoint("TOPLEFT", castbar, "TOPLEFT", -2.5, 2.5)
+	backdrop:SetFrameStrata("BACKGROUND")
+	backdrop:SetBackdrop { bgFile = "Interface\\BUTTONS\\WHITE8X8", tile = true }
+	backdrop:SetBackdropColor(0, 0, 0, 1)
+	backdrop:SetPoint("BOTTOMRIGHT", castbar, "BOTTOMRIGHT", 2.25, -2.5)
 
 	-- Spark
 	local spark = castbar:CreateTexture(nil, "OVERLAY")
 	spark:SetBlendMode("ADD")
 	spark:SetAlpha(0.75)
 	spark:SetHeight(castbar:GetHeight() * 2.75)
-    spark:SetPoint("CENTER", castbar:GetStatusBarTexture(), "RIGHT", 0, 0)
+	spark:SetPoint("CENTER", castbar:GetStatusBarTexture(), "RIGHT", 0, 0)
 	castbar.Spark = spark
 
 	-- Uniterruptable show shield
 	local shield = castbar:CreateTexture(nil, "OVERLAY")
 	shield:SetTexture("Interface\\TARGETINGFRAME\\PortraitQuestBadge")
-    shield:SetPoint("CENTER", castbar)
+	shield:SetPoint("CENTER", castbar)
 	shield:SetSize(30, 30)
 	castbar.Shield = shield
 
@@ -86,10 +79,12 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	end
 
 	-- Cast time
-	castbar.Time = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "RIGHT", 2, height + 6)
+	castbar.Time = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "RIGHT", -3,
+		0)
 
 	-- Spell name
-	castbar.Text = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "LEFT", -2, height + 6)
+	castbar.Text = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "LEFT", 3,
+		0)
 
 	self.Castbar = castbar
 end
@@ -100,7 +95,7 @@ do
 	local lastUpdate = 0
 
 	local getFormattedNumber = function(number)
-		if (strlen(number) < 2 ) then
+		if (strlen(number) < 2) then
 			return "0" .. number
 		else
 			return number
@@ -108,10 +103,10 @@ do
 	end
 
 	UF.CreateMirrorCastbars = function(self)
-		for _, barId in pairs({"1", "2", "3",}) do
-			local bar = "MirrorTimer"..barId
+		for _, barId in pairs({ "1", "2", "3", }) do
+			local bar = "MirrorTimer" .. barId
 
-			for i, region in pairs({_G[bar]:GetRegions()}) do
+			for i, region in pairs({ _G[bar]:GetRegions() }) do
 				if (not region:GetName() or region.GetTexture and region:GetTexture() == "SolidTexture") then
 					region:Hide()
 				end
@@ -138,25 +133,26 @@ do
 				_G[bar]:SetPoint("RIGHT", self.Castbar, "RIGHT", 0, 30)
 			else
 				_G[bar]:ClearAllPoints()
-				_G[bar]:SetPoint("BOTTOM", _G["MirrorTimer"..(barId - 1)], "TOP", 0, 5)
+				_G[bar]:SetPoint("BOTTOM", _G["MirrorTimer" .. (barId - 1)], "TOP", 0, 5)
 			end
 
-			_G[bar.."Background"] = _G[bar]:CreateTexture(bar.."Background", "BACKGROUND", _G[bar], 1)
-			_G[bar.."Background"]:SetTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
-			_G[bar.."Background"]:SetAllPoints(bar)
-			_G[bar.."Background"]:SetVertexColor(0, 0, 0, 0)
+			_G[bar .. "Background"] = _G[bar]:CreateTexture(bar .. "Background", "BACKGROUND", _G[bar], 1)
+			_G[bar .. "Background"]:SetTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
+			_G[bar .. "Background"]:SetAllPoints(bar)
+			_G[bar .. "Background"]:SetVertexColor(0, 0, 0, 0)
 
-			_G[bar.."Border"]:Hide()
+			_G[bar .. "Border"]:Hide()
 
-			_G[bar.."Text"]:ClearAllPoints()
-			_G[bar.."Text"]:SetFont(DraeUI["media"].font, 10)
-			_G[bar.."Text"]:SetPoint("LEFT", _G[bar.."StatusBar"], 5, 1)
+			_G[bar .. "Text"]:ClearAllPoints()
+			_G[bar .. "Text"]:SetFont(DraeUI["media"].font, 10)
+			_G[bar .. "Text"]:SetPoint("LEFT", _G[bar .. "StatusBar"], 5, 1)
 
-			_G[bar.."TextTime"] = DraeUI.CreateFontObject(_G[bar.."StatusBar"], 10, DraeUI["media"].font, "RIGHT", -5, 1, "NONE") -- Our timer
+			_G[bar .. "TextTime"] = DraeUI.CreateFontObject(_G[bar .. "StatusBar"], 10, DraeUI["media"].font, "RIGHT", -5,
+				1, "NONE") -- Our timer
 
-			_G[bar.."StatusBar"]:ClearAllPoints()
-			_G[bar.."StatusBar"]:SetStatusBarTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
-			_G[bar.."StatusBar"]:SetAllPoints(_G[bar])
+			_G[bar .. "StatusBar"]:ClearAllPoints()
+			_G[bar .. "StatusBar"]:SetStatusBarTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
+			_G[bar .. "StatusBar"]:SetAllPoints(_G[bar])
 
 			local timeMsg = ""
 			local minutes = 0
@@ -165,12 +161,12 @@ do
 			-- Hook scripts
 			_G[bar]:HookScript("OnShow", function(self)
 				local c = MirrorTimerColors[self.timer]
-				_G[self:GetName().."Background"]:SetVertexColor(c.r * 0.33, c.g * 0.33, c.b * 0.33, 1)
+				_G[self:GetName() .. "Background"]:SetVertexColor(c.r * 0.33, c.g * 0.33, c.b * 0.33, 1)
 			end)
 
 			_G[bar]:HookScript("OnHide", function(self)
-				_G[self:GetName().."Background"]:SetVertexColor(0, 0, 0, 0)
-				_G[self:GetName().."TextTime"]:SetText("")
+				_G[self:GetName() .. "Background"]:SetVertexColor(0, 0, 0, 0)
+				_G[self:GetName() .. "TextTime"]:SetText("")
 			end)
 
 			_G[bar]:HookScript("OnUpdate", function(self, elapsed)
@@ -193,7 +189,7 @@ do
 						timeMsg = format("%d", self.value)
 					end
 
-					_G[self:GetName().."TextTime"]:SetText(timeMsg)
+					_G[self:GetName() .. "TextTime"]:SetText(timeMsg)
 
 					lastUpdate = updateInterval
 				end

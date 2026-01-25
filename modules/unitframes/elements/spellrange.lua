@@ -13,7 +13,7 @@ local RangeCheck = LibStub("LibRangeCheck-3.0", true)
 -- Localise a bunch of functions
 local pairs, ipairs, assert, type, tonumber, next, strfind = pairs, ipairs, assert, type, tonumber, next, string.find
 local CreateFrame, UnitIsConnected, UnitCanAttack, UnitIsUnit, UnitPlayerOrPetInRaid, UnitInRange, CheckInteractDistance, UnitPlayerOrPetInParty, UnitCanAssist, IsInRaid =
-CreateFrame, UnitIsConnected, UnitCanAttack, UnitIsUnit, UnitPlayerOrPetInRaid, UnitInRange, CheckInteractDistance,
+	CreateFrame, UnitIsConnected, UnitCanAttack, UnitIsUnit, UnitPlayerOrPetInRaid, UnitInRange, CheckInteractDistance,
 	UnitPlayerOrPetInParty, UnitCanAssist, IsInRaid
 
 local _FRAMES = {}
@@ -56,11 +56,6 @@ local FriendlyIsInRange = function(realUnit)
 		return false -- is not in same phase
 	end
 
-	local inRange, checkedRange = UnitInRange(unit)
-	if (checkedRange and not inRange) then
-		return false -- blizz checked and said the unit is out of range
-	end
-
 	return GetMaxRange(unit)
 end
 
@@ -82,10 +77,6 @@ local Update = function(self, event)
 
 		self:SetAlpha(alpha)
 	end
-end
-
-local ForceUpdate = function(self)
-	return Update(self.__owner, "ForceUpdate", self.__owner.unit)
 end
 
 local Enable, Disable
@@ -128,7 +119,6 @@ do
 
 	Enable = function(self)
 		local element = self.SpellRange
-		--[[
 		if (element) then
 			element.__owner = self
 			element.insideAlpha = element.insideAlpha or 1
@@ -143,7 +133,7 @@ do
 			OnRangeFrame:Show()
 
 			return true
-		end]]
+		end
 	end
 
 	Disable = function(self)
