@@ -10,7 +10,8 @@ InfoBar.Plugin = {}
 -- Localise a bunch of functions
 local _G = _G
 local IsEncounterInProgress = IsEncounterInProgress
-local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack = pairs, ipairs, string.format, string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
+local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack = pairs, ipairs, string.format,
+	string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
 local tinsert = table.insert
 
 local LDB = LibStub('LibDataBroker-1.1')
@@ -26,14 +27,15 @@ local infoBarPlugins = {}
 	Plugin handling for the bar
 ]]
 do
-	local initOrder = {"DraeUIFPS", "DraeUIMem", "DraeUILatency", "DraeUIDurability", "DraeUICoin", "DraeUIExp", "DraeUIArtifact", "DraeUIAzerite", "DraeUIRes"}
+	local initOrder = { "DraeUIFPS", "DraeUIMem", "DraeUILatency", "DraeUIDurability", "DraeUICoin", "DraeUIExp",
+		"DraeUIArtifact", "DraeUIAzerite", "DraeUIRes" }
 
 	InfoBar.RepositionPlugins = function()
 		local startLeft = 10
 		local v_prev = nil
 
 		for _, name in pairs(initOrder) do
---		for name, plugin in pairs(infoBarPlugins) do
+			--		for name, plugin in pairs(infoBarPlugins) do
 			if (infoBarPlugins[name]) then
 				local plugin = infoBarPlugins[name]
 
@@ -90,11 +92,11 @@ InfoBar.LibDataBroker_DataObjectCreated = function(self, event, name, obj, noupd
 	local type = obj.type
 
 	if (type == "DraeUI") then
---		if db.objSettings[name].enabled then
-			self:EnableDataObject(name, obj, noupdate)
---		end
+		--		if db.objSettings[name].enabled then
+		self:EnableDataObject(name, obj, noupdate)
+		--		end
 	else
---		print("UNKNOWN object type > ", type, name)
+		--		print("UNKNOWN object type > ", type, name)
 	end
 end
 
@@ -113,7 +115,7 @@ InfoBar.EnableDataObject = function(self, name, obj, noupdate)
 
 	self:AddPlugin(plugin, name, noupdate)
 
-	LDB.RegisterCallback(self, "LibDataBroker_AttributeChanged_"..name, "AttributeChanged")
+	LDB.RegisterCallback(self, "LibDataBroker_AttributeChanged_" .. name, "AttributeChanged")
 end
 
 --[[
@@ -139,7 +141,7 @@ InfoBar.OnEnable = function(self)
 	-- Parent bar
 	local infoBar = CreateFrame("Frame", nil, UIParent)
 	infoBar:SetFrameStrata("LOW")
-	infoBar:SetPoint("TOPLEFT", microBarPosition + microBarButtonWidth + 40, -20)
+	infoBar:SetPoint("TOPLEFT", microBarPosition + microBarButtonWidth + 60, -22)
 	infoBar:SetPoint("TOPRIGHT", _G["MinimapCluster"], "TOPLEFT", -20, 0)
 	infoBar:SetHeight(30)
 
@@ -153,4 +155,3 @@ InfoBar.OnEnable = function(self)
 
 	LDB.RegisterCallback(self, "LibDataBroker_DataObjectCreated")
 end
-

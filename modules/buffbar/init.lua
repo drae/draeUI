@@ -1,7 +1,8 @@
 --[[
 
 
---]] local DraeUI = select(2, ...)
+--]]
+local DraeUI = select(2, ...)
 
 local BuffBar = DraeUI:NewModule("BuffBar", "AceEvent-3.0")
 
@@ -15,7 +16,6 @@ local strmatch = string.match
 --]]
 local SetTooltip = function(button)
     if button:GetAttribute('index') then
-
         --		GameTooltip:SetUnitBuffByAuraInstanceID(button.header:GetAttribute('unit'), button.auraInstanceID)
 
         GameTooltip:SetUnitAura(button.header:GetAttribute('unit'), button:GetID(), button.filter)
@@ -80,7 +80,6 @@ local Button_OnUpdate = function(self, elapsed)
 end
 
 local UpdateAura = function(button, index)
-
     local aura = C_UnitAuras.GetAuraDataByIndex(button.header:GetAttribute("unit"), index, button.filter)
 
     if not aura then
@@ -91,8 +90,9 @@ local UpdateAura = function(button, index)
     button.Count:SetText((aura.charges == nil and "") or (aura.charges and aura.charges <= 1 and "") or aura.charges)
     button.Icon:SetTexture(aura.icon)
 
-    if aura.duration > 0 and aura.expirationTime then
-        button.Cooldown:SetCooldown(aura.expirationTime - aura.duration, aura.duration, aura.timeMod)
+    local duration = C_UnitAuras.GetAuraDuration(button.header:GetAttribute("unit"), aura.auraInstanceID)
+    if duration then
+        button.Cooldown:SetCooldownFromDurationObject(duration)
     end
 end
 
@@ -112,7 +112,6 @@ local UpdateTempEnchant = function(button, index, expiration)
         button:SetBackdropBorderColor(r, g, b)
 
         local remaining = (expiration * 0.001) or 0
-
         button.Cooldown:SetCooldown(GetTime(), remaining)
     end
 end
@@ -202,7 +201,7 @@ BuffBar.CreateAuraButton = function(_, button)
     border:SetPoint("TOPLEFT", button, -3, 3)
     border:SetPoint("BOTTOMRIGHT", button, 3, -3)
     border:SetFrameStrata("BACKGROUND")
-    border:SetBackdrop{
+    border:SetBackdrop {
         edgeFile = "Interface\\Buttons\\WHITE8x8",
         tile = false,
         edgeSize = 3
@@ -292,7 +291,7 @@ local CreateBuffBarHeader = function()
 
     header.visibility = CreateFrame('Frame', nil, UIParent, 'SecureHandlerStateTemplate')
     header.visibility:SetScript('OnUpdate', Header_OnUpdate) -- dont put this on the main frame
-    header.visibility:SetScript('OnEvent', Header_OnEvent) -- dont put this on the main frame
+    header.visibility:SetScript('OnEvent', Header_OnEvent)   -- dont put this on the main frame
     header.visibility.frame = header
     header.auraType = auraType
     header.filter = filter
@@ -333,4 +332,3 @@ BuffBar.OnEnable = function(self)
 
     self.BuffFrame:SetPoint("BOTTOMRIGHT", _G.UIParent, "BOTTOMRIGHT", -20, 20)
 end
-

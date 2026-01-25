@@ -1,0 +1,12 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Button name="DraeUIPlayerLongAuraTemplate" inherits="SecureActionButtonTemplate, BackdropTemplate" virtual="true" framelevel="4">
+		<Scripts>
+			<OnLoad>
+				self:RegisterForClicks("RightButtonUp")
+			</OnLoad>
+		</Scripts>
+		<Attributes>
+			<Attribute name="type" value="cancelaura"/>
+		</Attributes>
+	</Button>
+</Ui>

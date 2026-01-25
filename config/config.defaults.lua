@@ -22,15 +22,104 @@ DraeUI.config = {
 		fontsize0 = 16,
 		fontsize1 = 14,
 		fontsize2 = 12,
-		fontsize3 = 11,
+		fontsize3 = 10,
 
-		texcoords = { 0.1, 0.9, 0.1, 0.9 },
+		texcoords = { 0.1, 0.9, 0.1, 0.9 }
 	},
 
 	infobar = {
 		xp = {
 			enable = true,
-			altxp = "reputation",
-		},
+			altxp = "reputation"
+		}
+	},
+
+	-- Unit Frame settings
+	frames = {
+		numFormatLong = false,
+		-- Display or hide frames
+		showBoss = true, -- Boss frames
+		-- Player and Target are positioned relative to center of screen,
+		-- all other frames are positioned relative to those
+		playerXoffset = -430,
+		playerYoffset = -205,
+		targetXoffset = 430,
+		targetYoffset = -205,
+		totXoffset = 30,   -- Relative to right of target
+		totYoffset = 0,
+		focusXoffset = 0,  -- Relative to left of target
+		focusYoffset = -150,
+		focusTargetXoffset = 30, -- Relative to right of focus target
+		focusTargetYoffset = 0,
+		petXoffset = 0,    --62, 	-- Relative to left of player
+		petYoffset = -150, ---100,
+		bossXoffset = 0,   -- Relative to left of target
+		bossYoffset = 200,
+		arenaXoffset = 0,  -- Relative to left of target
+		arenaYoffset = 300,
+		largeScale = 1.0,
+		mediumScale = 1.0,
+		smallScale = 1.0,
+		-- Dimension of frames, large applies to player/target, small everything else
+		-- don't change these, change the scale
+		largeWidth = 280,
+		smallWidth = 140,
+		-- Aura settings
+		auras = {
+			-- Large are debuffs on players, buffs on targets, Sml are buffs on player,
+			-- debuffs on target and tiny are buffs/debuffs on other units
+			auraHge = 26,
+			auraLrg = 22,
+			auraSml = 20,
+			auraTny = 18,
+			maxPlayerBuff = 7,
+			maxPlayerDebuff = 5,
+			maxPetBuff = 2,
+			maxPetDebuff = 2,
+			maxTargetBuff = 7,
+			maxTargetDebuff = 5,
+			maxFocusBuff = 5,
+			maxFocusDebuff = 3,
+			maxFocusTargetBuff = 3,
+			maxOtherBuff = 2,
+			maxOtherDebuff = 2,
+			maxBossBuff = 2,
+			buffs_per_row = {
+				["player"] = 4,
+				["target"] = 4,
+				["focus"] = 3,
+				["focustarget"] = 3,
+				["boss"] = 3,
+				["other"] = 3 -- focus, focus target, pet, etc.
+			},
+			debuffs_per_row = {
+				["player"] = 3,
+				["target"] = 3,
+				["focus"] = 3,
+				["other"] = 3
+			},
+			showBuffsOnMe = true, -- Short term buffs on myself or my pet
+			showDebuffsOnMe = true, -- Debuffs on myself or pet
+			showBuffsOnFriends = true, -- Buffs on friends (excluding 0 duration auras)
+			showDebuffsOnFriends = true,
+			showBuffsOnEnemies = true,
+			showDebuffsOnEnemies = false,
+			-- These auras are never displayed regardless of any other settings
+			blacklistAuraFilter = {
+				["Chill of the Throne"] = true,
+				["Strength of Wrynn"] = true,
+				["Grasping Tendrils"] = true
+			},
+			filterType = "WHITELIST", -- dictates which filter we"ll use
+			-- If debuff filtering is enabled only the debuffs in the following list will appear on targets
+			whiteListFilter = {
+				["DEBUFF"] = {},
+				["BUFF"] = {}
+			},
+			blackListFilter = {
+				["DEBUFF"] = {},
+				["BUFF"] = {}
+			}
+		}
 	},
 }
