@@ -4,7 +4,6 @@
 --]]
 local DraeUI                                = select(2, ...)
 local oUF                                   = DraeUI.oUF or oUF
-
 local UF                                    = DraeUI:GetModule("UnitFrames")
 
 -- Local copies
@@ -334,37 +333,42 @@ end
 
 -- Aura handling
 do
-	local AuraOnEnter = function(self)
-		if (GameTooltip:IsForbidden() or not self:IsVisible()) then
-			return
-		end
+	local UpdateTooltip = function(button)
+		if (GameTooltip:IsForbidden()) then return end
 
-		GameTooltip_SetDefaultAnchor(GameTooltip, self)
+		GameTooltip:SetUnitAuraByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
 
-		GameTooltip:SetUnitAura(self:GetParent().__owner.unit, self:GetID(), self.filter)
-
-		if (self.caster and UnitExists(self.caster)) then
+		local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
+		if (issecretvalue and not issecretvalue(aura.sourceUnit) and UnitExists(aura.sourceUnit)) then
 			local color
 
-			if (UnitIsPlayer(self.caster)) then
-				if (RAID_CLASS_COLORS[select(2, UnitClass(self.caster))]) then
-					color = RAID_CLASS_COLORS[select(2, UnitClass(self.caster))]
+			if (UnitIsPlayer(aura.sourceUnit)) then
+				if (RAID_CLASS_COLORS[select(2, UnitClass(aura.sourceUnit))]) then
+					color = RAID_CLASS_COLORS[select(2, UnitClass(aura.sourceUnit))]
 				end
 			else
-				color = FACTION_BAR_COLORS[UnitReaction(self.caster, "player")]
+				color = FACTION_BAR_COLORS[UnitReaction(aura.sourceUnit, "player")]
 			end
 
 			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(self.caster)))
+			GameTooltip:AddLine(
+				("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(aura.sourceUnit)))
 		end
-
-		GameTooltip:Show()
 	end
 
-	local AuraOnLeave = function(self)
-		if (GameTooltip:IsForbidden() or not self:IsVisible()) then
-			return
-		end
+	local onEnter = function(button)
+		if (GameTooltip:IsForbidden() or not button:IsVisible()) then return end
+
+		-- Avoid parenting GameTooltip to frames with anchoring restrictions,
+		-- otherwise it'll inherit said restrictions which will cause issues with
+		-- its further positioning, clamping, etc
+		GameTooltip:SetOwner(button,
+			button:GetParent().__restricted and 'ANCHOR_CURSOR' or button:GetParent().tooltipAnchor)
+		button:UpdateTooltip()
+	end
+
+	local onLeave = function()
+		if (GameTooltip:IsForbidden()) then return end
 
 		GameTooltip:Hide()
 	end
@@ -426,8 +430,9 @@ do
 		stealable:SetBlendMode("ADD")
 		button.Stealable = stealable
 
-		button:SetScript("OnEnter", AuraOnEnter)
-		button:SetScript("OnLeave", AuraOnLeave)
+		button.UpdateTooltip = UpdateTooltip
+		button:SetScript("OnEnter", onEnter)
+		button:SetScript("OnLeave", onLeave)
 
 		return button
 	end
@@ -467,6 +472,8 @@ do
 		debuffs.growthY = growthy
 		debuffs.filter = "HARMFUL" -- Explicitly set the filter or the first customFilter call won"t work
 		debuffs.showDebuffType = true
+		debuffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
+		debuffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
 
 		--		debuffs.FilterAura = CustomFilter
 		debuffs.CreateButton = CreateButton
@@ -496,7 +503,6 @@ do
 		buffs.showType = true
 		buffs.showBuffType = true
 		buffs.showStealableBuffs = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
-
 		buffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
 		buffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
 		for _, dispelIndex in next, oUF.Enum.DispelType do
@@ -504,9 +510,6 @@ do
 				buffs.dispelColorCurve:AddPoint(dispelIndex, oUF.colors.dispel[dispelIndex])
 			end
 		end
-
-
-
 
 		--		buffs.FilterAura = CustomFilter
 		buffs.CreateButton = CreateButton
