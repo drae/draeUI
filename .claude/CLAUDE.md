@@ -1,4 +1,4 @@
-# draeUI - Copilot Instructions
+# draeUI
 
 ## Project Overview
 
@@ -39,7 +39,7 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
   - `elements/`: Additional frame elements (embed.xml)
   
 - **buffbar/** (modules/buffbar/): Aura tracking system
-- **infobar/** (modules/infobar/): Information bar with LDB plugins (currently commented out in .toc)
+- **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
 
 ### Library Dependencies
 
@@ -50,7 +50,6 @@ Located in `libs/` and loaded via libs.xml:
 - **LibStub**: Library management
 - **LibSharedMedia-3.0**: Media (fonts, textures, sounds) management
 - **LibRangeCheck-3.0**: Unit range detection
-- **LibDataBroker-1.1**: Data display framework
 
 ## Key Conventions
 
@@ -165,7 +164,7 @@ Controlled by draeUI.toc (TOC = Table of Contents):
 3. Core init (init.lua)
 4. Config defaults
 5. Functions
-6. Modules (BuffBar, Unitframes - Infobar currently disabled)
+6. Modules (BuffBar, Skins, Unitframes)
 
 Order matters for dependencies - libs before core, config before modules.
 
@@ -174,10 +173,10 @@ Order matters for dependencies - libs before core, config before modules.
 Modules can be disabled by prefixing lines in .toc with `#`:
 
 ```
-#modules\infobar\init.lua
+#modules\unitframes\resources\totems.lua
 ```
 
-Currently, infobar and several class resource modules are disabled this way.
+Currently, several class resource modules are disabled this way.
 
 ## Important Notes
 
