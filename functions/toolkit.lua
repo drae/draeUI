@@ -21,8 +21,15 @@ do
 	Kill = function(object)
 		if (object.UnregisterAllEvents) then
 			object:UnregisterAllEvents()
-		else
+		end
+
+		-- Unregistering events on its own doesn't stop anything else re-showing
+		-- the frame, so hook Show regardless of which branch we took above
+		if (object.Show) then
 			hooksecurefunc(object, 'Show', object.Hide)
+		end
+
+		if (object.SetShown) then
 			hooksecurefunc(object, 'SetShown', FrameShown)
 		end
 
@@ -35,8 +42,12 @@ end
 local StripTextures = function(object, option)
     if not object.GetNumRegions or (object.Panel and not object.Panel.CanBeRemoved) then return end
 
-    for i = 1, object:GetNumRegions() do
-        local region = select(i, object:GetRegions())
+    -- Grab the region list once; select(i, obj:GetRegions()) inside the loop
+    -- rebuilt and discarded the whole vararg on every iteration
+    local regions = { object:GetRegions() }
+
+    for i = 1, #regions do
+        local region = regions[i]
         if region and region:GetObjectType() == "Texture" then
             if not option then
                 region:SetTexture(nil)

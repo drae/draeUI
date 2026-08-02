@@ -10,10 +10,11 @@ local DraeUI = select(2, ...)
 DraeUI.config = {
 	general = {
 		-- Textures
-		statusbar = "striped",
-		statusbar_power = "striped",
-		statusbar_raid = "striped",
-		statusbar_raid_power = "striped",
+		statusbar = "Striped",
+		statusbar_power = "Striped",
+		statusbar_raid = "Striped",
+		statusbar_raid_power = "Striped",
+		statusbar_absorb = "DF Stripes Soft",
 
 		font = "Proza",
 		fontSmall = "LiberationSans",
@@ -54,46 +55,55 @@ DraeUI.config = {
 		}
 	},
 
+	-- Used by UF.CreateMirrorCastbars to size the breath/feign death bars
+	castbar = {
+		player = {
+			width = 450,
+			height = 20,
+		}
+	},
+
 	-- Unit Frame settings
 	frames = {
 		-- Display or hide frames
 		showBoss = true, -- Boss frames
+		hideArena = true, -- Suppress Blizzard's arena enemy/prep frames
 		-- Dimension of frames, large applies to player/target, small everything else
 		-- don't change these, change the scale
-		largeWidth = 280,
-		smallWidth = 140,
+		playerWidth = 240,
+		playerHeight = 20,
+		targetWidth = 450,
+		targetHeight = 20,
 		-- Player and Target are positioned relative to center of screen,
 		-- all other frames are positioned relative to those
-		playerXoffset = -430,
-		playerYoffset = -205,
-		targetXoffset = 430,
-		targetYoffset = -205,
+		playerXoffset = 0,
+		playerYoffset = -320,
+		targetXoffset = 0,
+		targetYoffset = 480,
 		totXoffset = 30,   -- Relative to right of target
 		totYoffset = 0,
-		focusXoffset = 0,  -- Relative to left of target
-		focusYoffset = -150,
+		focusXoffset = 50, -- Relative to left of target
+		focusYoffset = 0,
 		focusTargetXoffset = 30, -- Relative to right of focus target
 		focusTargetYoffset = 0,
-		petXoffset = 0,    --62, 	-- Relative to left of player
-		petYoffset = -150, ---100,
+		petXoffset = -50,  --62, 	-- Relative to left of player
+		petYoffset = 0,    ---100,
 		bossXoffset = 0,   -- Relative to left of target
 		bossYoffset = 200,
-		arenaXoffset = 0,  -- Relative to left of target
-		arenaYoffset = 300,
 		-- Aura settings
 		auras = {
 			-- Large are debuffs on players, buffs on targets, Sml are buffs on player,
 			-- debuffs on target and tiny are buffs/debuffs on other units
-			auraHge = 26,
+			auraHge = 32,
 			auraLrg = 22,
 			auraSml = 20,
 			auraTny = 18,
 			maxPlayerBuff = 7,
-			maxPlayerDebuff = 5,
+			maxPlayerDebuff = 4,
 			maxPetBuff = 2,
 			maxPetDebuff = 2,
-			maxTargetBuff = 7,
-			maxTargetDebuff = 5,
+			maxTargetBuff = 8,
+			maxTargetDebuff = 8,
 			maxFocusBuff = 5,
 			maxFocusDebuff = 3,
 			maxFocusTargetBuff = 3,
@@ -102,24 +112,22 @@ DraeUI.config = {
 			maxBossBuff = 2,
 			buffs_per_row = {
 				["player"] = 4,
-				["target"] = 4,
+				["target"] = 5,
 				["focus"] = 3,
 				["focustarget"] = 3,
 				["boss"] = 3,
 				["other"] = 3 -- focus, focus target, pet, etc.
 			},
 			debuffs_per_row = {
-				["player"] = 3,
-				["target"] = 3,
+				["player"] = 4,
+				["target"] = 5,
 				["focus"] = 3,
 				["other"] = 3
 			},
-			showBuffsOnMe = true, -- Short term buffs on myself or my pet
-			showDebuffsOnMe = true, -- Debuffs on myself or pet
-			showBuffsOnFriends = true, -- Buffs on friends (excluding 0 duration auras)
-			showDebuffsOnFriends = true,
-			showBuffsOnEnemies = true,
-			showDebuffsOnEnemies = false,
+			showBuffsOnPlayer = false, -- Short term buffs on myself or my pet
+			showDebuffsOnPlayer = true, -- Debuffs on myself or pet
+			showBuffsOnTarget = true,
+			showDebuffsOnTarget = false,
 		}
 	},
 }

@@ -14,7 +14,6 @@ local CreateFrame = CreateFrame
 local UnitClass, UnitName, GetRealmName, UnitGUID, GetScreenHeight, GetScreenWidth, GetCVar =
 	UnitClass, UnitName, GetRealmName, UnitGUID, GetScreenHeight, GetScreenWidth, GetCVar
 local select, mfloor, tonumber, smatch = select, math.floor, tonumber, string.match
-local OrderHallCommandBar, ArenaPrepFrames, ArenaEnemyFrames = OrderHallCommandBar, ArenaPrepFrames, ArenaEnemyFrames
 local ReloadUI, DoReadyCheck = ReloadUI, DoReadyCheck
 local CHAT_FONT_HEIGHTS = CHAT_FONT_HEIGHTS
 
@@ -42,8 +41,7 @@ DraeUI.OnInitialize = function(self)
 		.dbClass 	-> (class)	 ->	data stored under class name
 		.dbChar		-> (profile) ->	data stored under "name-realm" tables and accessible to only this char
 	--]]
-	--]]
-	local db = LibStub("AceDB-3.0"):New("draeUIDB") -- Default to our defaults (C. setup)
+	local db = LibStub("AceDB-3.0"):New("draeUIDB", DraeUI.defaults)
 
 	self.dbGlobal = db.global
 
@@ -59,6 +57,10 @@ DraeUI.OnInitialize = function(self)
 			or "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
 		statusbar_power = LSM:Fetch("statusbar", self.config["general"].statusbar_power)
 			or "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
+		statusbar_absorb = LSM:Fetch("statusbar", self.config["general"].statusbar_absorb)
+			or "Interface\\AddOns\\draeUI\\media\\statusbars\\DF_Stripes_Soft",
+
+
 
 		sound1 = LSM:Fetch("sound", self.config["general"].sound1)
 			or "Interface\\AddOns\\draeUI\\media\\sounds\\heart.ogg",
@@ -71,24 +73,48 @@ DraeUI.OnEnable = function(self)
 	self.uiScale = tonumber(GetCVar("uiScale"))
 
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "UpdateFonts")
-	self:RegisterEvent("ADDON_LOADED", function(this)
-		if C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") and OrderHallCommandBar ~= nil then
-			OrderHallCommandBar:Hide()
-			OrderHallCommandBar:UnregisterAllEvents()
-			OrderHallCommandBar.Show = OrderHallCommandBar.Hide
+
+	--[[
+		Both of these are load-on-demand, so the globals don't exist until the
+		matching addon loads - they have to be read from _G here rather than
+		cached at file scope.
+	--]]
+	local killedOrderHall, killedArena = false, false
+
+	self:RegisterEvent("ADDON_LOADED", function()
+		if not killedOrderHall and C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") then
+			local bar = _G.OrderHallCommandBar
+
+			if bar then
+				bar:Hide()
+				bar:UnregisterAllEvents()
+				bar.Show = bar.Hide
+
+				killedOrderHall = true
+			end
 		end
 
 		-- Hide ArenaUI
-		if C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and this.db.frames.showArena then
-			SetCVar("showArenaEnemyFrames", "0", "SHOW_ARENA_ENEMY_FRAMES_TEXT")
+		if not killedArena and C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and DraeUI.config["frames"].hideArena then
+			local prep, enemy = _G.ArenaPrepFrames, _G.ArenaEnemyFrames
 
-			ArenaPrepFrames.Show = ArenaPrepFrames.Hide
-			ArenaPrepFrames:UnregisterAllEvents()
-			ArenaPrepFrames:Hide()
+			if prep and enemy then
+				SetCVar("showArenaEnemyFrames", "0")
 
-			ArenaEnemyFrames.Show = ArenaEnemyFrames.Hide
-			ArenaEnemyFrames:UnregisterAllEvents()
-			ArenaEnemyFrames:Hide()
+				prep.Show = prep.Hide
+				prep:UnregisterAllEvents()
+				prep:Hide()
+
+				enemy.Show = enemy.Hide
+				enemy:UnregisterAllEvents()
+				enemy:Hide()
+
+				killedArena = true
+			end
+		end
+
+		if killedOrderHall and killedArena then
+			self:UnregisterEvent("ADDON_LOADED")
 		end
 	end)
 
@@ -110,10 +136,10 @@ DraeUI.OnEnable = function(self)
 	oUF.colors.power[3]             = oUF:CreateColor(255 / 255, 249 / 255, 105 / 255)
 	oUF.colors.power[6]             = oUF:CreateColor(0 / 255, 204 / 255, 255 / 255)
 	oUF.colors.power[8]             = oUF:CreateColor(77 / 255, 133 / 255, 230 / 255) --, atlas = '_Druid-LunarBar)
-	oUF.colors.power[11]            = oUF:CreateColor(0, 128 / 255, 255 / 255) --, atlas = '_Shaman-MaelstromBar)
-	oUF.colors.power[13]            = oUF:CreateColor(102 / 255, 0, 204 / 255) --, atlas = '_Priest-InsanityBar)
+	oUF.colors.power[11]            = oUF:CreateColor(0, 128 / 255, 255 / 255)     --, atlas = '_Shaman-MaelstromBar)
+	oUF.colors.power[13]            = oUF:CreateColor(102 / 255, 0, 204 / 255)     --, atlas = '_Priest-InsanityBar)
 	oUF.colors.power[17]            = oUF:CreateColor(201 / 255, 66 / 255, 252 / 255) --, atlas = '_DemonHunter-DemonicFuryBar)
-	oUF.colors.power[18]            = oUF:CreateColor(255 / 255, 156 / 255, 0) --, atlas = '_DemonHunter-DemonicPainBar)
+	oUF.colors.power[18]            = oUF:CreateColor(255 / 255, 156 / 255, 0)     --, atlas = '_DemonHunter-DemonicPainBar)
 
 	oUF.colors.reaction[2]          = oUF:CreateColor(255 / 255, 0, 0)
 	oUF.colors.reaction[4]          = oUF:CreateColor(255 / 255, 255 / 255, 0)
@@ -143,8 +169,15 @@ do
 			size = oldSize
 		end
 
+		--[[
+			This used to rewrite OUTLINE -> THINOUTLINE "to keep outlines thin",
+			but THINOUTLINE isn't a real font flag (SetFont takes "", OUTLINE,
+			THICKOUTLINE, MONOCHROME, SLUG), so it silently stripped the outline
+			from every font object that had one. Keep whatever the object came
+			with instead.
+		--]]
 		if not style then
-			style = (oldStyle == "OUTLINE") and "THINOUTLINE" or oldStyle -- keep outlines thin
+			style = oldStyle
 		end
 
 		obj:SetFont(font, size, style)
@@ -164,6 +197,9 @@ do
 	local UpdateChatFontSizes = function()
 		CHAT_FONT_HEIGHTS = { 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20 }
 	end
+
+	-- Hooks are additive and can't be removed, so this has to happen exactly once
+	hooksecurefunc("FCF_ResetChatWindows", UpdateChatFontSizes)
 
 	DraeUI.UpdateFonts = function(self)
 		-- Change fonts
@@ -186,7 +222,7 @@ do
 		-- Base fonts
 		ChangeFont(SystemFont_Tiny, FontSmall, SizeSmall, nil)
 		ChangeFont(SystemFont_Small, FontSmall, SizeSmall, nil)
-		ChangeFont(SystemFont_Outline_Small, FontSmall, SizeSmall, "THINOUTLINE")
+		ChangeFont(SystemFont_Outline_Small, FontSmall, SizeSmall, "OUTLINE")
 		ChangeFont(SystemFont_Shadow_Small, FontSmall, SizeSmall, nil)
 		ChangeFont(SystemFont_InverseShadow_Small, FontSmall, SizeSmall, nil)
 		ChangeFont(SystemFont_Med1, FontStandard, SizeMedium, nil)
@@ -211,7 +247,7 @@ do
 		ChangeFont(GameFontBlackSmall, FontSmall, SizeSmall, nil)
 		ChangeFont(GameFontNormalMed2, FontTitles, SizeMedium, nil)
 		ChangeFont(GameFontNormalLarge, FontStandard, SizeLarge, nil)
-		ChangeFont(GameFontNormalLargeOutline, FontStandard, SizeLarge, "THINOUTLINE")
+		ChangeFont(GameFontNormalLargeOutline, FontStandard, SizeLarge, "OUTLINE")
 		ChangeFont(GameFontHighlightSmall, FontStandard, SizeSmall, nil)
 		ChangeFont(GameFontHighlight, FontStandard, SizeMedium, nil)
 		ChangeFont(GameFontHighlightLeft, FontStandard, SizeMedium, nil)
@@ -225,11 +261,11 @@ do
 		ChangeFont(NumberFont_Shadow_Small, FontSmall, SizeSmall, nil)
 		ChangeFont(NumberFont_OutlineThick_Mono_Small, FontStandard, SizeMedium, "OUTLINE")
 		ChangeFont(NumberFont_Shadow_Med, FontStandard, SizeMedium, nil)
-		ChangeFont(NumberFont_Outline_Med, FontStandard, SizeMedium, "THINOUTLINE")
-		ChangeFont(NumberFont_Outline_Large, FontStandard, SizeLarge, "THINOUTLINE")
-		ChangeFont(NumberFont_Outline_Huge, FontStandard, SizeHuge, "THINOUTLINE")
+		ChangeFont(NumberFont_Outline_Med, FontStandard, SizeMedium, "OUTLINE")
+		ChangeFont(NumberFont_Outline_Large, FontStandard, SizeLarge, "OUTLINE")
+		ChangeFont(NumberFont_Outline_Huge, FontStandard, SizeHuge, "OUTLINE")
 
-		ChangeFont(WhiteNormalNumberFont, FontStandard, SizeMedium, "THINOUTLINE")
+		ChangeFont(WhiteNormalNumberFont, FontStandard, SizeMedium, "OUTLINE")
 
 		ChangeFont(QuestFont, FontStandard, SizeMedium, nil)
 		ChangeFont(QuestFont_Large, FontTitles, SizeLarge, nil)
@@ -257,7 +293,9 @@ do
 
 		UpdateChatFontSizes()
 
-		hooksecurefunc("FCF_ResetChatWindows", UpdateChatFontSizes)
+		-- The font objects are global and persist for the session, so there's no
+		-- point reapplying all of the above on every loading screen
+		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 	end
 end
 
@@ -279,15 +317,52 @@ do
 	do
 		local grid
 
-		local AlignGridCreate = function(gridSize)
-			if not grid or (gridSize and grid.gridSize ~= gridSize) then
-				grid = nil
+		--[[
+			Textures are pooled - frames and textures can't be destroyed, so
+			rebuilding at a new size reuses what we already made rather than
+			orphaning it on screen.
+		--]]
+		local NextTexture, ReleaseTextures
+		do
+			local pool, used = {}, 0
 
+			NextTexture = function(r, g, b, a)
+				used = used + 1
+
+				local tx = pool[used]
+
+				if not tx then
+					tx = grid:CreateTexture(nil, "BACKGROUND")
+					pool[used] = tx
+				end
+
+				tx:ClearAllPoints()
+				tx:SetColorTexture(r, g, b, a)
+				tx:Show()
+
+				return tx
+			end
+
+			-- Called before a rebuild to release everything back to the pool
+			ReleaseTextures = function()
+				for i = 1, used do
+					pool[i]:Hide()
+				end
+
+				used = 0
+			end
+		end
+
+		local AlignGridCreate = function(gridSize)
+			gridSize = gridSize or 128
+
+			if not grid then
 				grid = CreateFrame("Frame", nil, UIParent)
 				grid:SetAllPoints(UIParent)
 			end
 
-			gridSize = gridSize or 128
+			ReleaseTextures()
+
 			grid.gridSize = gridSize
 
 			local size = 2
@@ -299,12 +374,12 @@ do
 			local hStep = height / gridSize
 
 			for i = 0, gridSize do
-				local tx = grid:CreateTexture(nil, "BACKGROUND")
+				local tx
 
 				if i == gridSize / 2 then
-					tx:SetColorTexture(1, 0, 0, 0.5)
+					tx = NextTexture(1, 0, 0, 0.5)
 				else
-					tx:SetColorTexture(0, 0, 0, 0.5)
+					tx = NextTexture(0, 0, 0, 0.5)
 				end
 
 				tx:SetPoint("TOPLEFT", grid, "TOPLEFT", i * wStep - (size / 2), 0)
@@ -314,22 +389,17 @@ do
 			height = DraeUI.screenHeight
 
 			do
-				local tx = grid:CreateTexture(nil, "BACKGROUND")
-				tx:SetColorTexture(1, 0, 0, 0.5)
+				local tx = NextTexture(1, 0, 0, 0.5)
 				tx:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, -(height / 2) + (size / 2))
 				tx:SetPoint("BOTTOMRIGHT", grid, "TOPRIGHT", 0, -(height / 2 + size / 2))
 			end
 
 			for i = 1, mfloor((height / 2) / hStep) do
-				local tx = grid:CreateTexture(nil, "BACKGROUND")
-				tx:SetColorTexture(0, 0, 0, 0.5)
-
+				local tx = NextTexture(0, 0, 0, 0.5)
 				tx:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, -(height / 2 + i * hStep) + (size / 2))
 				tx:SetPoint("BOTTOMRIGHT", grid, "TOPRIGHT", 0, -(height / 2 + i * hStep + size / 2))
 
-				tx = grid:CreateTexture(nil, "BACKGROUND")
-				tx:SetColorTexture(0, 0, 0, 0.5)
-
+				tx = NextTexture(0, 0, 0, 0.5)
 				tx:SetPoint("TOPLEFT", grid, "TOPLEFT", 0, -(height / 2 - i * hStep) + (size / 2))
 				tx:SetPoint("BOTTOMRIGHT", grid, "TOPRIGHT", 0, -(height / 2 - i * hStep + size / 2))
 			end
@@ -364,12 +434,11 @@ do
 		end
 
 		ConsoleGrid = function(grid_size)
-			if
-				grid_size
-				and type(tonumber(grid_size)) == "number"
-				and tonumber(grid_size) <= 256
-				and tonumber(grid_size) >= 4
-			then
+			-- The slash command hands us a string capture; everything downstream
+			-- compares against grid.gridSize, so it has to be a number
+			grid_size = tonumber(grid_size)
+
+			if grid_size and grid_size <= 256 and grid_size >= 4 then
 				AlignGridToggle(grid_size)
 			else
 				AlignGridToggle()

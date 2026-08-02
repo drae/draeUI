@@ -5,11 +5,40 @@
 local DraeUI = select(2, ...)
 
 -- Localise a bunch of functions
-local _G = _G
-local pairs, format, match, gupper, gsub, type, unpack =
-	pairs, string.format, string.match, string.upper, string.gsub, type, unpack
-local mmax, mmin, mfloor, mceil, mabs = math.max, math.min, math.floor, math.ceil, math.abs
-local UIParent, CreateFrame = UIParent, CreateFrame
+local pairs, type, unpack, select, pcall = pairs, type, unpack, select, pcall
+local format, srep, slen = string.format, string.rep, string.len
+local mmodf = math.modf
+
+--[[
+
+--]]
+DraeUI.CanAccessValue = function(v)
+	-- In Midnight/Retail, even comparing a secret value to nil can error.
+	-- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
+	local okNil, isNil = pcall(function()
+		return v == nil
+	end)
+
+	-- If it's actually nil, treat it as NOT accessible.
+	if okNil and isNil then
+		return false
+	end
+
+	if (canaccessvalue) then
+		local ok, res = pcall(canaccessvalue, v)
+		return ok and res or false
+	end
+
+	if (issecretvalue) then
+		local ok, res = pcall(issecretvalue, v)
+		return ok and (not res) or false
+	end
+
+	-- If we can safely compare to nil, it's not a secret value.
+	return okNil and (not isNil)
+end
+
+
 
 --[[
 	Font functions
@@ -17,14 +46,8 @@ local UIParent, CreateFrame = UIParent, CreateFrame
 
 -- Create and set font
 DraeUI.CreateFontObject = function(parent, size, font, anchorAt, oX, oY, type, anchor, anchorTo)
-	local fo
-	if parent:IsObjectType("EditBox") or parent:IsObjectType("FontString") then
-		fo = parent
-	else
-		fo = parent:CreateFontString(nil, "OVERLAY")
-	end
-
-	fo:SetFont(font, size, type or "THINOUTLINE")
+	local fo = parent:CreateFontString(nil, "OVERLAY")
+	fo:SetFont(font, size, type or "OUTLINE")
 
 	if anchor then
 		fo:SetPoint(anchorAt, anchor, anchorTo, oX, oY)
@@ -37,21 +60,6 @@ DraeUI.CreateFontObject = function(parent, size, font, anchorAt, oX, oY, type, a
 	end
 
 	return fo
-end
-
---[[
-	Math functions
---]]
-
--- Reduce to nearest kilo value, e.g. 1,200,00 becomes 1.2M, 1450 becomes 1.45K
-DraeUI.ShortVal = function(value)
-	if mabs(value) >= 1e6 then
-		return ("%.2fM"):format(value / 1e6):gsub("%.?0+([km])$", "%1")
-	elseif mabs(value) >= 1e3 or value <= -1e3 then
-		return ("%.1fK"):format(value / 1e3):gsub("%.?0+([km])$", "%1")
-	else
-		return value
-	end
 end
 
 --[[
@@ -88,7 +96,7 @@ DraeUI.Hex = function(r, g, b, a)
 		end
 	end
 
-	return ("|c%02x%02x%02x%02x"):format((a or 1) * 255, r * 255, g * 255, b * 255)
+	return format("|c%02x%02x%02x%02x", (a or 1) * 255, r * 255, g * 255, b * 255)
 end
 
 -- Smooth colour gradient between two r, g, b value
@@ -103,7 +111,7 @@ DraeUI.ColorGradient = function(perc, ...)
 
 	local num = select("#", ...) / 3
 
-	local segment, relperc = math.modf(perc * (num - 1))
+	local segment, relperc = mmodf(perc * (num - 1))
 	local r1, g1, b1, r2, g2, b2 = select((segment * 3) + 1, ...)
 
 	return r1 + (r2 - r1) * relperc, g1 + (g2 - g1) * relperc, b1 + (b2 - b1) * relperc
@@ -131,8 +139,8 @@ DraeUI.Debug = function(t)
 				for pos, val in pairs(tbl) do
 					if type(val) == "table" then
 						print(indent .. "[" .. pos .. "] => " .. tostring(val) .. " {")
-						sub_print_r(val, indent .. string.rep(" ", string.len(pos) + 8))
-						print(indent .. string.rep(" ", string.len(pos) + 6) .. "}")
+						sub_print_r(val, indent .. srep(" ", slen(pos) + 8))
+						print(indent .. srep(" ", slen(pos) + 6) .. "}")
 					elseif type(val) == "string" then
 						print(indent .. "[" .. pos .. '] => "' .. val .. '"')
 					else
