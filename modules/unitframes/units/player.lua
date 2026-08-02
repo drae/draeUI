@@ -9,38 +9,68 @@ local UF = DraeUI:GetModule("UnitFrames")
 
 -- Player frame
 local StyleDrae_Player = function(frame)
-	frame:SetSize(260, 14)
+	frame:SetSize(500, 20)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	UF.CreateHealthBar(frame, 260, 0, 0)
-	UF.CreateUnitFrameBackground(frame)
-	--	UF.CreateUnitFrameHighlight(frame)
+	UF.CreateHealthBar(frame, 240, 0, 0, 20)
 
-	frame.Health.value = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
-		"RIGHT", -5, 10)
+	local pp = CreateFrame("StatusBar", nil, frame)
+	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+	pp:SetSize(240, 20)
+	pp:SetPoint("TOPLEFT", frame.Health, "TOPRIGHT", 20, 0)
 
-	local level = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "LEFT",
-		5, 10)
+	pp.colorTapping = true
+	pp.colorDisconnected = true
+	pp.colorPower = true
+	pp.useAtlas = true
+
+	pp.__bar_texture = DraeUI.media.statusbar_power
+
+	frame.Power = pp
+
+	UF.CreateUnitFrameBackground(frame.Health)
+	UF.CreateBorder(frame.Health)
+	UF.CreateUnitFrameBackground(frame.Power)
+	UF.CreateBorder(frame.Power)
+
+	-- HP/level
+	local textHp = CreateFrame("Frame", nil, frame.Health)
+	textHp:SetAllPoints(frame.Health)
+
+	frame.Health.value = DraeUI.CreateFontObject(textHp, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
+		"RIGHT", -5, 12)
+
+	local level = DraeUI.CreateFontObject(textHp, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "LEFT",
+		5, 12)
 	level:SetSize(40, 20)
 	frame:Tag(level, "[level]")
 
+	-- PP
+	local textPp = CreateFrame("Frame", nil, frame.Power)
+	textPp:SetAllPoints(frame.Power)
+
+	frame.Power.value = DraeUI.CreateFontObject(textPp, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
+		"RIGHT", 5, 12)
+
 	-- Combat icon
-	local combat = frame.Health:CreateTexture(nil, "OVERLAY")
+	local combat = textHp:CreateTexture(nil, "OVERLAY")
 	combat:SetSize(18, 18)
-	combat:SetPoint("BOTTOMRIGHT", frame, 10, -10)
+	combat:SetPoint("BOTTOMRIGHT", textHp, 10, -10)
 	combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
 	combat:SetTexCoord(0.58, 0.90, 0.08, 0.41)
 	frame.CombatIndicator = combat
 
-	UF.FlagIcons(frame.Health)
+	UF.FlagIcons(textHp)
 
 	-- Auras
-	UF.AddDebuffs(frame, "TOPRIGHT", frame.Health, "BOTTOMRIGHT", 0, -22,
-		DraeUI.config["frames"].auras.maxPlayerDebuff or 6, DraeUI.config["frames"].auras.auraLrg, 8, "LEFT", "DOWN")
+	UF.AddDebuffs(frame, "BOTTOMLEFT", frame.Health, "TOPLEFT", 0, 15, DraeUI.config["frames"].auras.maxPlayerDebuff or 6,
+		DraeUI.config["frames"].auras.auraHge, 8, "RIGHT", "UP")
 
 	--	UF.CreateCastBar(frame, 220, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15, true)
+
+	frame.ClassPower = UF.CreateClassPowerBar(frame, "CENTER", UIParent, "CENTER", 0, -275)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

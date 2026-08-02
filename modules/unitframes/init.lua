@@ -7,11 +7,6 @@ local oUF = DraeUI.oUF or oUF
 
 local UF = DraeUI:NewModule("UnitFrames")
 
---
-local GetSpecialization, GetNumGroupMembers, GetRaidRosterInfo, InCombatLockdown = GetSpecialization, GetNumGroupMembers,
-	GetRaidRosterInfo, InCombatLockdown
-local pairs = pairs
-
 --[[
 		Spawn the frames
 --]]
@@ -20,14 +15,14 @@ UF.OnEnable = function(self)
 	_G["DebuffFrame"]:Kill()
 	_G["BuffFrame"]:Kill()
 	_G["BuffFrame"].numHideableBuffs = 0
-	--	_G["CompactRaidFrameContainer"]:Kill()
-	--	_G["CompactRaidFrameManager"]:Kill()
+	_G["CompactRaidFrameContainer"]:Kill()
+	_G["CompactRaidFrameManager"]:Kill()
 
-	UF.frames = {}
-
-	-- Player
+	-- Player - SetPoint returns nothing, so this has to be two statements to
+	-- keep a usable reference
 	oUF:SetActiveStyle("DraePlayer")
-	UF["player"] = oUF:Spawn("player", "DraePlayer"):SetPoint("CENTER", UIParent, DraeUI.config["frames"].playerXoffset,
+	UF.player = oUF:Spawn("player", "DraePlayer")
+	UF.player:SetPoint("CENTER", UIParent, DraeUI.config["frames"].playerXoffset,
 		DraeUI.config["frames"].playerYoffset)
 
 	-- Target
@@ -42,7 +37,7 @@ UF.OnEnable = function(self)
 
 	-- Focus
 	oUF:SetActiveStyle("DraeFocus")
-	oUF:Spawn("focus", "DraeFocus"):SetPoint("BOTTOMRIGHT", "DraeTarget", "TOPRIGHT",
+	oUF:Spawn("focus", "DraeFocus"):SetPoint("TOPLEFT", "DraePlayer", "TOPRIGHT",
 		DraeUI.config["frames"].focusXoffset, DraeUI.config["frames"].focusYoffset)
 
 	-- Focus target
@@ -54,7 +49,7 @@ UF.OnEnable = function(self)
 	oUF:SetActiveStyle("DraePet")
 	oUF:Spawn("pet", "DraePet"):SetPoint("BOTTOMRIGHT", "DraePlayer", "TOPRIGHT", DraeUI.config["frames"].petXoffset,
 		DraeUI.config["frames"].petYoffset)
-
+	--[[
 	-- Boss frames
 	if (DraeUI.config["frames"].showBoss) then
 		oUF:SetActiveStyle("DraeBoss")
@@ -73,4 +68,5 @@ UF.OnEnable = function(self)
 			boss[i] = frame
 		end
 	end
+	]]
 end

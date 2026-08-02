@@ -10,13 +10,11 @@ local UF = DraeUI:GetModule("UnitFrames")
 -- Localise a bunch of functions
 local _G = _G
 local unpack, pairs, format = unpack, pairs, string.format
-local UnitChannelInfo = UnitChannelInfo
-
+local mfloor, mceil, strlen = math.floor, math.ceil, string.len
 
 -- color
 local CastingColor    = { 0.3, 0.3, 1.0 }
 local ChannelingColor = { 1.0, 0.3, 0.3 }
-local FailColor       = { 0.3, 0.3, 0.3 }
 
 --[[
 		Castbar functions
@@ -37,7 +35,7 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	local castbar = CreateFrame("StatusBar", nil, self, BackdropTemplateMixin and "BackdropTemplate")
 	castbar:SetSize(width, height)
 	castbar:SetPoint(anchorAt, anchor or self, anchorTo, xOffset, yOffset)
-	castbar:SetStatusBarTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
+	castbar:SetStatusBarTexture(DraeUI.media.statusbar)
 	castbar:SetStatusBarColor(0.5, 0.5, 1, 1)
 
 	-- hold time
@@ -47,6 +45,7 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	castbar.PostCastStart = PostCastStart
 	castbar.PostCastFail = PostCastFail
 
+	UF.CreateBorder(castbar)
 
 	local backdrop = CreateFrame("Frame", nil, castbar, BackdropTemplateMixin and "BackdropTemplate")
 	backdrop:SetPoint("TOPLEFT", castbar, "TOPLEFT", -2.5, 2.5)
@@ -63,13 +62,6 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	spark:SetPoint("CENTER", castbar:GetStatusBarTexture(), "RIGHT", 0, 0)
 	castbar.Spark = spark
 
-	-- Uniterruptable show shield
-	local shield = castbar:CreateTexture(nil, "OVERLAY")
-	shield:SetTexture("Interface\\TARGETINGFRAME\\PortraitQuestBadge")
-	shield:SetPoint("CENTER", castbar)
-	shield:SetSize(30, 30)
-	castbar.Shield = shield
-
 	-- Latency safe-zone
 	if (self.unit and self.unit == "player") then
 		local safezone = castbar:CreateTexture(nil, "OVERLAY")
@@ -79,23 +71,37 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	end
 
 	-- Cast time
-	castbar.Time = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "RIGHT", -3,
+	castbar.Time = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize2, DraeUI["media"].font, "RIGHT", -5,
 		0)
 
 	-- Spell name
-	castbar.Text = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize3, DraeUI["media"].font, "LEFT", 3,
+	castbar.Text = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize2, DraeUI["media"].font, "LEFT", 5,
 		0)
+
+	-- Uniterruptable show shield
+	local shieldFrame = CreateFrame("Frame", nil, castbar)
+	shieldFrame:SetAllPoints(castbar)
+	local shield = shieldFrame:CreateTexture(nil, "OVERLAY")
+	shield:SetTexture("Interface\\TARGETINGFRAME\\PortraitQuestBadge")
+	shield:SetPoint("CENTER", castbar)
+	shield:SetSize(35, 35)
+	castbar.Shield = shield
+
 
 	self.Castbar = castbar
 end
 
--- Mirror bars
+--[[
+	Mirror bars (breath, feign death, etc.)
+
+	Not currently wired up by any unit style - call UF.CreateMirrorCastbars(frame)
+	from a style if you want these skinned.
+--]]
 do
 	local updateInterval = 1.0 -- One second
-	local lastUpdate = 0
 
 	local getFormattedNumber = function(number)
-		if (strlen(number) < 2) then
+		if (strlen(tostring(number)) < 2) then
 			return "0" .. number
 		else
 			return number
@@ -103,10 +109,15 @@ do
 	end
 
 	UF.CreateMirrorCastbars = function(self)
-		for _, barId in pairs({ "1", "2", "3", }) do
+		for barId = 1, 3 do
 			local bar = "MirrorTimer" .. barId
 
-			for i, region in pairs({ _G[bar]:GetRegions() }) do
+			-- Per-bar, not shared: these used to be upvalues outside the loop, so
+			-- all three OnUpdate closures fought over one throttle and one string
+			local lastUpdate = 0
+			local timeMsg = ""
+
+			for _, region in pairs({ _G[bar]:GetRegions() }) do
 				if (not region:GetName() or region.GetTexture and region:GetTexture() == "SolidTexture") then
 					region:Hide()
 				end
@@ -137,7 +148,7 @@ do
 			end
 
 			_G[bar .. "Background"] = _G[bar]:CreateTexture(bar .. "Background", "BACKGROUND", _G[bar], 1)
-			_G[bar .. "Background"]:SetTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
+			_G[bar .. "Background"]:SetTexture(DraeUI.media.statusbar)
 			_G[bar .. "Background"]:SetAllPoints(bar)
 			_G[bar .. "Background"]:SetVertexColor(0, 0, 0, 0)
 
@@ -151,12 +162,8 @@ do
 				1, "NONE") -- Our timer
 
 			_G[bar .. "StatusBar"]:ClearAllPoints()
-			_G[bar .. "StatusBar"]:SetStatusBarTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\striped")
+			_G[bar .. "StatusBar"]:SetStatusBarTexture(DraeUI.media.statusbar)
 			_G[bar .. "StatusBar"]:SetAllPoints(_G[bar])
-
-			local timeMsg = ""
-			local minutes = 0
-			local seconds = 0
 
 			-- Hook scripts
 			_G[bar]:HookScript("OnShow", function(self)
@@ -176,8 +183,8 @@ do
 
 				if (lastUpdate <= 0) then
 					if (self.value >= 60) then
-						minutes = floor(self.value / 60)
-						local seconds = ceil(self.value - (60 * minutes))
+						local minutes = mfloor(self.value / 60)
+						local seconds = mceil(self.value - (60 * minutes))
 
 						if (seconds == 60) then
 							minutes = minutes + 1

@@ -7,33 +7,23 @@ local oUF                                   = DraeUI.oUF or oUF
 local UF                                    = DraeUI:GetModule("UnitFrames")
 
 -- Local copies
-local CreateFrame                           = CreateFrame
-local GameTooltip, InCombatLockdown         = GameTooltip, InCombatLockdown
-local CancelUnitBuff, DebuffTypeColor       = CancelUnitBuff, DebuffTypeColor
-local UnitFrame_OnEnter, UnitFrame_OnLeave  = UnitFrame_OnEnter, UnitFrame_OnLeave
-local RAID_CLASS_COLORS, FACTION_BAR_COLORS = _G["RAID_CLASS_COLORS"], _G["FACTION_BAR_COLORS"]
-local ToggleDropDownMenu                    = _G["ToggleDropDownMenu"]
-
---[[
-		Local functions
---]]
-local Menu = function(self)
-	local cUnit = self.unit:gsub("(.)", string.upper, 1)
-
-	if (_G[cUnit .. "FrameDropDown"]) then
-		ToggleDropDownMenu(1, nil, _G[cUnit .. "FrameDropDown"], "cursor", 0, 0)
-	end
-end
+local CreateFrame                          = CreateFrame
+local GameTooltip                          = GameTooltip
+local UnitFrame_OnEnter, UnitFrame_OnLeave = UnitFrame_OnEnter, UnitFrame_OnLeave
+local UnitIsConnected, UnitIsGhost         = UnitIsConnected, UnitIsGhost
+local UnitIsDead, AbbreviateNumbers        = UnitIsDead, AbbreviateNumbers
 
 --[[
 		General frame related functions
 --]]
 UF.CommonInit = function(self)
-	self.menu = Menu -- Enable the menus
-
-	-- Register for mouse clicks, for menu
+	--[[
+		No custom menu handler here: oUF already sets '*type2' = 'togglemenu' in
+		Spawn, which is the path that still works. The old one went through
+		ToggleDropDownMenu and <Unit>FrameDropDown, both removed in the 11.0
+		menu rewrite.
+	--]]
 	self:RegisterForClicks("AnyDown")
-	self:SetAttribute("type2", "menu")
 	self:SetScript("OnEnter", UnitFrame_OnEnter)
 	self:SetScript("OnLeave", UnitFrame_OnLeave)
 end
@@ -49,55 +39,105 @@ UF.CommonPostInit = function(self, size, noRaidIcons)
 		self.RaidTargetIndicator = raidIcon
 	end
 
-	self.SpellRange = {
+	self.Range = {
 		insideAlpha = 1.0,
-		outsideAlpha = 0.33
+		outsideAlpha = 1 / 2
 	}
 end
 
 UF.CreateTargetArrow = function(frame)
 	local arrow = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
 	arrow:SetSize(14, 30)
-	arrow:SetPoint("RIGHT", frame, "LEFT", -7, -4)
+	arrow:SetPoint("RIGHT", frame, "LEFT", -7.5, 0)
 	arrow:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\unitframe_right_arrow")
 end
 
-UF.CreateUnitFrameBackground = function(frame)
-	local backdrop = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
-	backdrop:SetPoint("TOPLEFT", frame.Health, "TOPLEFT", -2.5, 2.5)
-	backdrop:SetFrameStrata("BACKGROUND")
-	backdrop:SetBackdrop { bgFile = "Interface\\BUTTONS\\WHITE8X8", tile = true }
-	backdrop:SetBackdropColor(0, 0, 0, 1)
-	backdrop:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT", 2.25, -2.5)
+--[[
+	There used to be a second "shadow" pass here building another 8 textures per
+	border at SetVertexColor(0, 0, 0, 0). Nothing ever changed their alpha, so
+	they were submitted for rendering while being completely invisible - and
+	every frame borders its Health, its Power and a wrapper, so that was ~24
+	wasted textures per unit frame. If the shadow is wanted back, give it a real
+	colour rather than a zero alpha.
+--]]
+UF.CreateBorder = function(self, sizing)
+	if (not self or type(self) ~= "table" or self.borderTexture) then return end
 
-	frame.backdrop = backdrop
+	local size = 14 --sizing == "smaller" and 8 or sizing == "small" and 12 or 16
+
+	local tex = {}
+	self.borderTexture = tex
+
+	local border = CreateFrame("Frame", nil, self)
+	border:SetAllPoints(self)
+
+	-- creating the textures
+	for i = 1, 8 do
+		tex[i] = border:CreateTexture(nil, "BORDER", nil, 5)
+		tex[i]:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\unitframe")
+
+		local width = (i == 3 or i == 6) and size * 2 or size
+		local height = (i == 7 or i == 8) and size * 2 or size
+		tex[i]:SetSize(width, height)
+	end
+
+	local x = size / 2 - 5
+
+	tex[1].id = "TOPLEFT"
+	tex[1]:SetTexCoord(0, 1 / 4, 0, 1 / 4) -- 0, 1/4, 0, 1/4
+	tex[1]:SetPoint("TOPLEFT", border, -4 - x, 4 + x)
+
+	tex[2].id = "TOPRIGHT"
+	tex[2]:SetTexCoord(3 / 4, 1, 0, 1 / 4) -- 3/4, 1, 0, 1/4
+	tex[2]:SetPoint("TOPRIGHT", border, 4 + x, 4 + x)
+
+	tex[4].id = "BOTTOMLEFT"
+	tex[4]:SetTexCoord(0, 1 / 4, 3 / 4, 1) -- 0, 1/4, 3/4, 1
+	tex[4]:SetPoint("BOTTOMLEFT", border, -4 - x, -4 - x)
+
+	tex[5].id = "BOTTOMRIGHT"
+	tex[5]:SetTexCoord(3 / 4, 1, 3 / 4, 1) -- 3/4, 1, 3/4, 1
+	tex[5]:SetPoint("BOTTOMRIGHT", border, 4 + x, -4 - x)
+
+	-- width = 2 * nornal width
+	tex[3].id = "TOP"
+	tex[3]:SetTexCoord(1 / 4, 3 / 4, 0, 1 / 4) -- 1/4, 3/4, 0, 1/4
+	tex[3]:SetPoint("TOPLEFT", tex[1], "TOPRIGHT")
+	tex[3]:SetPoint("TOPRIGHT", tex[2], "TOPLEFT")
+
+	-- width = 2 * nornal width
+	tex[6].id = "BOTTOM"
+	tex[6]:SetTexCoord(1 / 4, 3 / 4, 3 / 4, 1) -- 1/4, 3/4, 3/4, 1
+	tex[6]:SetPoint("BOTTOMLEFT", tex[4], "BOTTOMRIGHT")
+	tex[6]:SetPoint("BOTTOMRIGHT", tex[5], "BOTTOMLEFT")
+
+	tex[7].id = "LEFT"
+	tex[7]:SetTexCoord(0, 1 / 4, 1 / 4, 3 / 4) -- 0, 1/4, 1/4, 3/4
+	tex[7]:SetPoint("TOPLEFT", tex[1], "BOTTOMLEFT")
+	tex[7]:SetPoint("BOTTOMLEFT", tex[4], "TOPLEFT")
+
+	-- width = 2 * nornal height
+	tex[8].id = "RIGHT"
+	tex[8]:SetTexCoord(3 / 4, 1, 1 / 4, 3 / 4) -- 3/4, 1, 1/4, 3/4
+	tex[8]:SetPoint("TOPRIGHT", tex[2], "BOTTOMRIGHT")
+	tex[8]:SetPoint("BOTTOMRIGHT", tex[5], "TOPRIGHT")
+
+	return border
 end
 
-UF.CreateUnitFrameHighlight = function(frame)
-	frame.backdrop.highlight = {}
+UF.CreateUnitFrameBackground = function(frame)
+	-- Framebackdrop - edging is what is coloured for debuff type/threat situation
+	local backdrop = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
+	backdrop:SetFrameStrata("BACKGROUND")
+	backdrop:SetPoint("TOPLEFT", frame, 0, 0)
+	backdrop:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
+	backdrop:SetBackdrop({
+		bgFile = "Interface\\BUTTONS\\WHITE8X8",
+		insets = { left = 0, right = 0, top = 0, bottom = 0 }
+	})
+	backdrop:SetBackdropColor(0, 0, 0, 1)
 
-	local highlightTop = frame.backdrop:CreateTexture(nil, "BACKGROUND")
-	highlightTop:SetDrawLayer("BACKGROUND", -1)
-	highlightTop:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\glow_horizontal")
-	highlightTop:SetHeight(24)
-	highlightTop:SetPoint("LEFT", frame.backdrop, "LEFT")
-	highlightTop:SetPoint("RIGHT", frame.backdrop, "RIGHT")
-	highlightTop:SetPoint("BOTTOM", frame.backdrop, "TOP", 0, -4)
-	highlightTop:Hide()
-
-	frame.backdrop.highlightTop = highlightTop
-
-	local highlightBottom = frame.backdrop:CreateTexture(nil, "BACKGROUND")
-	highlightBottom:SetDrawLayer("BACKGROUND", -1)
-	highlightBottom:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\glow_horizontal")
-	highlightBottom:SetTexCoord(0, 1, 1, 0)
-	highlightBottom:SetHeight(24)
-	highlightBottom:SetPoint("LEFT", frame.backdrop, "LEFT")
-	highlightBottom:SetPoint("RIGHT", frame.backdrop, "RIGHT")
-	highlightBottom:SetPoint("TOP", frame.backdrop, "BOTTOM", 0, 4)
-	highlightBottom:Hide()
-
-	frame.backdrop.highlightBottom = highlightBottom
+	frame.backdrop = backdrop
 end
 
 do
@@ -169,33 +209,25 @@ do
 		},
 	}
 
-	local PostUpdateHealth = function(health, u, min, max)
-		local self = health:GetParent()
+	-- oUF calls this as PostUpdate(unit, cur, max, lossPerc)
+	local PostUpdateHealth = function(health, u, cur)
+		if (not health.value) then return end
 
 		if (not UnitIsConnected(u)) then
 			health.value:SetText("|cffaaaaaaOffline|r")
-			self.__state = "DISCONNECTED"
 		elseif (UnitIsGhost(u)) then
 			health.value:SetText("|cffaaaaaaGhost|r")
-			self.__state = "GHOST"
 		elseif (UnitIsDead(u)) then
 			health.value:SetText("|cffaaaaaaDead|r")
-			self.__state = "DEAD"
 		else
-			health.value:SetText(AbbreviateNumbers(min, abbrevData))
-
-			if (self.__state) then
-				self.__state = nil
-			end
+			health.value:SetText(AbbreviateNumbers(cur, abbrevData))
 		end
 	end
 
 	UF.CreateHealthBar = function(frame, width, x, y, height)
 		local hp = CreateFrame("StatusBar", nil, frame)
-		hp:SetFrameStrata(frame:GetFrameStrata())
-		hp:SetFrameLevel(frame:GetFrameLevel())
 		hp:SetStatusBarTexture(DraeUI.media.statusbar)
-		hp:SetSize(width, height or 20)
+		hp:SetSize(width, height or 30)
 		hp:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
 
 		hp.colorClass = true
@@ -213,38 +245,38 @@ do
 		frame.Health = hp
 
 		-- Total healing required to increase units health due to a heal absorb debuff/effect
-		local myBar = CreateFrame('StatusBar', nil, hp)
-		myBar:SetStatusBarTexture("Interface\\Buttons\\White8x8")
+		local myBar = CreateFrame('StatusBar', nil, frame)
+		myBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		myBar:SetStatusBarColor(0, 1.0, 0.3, 0.25)
 		myBar:SetPoint('TOP')
 		myBar:SetPoint('BOTTOM')
 		myBar:SetPoint('LEFT', hp:GetStatusBarTexture(), 'RIGHT')
 		myBar:SetWidth(width)
 
-		local otherBar = CreateFrame('StatusBar', nil, hp)
-		otherBar:SetStatusBarTexture("Interface\\Buttons\\White8x8")
+		local otherBar = CreateFrame('StatusBar', nil, frame)
+		otherBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		otherBar:SetStatusBarColor(0, 1.0, 0, 0.25)
 		otherBar:SetPoint('TOP')
 		otherBar:SetPoint('BOTTOM')
 		otherBar:SetPoint('LEFT', myBar:GetStatusBarTexture(), 'RIGHT')
 		otherBar:SetWidth(width)
 
-		local absorbBar = CreateFrame('StatusBar', nil, hp)
-		absorbBar:SetStatusBarTexture("Interface\\Buttons\\White8x8")
+		local absorbBar = CreateFrame('StatusBar', nil, frame)
+		absorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		absorbBar:SetStatusBarColor(1.0, 1.0, 1.0, 0.33)
 		absorbBar:SetPoint('TOP')
 		absorbBar:SetPoint('BOTTOM')
-		absorbBar:SetPoint('LEFT', otherBar:GetStatusBarTexture(), 'RIGHT')
+		absorbBar:SetPoint('RIGHT', hp:GetStatusBarTexture())
 		absorbBar:SetWidth(width)
+		absorbBar:SetReverseFill(true)
 
-		local healAbsorbBar = CreateFrame('StatusBar', nil, hp)
-		healAbsorbBar:SetStatusBarTexture("Interface\\Buttons\\White8x8")
+		local healAbsorbBar = CreateFrame('StatusBar', nil, frame)
+		healAbsorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		healAbsorbBar:SetStatusBarColor(1.0, 0, 0.8, 0.33)
 		healAbsorbBar:SetPoint('TOP')
 		healAbsorbBar:SetPoint('BOTTOM')
-		healAbsorbBar:SetPoint('RIGHT', hp:GetStatusBarTexture())
+		healAbsorbBar:SetPoint('LEFT', otherBar:GetStatusBarTexture(), 'RIGHT')
 		healAbsorbBar:SetWidth(width)
-		healAbsorbBar:SetReverseFill(true)
 
 		-- Damage (shields/absorbs) greater than health
 		local overAbsorb = hp:CreateTexture(nil, "OVERLAY")
@@ -272,36 +304,36 @@ do
 			damageAbsorb = absorbBar,
 			healAbsorb = healAbsorbBar,
 			overDamageAbsorbIndicator = overAbsorb,
-			overHealAbsorbIndicator = overHealAbsorb,
-			maxOverflow = 1.0,
+			overHealAbsorbIndicator = overHealAbsorb
 		}
 	end
 end
 
-UF.CreatePowerBar = function(frame, width, x, y, dir)
-	local pp = CreateFrame("StatusBar", nil, frame)
-	pp:SetFrameStrata(frame:GetFrameStrata())
-	pp:SetFrameLevel(frame:GetFrameLevel())
-	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
-	pp:SetSize(width, 5)
-	pp:SetPoint(dir == "RIGHT" and "TOPRIGHT" or "TOPLEFT", frame.Health,
-		dir == "RIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT", x or 0, y or -3)
+do
+	-- oUF calls this as PostUpdate(unit, cur, min, max)
+	local PostUpdatePower = function(power, u, cur)
+		if (not power.value) then return end
 
-	local backdrop = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
-	backdrop:SetPoint("TOPLEFT", pp, "TOPLEFT", -2.5, 2.5)
-	backdrop:SetPoint("BOTTOMRIGHT", pp, "BOTTOMRIGHT", 2.25, -2.5)
-	backdrop:SetFrameStrata("BACKGROUND")
-	backdrop:SetBackdrop { bgFile = "Interface\\BUTTONS\\WHITE8X8", tile = true }
-	backdrop:SetBackdropColor(0, 0, 0, 1)
+		power.value:SetText(AbbreviateNumbers(cur))
+	end
 
-	pp.colorTapping = true
-	pp.colorDisconnected = true
-	pp.colorPower = true
-	pp.useAtlas = true
+	UF.CreatePowerBar = function(frame, width, x, y, height)
+		local pp = CreateFrame("StatusBar", nil, frame)
+		pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+		pp:SetSize(width, height or 6)
+		pp:SetPoint("TOPLEFT", frame.Health, "BOTTOMLEFT", x or 0, y or -3)
 
-	pp.__bar_texture = DraeUI.media.statusbar_power
+		pp.colorTapping = true
+		pp.colorDisconnected = true
+		pp.colorPower = true
+		pp.useAtlas = true
 
-	frame.Power = pp
+		pp.__bar_texture = DraeUI.media.statusbar_power
+
+		pp.PostUpdate = PostUpdatePower
+
+		frame.Power = pp
+	end
 end
 
 -- Leader, PvP, Role, etc.
@@ -337,23 +369,6 @@ do
 		if (GameTooltip:IsForbidden()) then return end
 
 		GameTooltip:SetUnitAuraByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
-
-		local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
-		if (issecretvalue and not issecretvalue(aura.sourceUnit) and UnitExists(aura.sourceUnit)) then
-			local color
-
-			if (UnitIsPlayer(aura.sourceUnit)) then
-				if (RAID_CLASS_COLORS[select(2, UnitClass(aura.sourceUnit))]) then
-					color = RAID_CLASS_COLORS[select(2, UnitClass(aura.sourceUnit))]
-				end
-			else
-				color = FACTION_BAR_COLORS[UnitReaction(aura.sourceUnit, "player")]
-			end
-
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(
-				("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(aura.sourceUnit)))
-		end
 	end
 
 	local onEnter = function(button)
@@ -374,14 +389,16 @@ do
 	end
 
 	local CreateAuraIconCore = function(element, index)
-		local button = CreateFrame("Button", element:GetDebugName() .. "Button" .. index, element)
+		-- Unnamed: naming these put a permanent _G entry in for every button,
+		-- border and cooldown on every frame
+		local button = CreateFrame("Button", nil, element)
 
 		button:EnableMouse(true)
 
 		button:SetWidth(element.size or 16)
 		button:SetHeight(element.size or 16)
 
-		local border = CreateFrame("Frame", element:GetDebugName() .. "ButtonFrame" .. index, button,
+		local border = CreateFrame("Frame", nil, button,
 			BackdropTemplateMixin and "BackdropTemplate")
 		border:SetPoint("TOPLEFT", button, -3, 3)
 		border:SetPoint("BOTTOMRIGHT", button, 3, -3)
@@ -402,14 +419,13 @@ do
 		local overlay = button:CreateTexture(nil, "OVERLAY")
 		button.Overlay = overlay
 
-		local cd = CreateFrame("Cooldown", element:GetDebugName() .. "ButtonCooldown" .. index, button,
-			"CooldownFrameTemplate")
+		local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
 		cd:SetReverse(true)
 		cd:SetAllPoints(button)
 		button.Cooldown = cd
 
 		local count = button:CreateFontString(nil)
-		count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "THINOUTLINE")
+		count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
 		count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
 		button.Count = count
 
@@ -437,25 +453,31 @@ do
 		return button
 	end
 
-	local PostUpdateButton = function(_, _, button, _, _, _, _, debuffType)
-		--[[		local color = DebuffTypeColor[debuffType]
+	-- oUF calls this as element:PostUpdateButton(button, unit, data, position)
+	local PostUpdateButton = function(_, button, unit, data)
+		--[[	local color = data.dispelName and oUF.colors.debuffTypes[data.dispelName]
 
 		if (color) then
-			button.Border:SetBackdropBorderColor(color.r, color.g, color.b)
+			button.Border:SetBackdropBorderColor(color:GetRGB())
 		else
 			button.Border:SetBackdropBorderColor(0, 0, 0)
 		end
 
-		if (button.debuff and button.isEnemy and not button.isPlayerAura) then
-			button.Icon:SetDesaturated(true)
-		else
-			button.Icon:SetDesaturated(false)
-		end]]
+		button.Icon:SetDesaturated(data.isHarmfulAura and not data.isPlayerAura)
+		]]
+	end
+
+	-- boss1..boss5 etc. share a single config key, so strip any trailing index
+	local ConfigUnit = function(unit)
+		if (not unit) then return "other" end
+
+		local base = unit:gsub("%d+$", "") -- gsub returns a count too, so bind it
+		return base
 	end
 
 	UF.AddDebuffs = function(self, point, relativeFrame, relativePoint, ofsx, ofsy, num, size, spacing, growthx, growthy)
-		local debuffsPerRow = DraeUI.config["frames"].auras.debuffs_per_row[self.unit] or
-			DraeUI.config["frames"].auras.debuffs_per_row["other"]
+		local perRow = DraeUI.config["frames"].auras.debuffs_per_row
+		local debuffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
 
 		local width = (spacing * debuffsPerRow) + (size * debuffsPerRow)
 		local height = (spacing * (num / debuffsPerRow)) + (size * (num / debuffsPerRow))
@@ -472,8 +494,7 @@ do
 		debuffs.growthY = growthy
 		debuffs.filter = "HARMFUL" -- Explicitly set the filter or the first customFilter call won"t work
 		debuffs.showDebuffType = true
-		debuffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
-		debuffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
+		-- .dispelColorCurve is built by oUF's auras element on Enable when absent
 
 		--		debuffs.FilterAura = CustomFilter
 		debuffs.CreateButton = CreateButton
@@ -483,8 +504,8 @@ do
 	end
 
 	UF.AddBuffs = function(self, point, relativeFrame, relativePoint, ofsx, ofsy, num, size, spacing, growthx, growthy)
-		local buffsPerRow = DraeUI.config["frames"].auras.buffs_per_row[self.unit] or
-			DraeUI.config["frames"].auras.buffs_per_row["other"]
+		local perRow = DraeUI.config["frames"].auras.buffs_per_row
+		local buffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
 
 		local width = (spacing * buffsPerRow) + (size * buffsPerRow)
 		local height = (spacing * (num / buffsPerRow)) + (size * (num / buffsPerRow))
@@ -500,16 +521,7 @@ do
 		buffs.growthX = growthx
 		buffs.growthY = growthy
 		buffs.filter = "HELPFUL" -- Explicitly set the filter or the first customFilter call won"t work
-		buffs.showType = true
-		buffs.showBuffType = true
 		buffs.showStealableBuffs = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
-		buffs.dispelColorCurve = C_CurveUtil.CreateColorCurve()
-		buffs.dispelColorCurve:SetType(Enum.LuaCurveType.Step)
-		for _, dispelIndex in next, oUF.Enum.DispelType do
-			if (oUF.colors.dispel[dispelIndex]) then
-				buffs.dispelColorCurve:AddPoint(dispelIndex, oUF.colors.dispel[dispelIndex])
-			end
-		end
 
 		--		buffs.FilterAura = CustomFilter
 		buffs.CreateButton = CreateButton

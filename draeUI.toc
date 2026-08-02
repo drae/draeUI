@@ -21,21 +21,25 @@ functions\toolkit.lua
 # BuffBar
 modules\buffbar\Load_Auras.xml
 
+# Skins - static UI artwork
+modules\skins\init.lua
+
 # Infobar
-modules\infobar\init.lua
-modules\infobar\plugin.lua
-modules\infobar\ldb\fps.lua
-modules\infobar\ldb\xp.lua
-modules\infobar\ldb\latency.lua
-modules\infobar\ldb\gold.lua
-modules\infobar\ldb\durability.lua
-modules\infobar\ldb\res.lua
+#modules\infobar\init.lua
+#modules\infobar\plugin.lua
+#modules\infobar\ldb\fps.lua
+#modules\infobar\ldb\xp.lua
+#modules\infobar\ldb\latency.lua
+#modules\infobar\ldb\gold.lua
+#modules\infobar\ldb\durability.lua
+#modules\infobar\ldb\res.lua
 
 # Unitframes
 modules\unitframes\auras.xml
 modules\unitframes\init.lua
 modules\unitframes\common.lua
 modules\unitframes\castbar.lua
+modules\unitframes\classpower.lua
 modules\unitframes\tags.lua
 modules\unitframes\units\player.lua
 modules\unitframes\units\pet.lua
@@ -44,4 +48,5 @@ modules\unitframes\units\targettarget.lua
 modules\unitframes\units\focus.lua
 modules\unitframes\units\focustarget.lua
 modules\unitframes\units\boss.lua
-modules\unitframes\elements\embed.xml
+
+#modules\unitframes\resources\totems.lua

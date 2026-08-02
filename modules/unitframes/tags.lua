@@ -8,20 +8,20 @@ local oUF = DraeUI.oUF or oUF
 local UF = DraeUI:GetModule("UnitFrames")
 
 -- Localise a bunch of functions
-local UnitName, UnitIsAFK, UnitIsDND, UnitPowerType = UnitName, UnitIsAFK, UnitIsDND, UnitPowerType
+local UnitIsAFK, UnitIsDND = UnitIsAFK, UnitIsDND
 local UnitPlayerControlled, UnitIsTapDenied = UnitPlayerControlled, UnitIsTapDenied
 local UnitIsPlayer, UnitReaction = UnitIsPlayer, UnitReaction
 local UnitIsConnected, UnitClass = UnitIsConnected, UnitClass
-local format = string.format
+local UnitClassification = UnitClassification
+local pcall = pcall
 
 --[[
 		Unit frame tags
 --]]
 
 -- Events
-oUF.Tags.Events["drae:unitcolour"] = "UNIT_FACTION UNIT_ENTERED_VEHICLE UNIT_EXITED_VEHICLE UNIT_PET"
+oUF.Tags.Events["drae:unitcolour"] = "UNIT_FACTION UNIT_ENTERED_VEHICLE UNIT_EXITED_VEHICLE UNIT_PET UNIT_CONNECTION"
 oUF.Tags.Events["drae:afk"] = "PLAYER_FLAGS_CHANGED"
-oUF.Tags.Events["drae:power"] = "UNIT_POWER UNIT_MAXPOWER"
 oUF.Tags.Events["drae:shortclassification"] = "UNIT_CLASSIFICATION_CHANGED"
 
 -- Methods
@@ -43,17 +43,19 @@ oUF.Tags.Methods["drae:unitcolour"] = function(u)
 end
 
 oUF.Tags.Methods["drae:afk"] = function(u)
-	if (UnitIsAFK(u)) then
+	-- pcall takes the function and its args - calling it first and passing the
+	-- result means pcall'ing a boolean, which always fails
+	local ok, afk = pcall(UnitIsAFK, u)
+
+	if (ok and DraeUI.CanAccessValue(afk) and afk) then
 		return "|cffff0000 AFK -|r"
-	elseif (UnitIsDND(u)) then
+	end
+
+	local okDnd, dnd = pcall(UnitIsDND, u)
+
+	if (okDnd and DraeUI.CanAccessValue(dnd) and dnd) then
 		return "|cffff0000 DND -|r"
 	end
-end
-
-oUF.Tags.Methods["drae:power"] = function(u)
-	local _, str = UnitPowerType(u)
-	--	return ("%s%s|r"):format(DraeUI.Hex(oUF.colors.power[str] or {1, 1, 1}), DraeUI.ShortVal(oUF.Tags.Methods["curpp"](u)))
-	return ("|cffffffff%s|r"):format(DraeUI.ShortVal(oUF.Tags.Methods["curpp"](u)))
 end
 
 oUF.Tags.Methods["drae:shortclassification"] = function(u)

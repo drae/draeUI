@@ -9,30 +9,50 @@ local UF = DraeUI:GetModule("UnitFrames")
 
 -- Focus is a common frame type used for most other frames inc. pet, pettarget, etc.
 local StyleDrae_Focus = function(frame)
-	frame:SetSize(150, 14)
+	frame:SetSize(150, 27.5)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	UF.CreateHealthBar(frame, 150, 0, 0)
-	UF.CreatePowerBar(frame, 75, 0, -3, "RIGHT")
+	UF.CreateHealthBar(frame, 150, 0, 0, 20)
+
+	local pp = CreateFrame("StatusBar", nil, frame)
+	pp:SetFrameStrata(frame:GetFrameStrata())
+	pp:SetFrameLevel(frame:GetFrameLevel())
+	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+	pp:SetSize(150, 5)
+	pp:SetPoint("TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -2.5)
+
+	pp.colorTapping = true
+	pp.colorDisconnected = true
+	pp.colorPower = true
+	pp.useAtlas = true
+
+	pp.__bar_texture = DraeUI.media.statusbar_power
+
+	frame.Power = pp
+
 	UF.CreateUnitFrameBackground(frame)
 
-	frame.Health.value = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
-		"LEFT", 5, 10)
+	local border = CreateFrame("StatusBar", nil, frame)
+	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
+	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
 
-	local info = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "RIGHT",
-		-5, 10)
-	info:SetSize(95, 20)
+	UF.CreateBorder(border)
+
+	local text = CreateFrame("Frame", nil, frame.Health)
+	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
+	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
+
+	local info = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "CENTER",
+		0, 4, nil, frame.Health, "TOP")
+	info:SetSize(125, 20)
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]|r")
 
-	-- Auras - just debuffs for target of target
-	UF.AddDebuffs(frame, "TOPRIGHT", frame.Health, "BOTTOMRIGHT", 0, -22,
-		DraeUI.config["frames"].auras.maxFocusDebuff or 15, DraeUI.config["frames"].auras.auraSml, 8, "LEFT", "DOWN")
 	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22, DraeUI.config["frames"].auras.maxFocusBuff or 15,
-		DraeUI.config["frames"].auras.auraSml, 8, "RIGHT", "DOWN")
+		DraeUI.config["frames"].auras.auraLrg, 8, "RIGHT", "DOWN")
 
-	UF.CreateCastBar(frame, 150, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15, true)
+	UF.CreateCastBar(frame, 150, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)
