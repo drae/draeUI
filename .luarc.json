@@ -1,0 +1,44 @@
+{
+    "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+    "runtime.version": "Lua 5.1",
+    "runtime.special": {
+        "LibStub": "require"
+    },
+    "workspace.library": [
+        ".tools/wow-api/Annotations/Core",
+        ".tools/framexml/Annotations"
+    ],
+    "workspace.ignoreDir": [
+        ".tools",
+        "libs"
+    ],
+    "diagnostics.globals": [
+        "DraeUI",
+        "oUF",
+        "LibStub",
+        "SlashCmdList",
+        "ClickCastFrames",
+        "ClickCastHeader",
+        "canaccessvalue",
+        "issecretvalue",
+        "ReloadUI",
+        "CHAT_FONT_HEIGHTS",
+        "RAID_CLASS_COLORS",
+        "FACTION_BAR_COLORS",
+        "MirrorTimerColors",
+        "RegisterStateDriver",
+        "RegisterAttributeDriver",
+        "SecureHandlerSetFrameRef",
+        "UnitFrame_OnEnter",
+        "UnitFrame_OnLeave",
+        "SystemFont_Shadow_Outline_Large",
+        "SystemFont_Shadow_Outline_Huge2",
+        "OrderHallCommandBar",
+        "ArenaPrepFrames",
+        "ArenaEnemyFrames",
+        "CharacterMicroButton"
+    ],
+    "diagnostics.disable": [
+        "lowercase-global"
+    ]
+}

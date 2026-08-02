@@ -1,0 +1,13 @@
+# Matched to the existing codebase so `mise run fmt` doesn't rewrite the world:
+# tabs, and a column limit wide enough for the current oUF-style call chains.
+column_width = 120
+line_endings = "Unix"
+indent_type = "Tabs"
+indent_width = 4
+quote_style = "AutoPreferDouble"
+# The codebase parenthesises every call, including single string/table args
+call_parentheses = "Always"
+collapse_simple_statement = "Never"
+
+[sort_requires]
+enabled = false

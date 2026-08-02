@@ -1,0 +1,110 @@
+#
+# Tooling for draeUI.
+#
+#   mise install          - fetch lua-language-server + stylua
+#   mise run sync-defs    - fetch the WoW API annotations .luarc.json needs
+#   mise run lint         - type-check / lint the addon
+#   mise run fmt          - format with StyLua
+#
+# lua-language-server is deliberately the only diagnostics engine: the VSCode
+# extension (sumneko.lua) and `mise run lint` are the same program reading the
+# same .luarc.json, so the editor and the terminal can't disagree.
+#
+# Windows and WSL2: everything here is portable, but tool installs are not
+# shared (%LOCALAPPDATA%\mise vs ~/.local/share/mise), so run `mise install`
+# once per environment. .tools/ is gitignored plain text - if both environments
+# open the same directory it's shared, otherwise run sync-defs there too.
+#
+
+[tools]
+lua-language-server = "latest"
+# Pinned: the VSCode extension downloads its own copy, and formatter output has
+# to match or the two fight over the file. Bump together with
+# stylua.targetReleaseVersion in .vscode/settings.json.
+stylua = "2.5.2"
+
+[env]
+# Annotation checkouts. .luarc.json's workspace.library points at both of
+# these, so keep the paths in step if you move them.
+WOW_API_DIR = ".tools/wow-api"
+FRAMEXML_DIR = ".tools/framexml"
+
+# Which game flavour FrameXML annotations track. Branches of
+# NumyAddon/FramexmlAnnotations: live, ptr, beta, classic, classic_era, ...
+FRAMEXML_BRANCH = "live"
+
+[tasks.sync-defs]
+description = "Fetch/update the WoW API annotations that .luarc.json depends on"
+# Tasks default to PowerShell on Windows; these scripts are POSIX sh
+shell = "bash -c"
+run = '''
+set -e
+
+# Blizzard's generated API docs, widget/type info. ~5MB.
+# -c core.longpaths=true: several annotation paths blow past the Windows
+# 260-char limit and check out silently truncated without it.
+if [ -d "$WOW_API_DIR/.git" ]; then
+	echo "Updating $WOW_API_DIR"
+	git -C "$WOW_API_DIR" fetch --depth 1 origin master
+	git -C "$WOW_API_DIR" reset --hard FETCH_HEAD
+else
+	echo "Cloning WoW API annotations into $WOW_API_DIR"
+	rm -rf "$WOW_API_DIR"
+	# Sparse + blobless: the repo also carries a VSCode extension we don't need
+	git -c core.longpaths=true clone --depth 1 --filter=blob:none --sparse \
+		https://github.com/Ketho/vscode-wow-api "$WOW_API_DIR"
+	git -C "$WOW_API_DIR" sparse-checkout set Annotations
+fi
+
+echo ""
+echo "Core annotations ready: $WOW_API_DIR/Annotations/Core"
+echo "For FrameXML globals and go-to-definition, run: mise run sync-defs:framexml"
+'''
+
+[tasks."sync-defs:framexml"]
+description = "Optional: full FrameXML source annotations (~52MB, slower indexing)"
+shell = "bash -c"
+run = '''
+set -e
+
+# Opt-in because it's 4000+ files - it noticeably slows LuaLS startup. Without
+# it, the handful of FrameXML globals we actually use are covered by the
+# diagnostics.globals list in .luarc.json instead. With it, you get real
+# go-to-definition into Blizzard's source.
+if [ -d "$FRAMEXML_DIR/.git" ]; then
+	echo "Updating $FRAMEXML_DIR"
+	git -C "$FRAMEXML_DIR" fetch --depth 1 origin "$FRAMEXML_BRANCH"
+	git -C "$FRAMEXML_DIR" reset --hard FETCH_HEAD
+else
+	echo "Cloning FrameXML annotations ($FRAMEXML_BRANCH) into $FRAMEXML_DIR"
+	rm -rf "$FRAMEXML_DIR"
+	git -c core.longpaths=true clone --depth 1 --single-branch \
+		--branch "$FRAMEXML_BRANCH-mix-into-source" \
+		https://github.com/NumyAddon/FramexmlAnnotations "$FRAMEXML_DIR"
+fi
+
+echo "FrameXML annotations ready: $FRAMEXML_DIR/Annotations"
+'''
+
+[tasks.lint]
+description = "Type-check and lint the addon (same engine as the VSCode extension)"
+shell = "bash -c"
+run = '''
+set -e
+
+if [ ! -d "$WOW_API_DIR/Annotations/Core" ]; then
+	echo "WoW API annotations missing - run 'mise run sync-defs' first." >&2
+	exit 1
+fi
+
+# Exits non-zero when it finds anything at or above --checklevel
+lua-language-server --check . --checklevel=Warning --logpath=.tools/luals-log
+'''
+
+[tasks.fmt]
+description = "Format addon Lua with StyLua"
+run = "stylua ."
+
+[tasks."fmt:check"]
+description = "Fail if anything is unformatted (for CI)"
+run = "stylua --check ."

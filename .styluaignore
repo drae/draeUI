@@ -1,0 +1,6 @@
+# Vendored - oUF, Ace3, LibSharedMedia etc. Reformatting these would make
+# every upstream update a merge conflict.
+libs/
+
+# Annotation checkouts
+.tools/

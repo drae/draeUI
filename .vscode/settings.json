@@ -1,0 +1,38 @@
+{
+    // Lua diagnostics/runtime config lives in .luarc.json so that the VSCode
+    // extension and `mise run lint` behave identically. Don't add Lua.* keys
+    // here - they'd silently diverge from the CLI.
+
+    // Deliberately no "stylua.styluaPath": the extension reads that setting as a
+    // literal string - it does no ${env:} or ${workspaceFolder} substitution - so
+    // it can only ever be an absolute, OS-specific path. That breaks the moment
+    // this folder is opened through Remote-WSL.
+    //
+    // Instead pin the version the extension downloads for itself, so it matches
+    // the stylua mise installs for `mise run fmt`. Editor and CLI then format
+    // identically on any OS with no path configuration at all.
+    // Bump together with [tools] stylua in mise.toml.
+    "stylua.targetReleaseVersion": "v2.5.2",
+
+    // Prefer a stylua already on PATH (i.e. mise activated in the shell that
+    // launched VSCode). Falls back to the pinned download above when it isn't
+    // found, so this is an optimisation rather than a requirement.
+    "stylua.searchBinaryInPATH": true,
+
+    // formatOnSave is deliberately OFF: StyLua strips the `if (cond) then`
+    // parentheses used throughout this addon and there's no setting to keep
+    // them, so formatting is opt-in via `mise run fmt` (or format-selection)
+    // until you decide whether to accept its style wholesale.
+    "[lua]": {
+        "editor.defaultFormatter": "JohnnyMorganz.stylua",
+        "editor.formatOnSave": false,
+        "editor.insertSpaces": false,
+        "editor.tabSize": 4
+    },
+
+    "files.associations": {
+        "*.toc": "toc"
+    },
+
+    "claudeCodeChat.permissions.yoloMode": false
+}

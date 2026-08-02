@@ -1,3 +1,6 @@
+# Tooling - populated by `mise run sync-defs`, not source
+/.tools/
+
 # Project folders
 /var/*
 /.tmp/*
