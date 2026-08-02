@@ -48,13 +48,6 @@ DraeUI.config = {
 		}
 	},
 
-	infobar = {
-		xp = {
-			enable = true,
-			altxp = "reputation"
-		}
-	},
-
 	-- Used by UF.CreateMirrorCastbars to size the breath/feign death bars
 	castbar = {
 		player = {

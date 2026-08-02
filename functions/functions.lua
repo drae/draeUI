@@ -7,7 +7,6 @@ local DraeUI = select(2, ...)
 -- Localise a bunch of functions
 local pairs, type, unpack, select, pcall = pairs, type, unpack, select, pcall
 local format, srep, slen = string.format, string.rep, string.len
-local mmodf = math.modf
 
 --[[
 
@@ -97,24 +96,6 @@ DraeUI.Hex = function(r, g, b, a)
 	end
 
 	return format("|c%02x%02x%02x%02x", (a or 1) * 255, r * 255, g * 255, b * 255)
-end
-
--- Smooth colour gradient between two r, g, b value
-DraeUI.ColorGradient = function(perc, ...)
-	if perc > 1 then
-		local r, g, b = select(select("#", ...) - 2, ...)
-		return r, g, b
-	elseif perc < 0 then
-		local r, g, b = ...
-		return r, g, b
-	end
-
-	local num = select("#", ...) / 3
-
-	local segment, relperc = mmodf(perc * (num - 1))
-	local r1, g1, b1, r2, g2, b2 = select((segment * 3) + 1, ...)
-
-	return r1 + (r2 - r1) * relperc, g1 + (g2 - g1) * relperc, b1 + (b2 - b1) * relperc
 end
 
 --[[
