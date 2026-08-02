@@ -24,16 +24,19 @@ local SetTooltip = function(button)
             local color
 
             if (UnitIsPlayer(button.caster)) then
-                if (RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]) then
-                    color = RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]
-                end
+                color = RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]
             else
-                color = FACTION_BAR_COLORS[UnitReaction(button.caster, "player")]
+                local reaction = UnitReaction(button.caster, "player")
+                color = reaction and FACTION_BAR_COLORS[reaction]
             end
 
-            GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(
-                ("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster)))
+            -- UnitReaction returns nil for units we have no reaction data on,
+            -- and not every class/reaction has an entry
+            if (color) then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine(
+                    ("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster)))
+            end
         end
 
         GameTooltip:Show()
@@ -42,8 +45,12 @@ local SetTooltip = function(button)
     end
 end
 
-local Button_OnLeave = function()
+local Button_OnLeave = function(self)
     GameTooltip:Hide()
+
+    -- Stop ticking; otherwise every button that has ever been hovered keeps
+    -- polling GameTooltip for the rest of the session
+    self.elapsed = nil
 end
 
 local Button_OnEnter = function(self)
@@ -68,14 +75,19 @@ local Button_OnHide = function(self)
 end
 
 local Button_OnUpdate = function(self, elapsed)
-    if self.elapsed and self.elapsed > 0.1 then
+    -- Only runs while hovered - Button_OnEnter seeds .elapsed, OnLeave clears it
+    if not self.elapsed then
+        return
+    end
+
+    if self.elapsed > 0.1 then
         if GameTooltip:IsOwned(self) then
             SetTooltip(self)
         end
 
         self.elapsed = 0
     else
-        self.elapsed = (self.elapsed or 0) + elapsed
+        self.elapsed = self.elapsed + elapsed
     end
 end
 
@@ -104,7 +116,7 @@ local UpdateTempEnchant = function(button, index, expiration)
         local quality = GetInventoryItemQuality("player", index)
 
         if quality and quality > 1 then
-            r, g, b = GetItemQualityColor(quality)
+            r, g, b = C_Item.GetItemQualityColor(quality)
         else
             r, g, b = 0, 0, 0
         end
@@ -223,7 +235,7 @@ BuffBar.CreateAuraButton = function(_, button)
     button.Cooldown = cd
 
     local count = button:CreateFontString(nil)
-    count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "THINOUTLINE")
+    count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
     count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
     button.Count = count
 
@@ -258,18 +270,19 @@ local UpdateHeader = function(header)
     header:SetAttribute("wrapXOffset", 0)
     header:SetAttribute("wrapYOffset", 34)
 
-    local index = 1
-    local child = select(index, header:GetChildren())
-    while child do
+    -- Grab the child list once rather than rebuilding the whole vararg on
+    -- every iteration
+    local children = { header:GetChildren() }
+
+    for index = 1, #children do
+        local child = children[index]
+
         child.auraType = header.auraType -- used to update cooldown text
 
         -- Blizzard bug fix, icons arent being hidden when you reduce the amount of maximum buttons
         if index > 16 and child:IsShown() then
             child:Hide()
         end
-
-        index = index + 1
-        child = select(index, header:GetChildren())
     end
 end
 
