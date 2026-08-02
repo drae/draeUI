@@ -1,6 +1,6 @@
 local parent, ns = ...
 local global = C_AddOns.GetAddOnMetadata(parent, 'X-oUF')
-local _VERSION = '13.1.1'
+local _VERSION = '@project-version@'
 if(_VERSION:find('project%-version')) then
 	_VERSION = 'devel'
 end
@@ -243,20 +243,6 @@ local function updateRaid(self, event)
 	end
 end
 
--- boss6-10 exsist in some encounters, but unit event registration seems to be
--- completely broken for them, so instead we use OnUpdate to update them.
-local eventlessUnits = {
-	boss6 = true,
-	boss7 = true,
-	boss8 = true,
-	boss9 = true,
-	boss10 = true,
-}
-
-local function isEventlessUnit(unit)
-	return unit:match('%w+target') or eventlessUnits[unit]
-end
-
 local function initObject(unit, style, styleFunc, header, ...)
 	local num = select('#', ...)
 	for i = 1, num do
@@ -286,7 +272,7 @@ local function initObject(unit, style, styleFunc, header, ...)
 		-- frame will be stuck with the 'vehicle' unit.
 		object:RegisterEvent('PLAYER_ENTERING_WORLD', evalUnitAndUpdate, true)
 
-		if(not isEventlessUnit(objectUnit)) then
+		if(not objectUnit:match('%w+target')) then
 			object:RegisterEvent('UNIT_ENTERED_VEHICLE', evalUnitAndUpdate)
 			object:RegisterEvent('UNIT_EXITED_VEHICLE', evalUnitAndUpdate)
 
@@ -304,7 +290,7 @@ local function initObject(unit, style, styleFunc, header, ...)
 			object:SetAttribute('*type2', 'togglemenu')
 			object:SetAttribute('toggleForVehicle', true)
 
-			if(isEventlessUnit(objectUnit)) then
+			if(objectUnit:match('%w+target')) then
 				oUF:HandleEventlessUnit(object)
 			else
 				oUF:HandleUnit(object)
@@ -658,7 +644,7 @@ do
 		local name = overrideName or generateName(nil, ...)
 		local header = Mixin(CreateFrame('Frame', name, PetBattleFrameHider, template), headerMixin)
 
-		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate') --, PingableUnitFrameTemplate') -- disabled until fixed
+		header:SetAttribute('template', 'SecureUnitButtonTemplate, SecureHandlerStateTemplate, SecureHandlerEnterLeaveTemplate, PingableUnitFrameTemplate')
 
 		if(...) then
 			if(type(...) == 'table') then
@@ -745,7 +731,7 @@ function oUF:Spawn(unit, overrideName)
 	unit = unit:lower()
 
 	local name = overrideName or generateName(unit)
-	local object = CreateFrame('Button', name, PetBattleFrameHider, 'SecureUnitButtonTemplate') --, PingableUnitFrameTemplate') -- disabled until fixed
+	local object = CreateFrame('Button', name, PetBattleFrameHider, 'SecureUnitButtonTemplate, PingableUnitFrameTemplate')
 	Private.UpdateUnits(object, unit)
 
 	self:DisableBlizzard(unit)
@@ -888,7 +874,7 @@ do
 			if(not nameplate.unitFrame) then
 				nameplate.style = self.style
 
-				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate) --, 'PingableUnitFrameTemplate') -- disabled until fixed
+				nameplate.unitFrame = CreateFrame('Button', self.prefix .. nameplate:GetName(), nameplate, 'PingableUnitFrameTemplate')
 				nameplate.unitFrame:EnableMouse(false)
 				nameplate.unitFrame.isNamePlate = true
 				nameplate.unitFrame:SetAllPoints()
