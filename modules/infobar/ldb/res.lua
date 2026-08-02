@@ -8,7 +8,7 @@ local IB = DraeUI:GetModule("Infobar")
 local RES = IB:NewModule("Res", "AceEvent-3.0")
 
 local LDB =
-	LibStub("LibDataBroker-1.1"):NewDataObject("DraeUIRes", { type = "DraeUI", icon = nil, label = "DraeUIRes" })
+	LibStub("LibDataBroker-1.1"):NewDataObject("ResCount", { type = "data source", icon = nil, label = "ResCount" })
 
 --
 local C_Timer, C_Spell, GetSpellInfo, GetInstanceInfo, GetDifficultyInfo, GetTime =

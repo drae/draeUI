@@ -2,16 +2,17 @@
 
 
 --]]
-local DraeUI = select(2, ...)
+local DraeUI      = select(2, ...)
 
-local IB = DraeUI:GetModule("Infobar")
-local PING = IB:NewModule("Latency", "AceEvent-3.0")
+local IB          = DraeUI:GetModule("Infobar")
+local PING        = IB:NewModule("Latency", "AceEvent-3.0")
 
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("DraeUILatency", { type = "DraeUI", icon = nil, label = "DraeUILatency" })
+local LDB         = LibStub("LibDataBroker-1.1"):NewDataObject("Latency",
+	{ type = "data source", icon = nil, label = "Latency" })
 
 --
-local GetNetStats  = GetNetStats
-local format = string.format
+local GetNetStats = GetNetStats
+local format      = string.format
 
 --[[
 
@@ -22,8 +23,8 @@ local UpdateLatency = function()
 	local r2, g2, b2 = DraeUI.ColorGradient(homeLatency / 500 - 0.001, 0, 1, 0, 1, 1, 0, 0, 1, 0)
 	local r3, g3, b3 = DraeUI.ColorGradient(worldLatency / 500 - 0.001, 0, 1, 0, 1, 1, 0, 0, 1, 0)
 
-	LDB.text = format("|cff%02x%02x%02x%d|r|cff%02x%02x%02xms/|r|cff%02x%02x%02x%d|r|cff%02x%02x%02xms|r", r2 * 255, g2 * 255, b2 * 255, homeLatency, 255, 255, 255, r3 * 255, g3 * 255, b3 * 255, worldLatency, 255, 255, 255)
-
+	LDB.text = format("|cff%02x%02x%02x%d|r|cff%02x%02x%02xms/|r|cff%02x%02x%02x%d|r|cff%02x%02x%02xms|r", r2 * 255,
+		g2 * 255, b2 * 255, homeLatency, 255, 255, 255, r3 * 255, g3 * 255, b3 * 255, worldLatency, 255, 255, 255)
 end
 
 local TooltipLatency = function(self)

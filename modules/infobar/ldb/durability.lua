@@ -8,8 +8,8 @@ local IB = DraeUI:GetModule("Infobar")
 local DUR = IB:NewModule("Durability", "AceEvent-3.0")
 
 local LDB = LibStub("LibDataBroker-1.1"):NewDataObject(
-	"DraeUIDurability",
-	{ type = "DraeUI", icon = nil, label = "DraeUIDurability" }
+	"Durability",
+	{ type = "data source", icon = nil, label = "Durability" }
 )
 
 --
@@ -70,14 +70,11 @@ DUR.UpdateDurability = function()
 	local r1, g1, b1 = DraeUI.ColorGradient(minDurability / 100 - 0.001, 1, 0, 0, 1, 1, 0, 0, 1, 0)
 
 	LDB.text = format(
-		"|cff%02x%02x%02x%d|r|cff%02x%02x%02x%%dur|r",
+		"|cff%02x%02x%02x%3d|r|cffffffff%%dur|r",
 		r1 * 255,
 		g1 * 255,
 		b1 * 255,
-		minDurability,
-		255,
-		255,
-		255
+		minDurability
 	)
 end
 
