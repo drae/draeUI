@@ -41,35 +41,6 @@ DraeUI.FetchMedia = function(class, key, fallback)
 	return fallback
 end
 
---[[
-
---]]
-DraeUI.CanAccessValue = function(v)
-	-- In Midnight/Retail, even comparing a secret value to nil can error.
-	-- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
-	local okNil, isNil = pcall(function()
-		return v == nil
-	end)
-
-	-- If it's actually nil, treat it as NOT accessible.
-	if okNil and isNil then
-		return false
-	end
-
-	if (canaccessvalue) then
-		local ok, res = pcall(canaccessvalue, v)
-		return ok and res or false
-	end
-
-	if (issecretvalue) then
-		local ok, res = pcall(issecretvalue, v)
-		return ok and (not res) or false
-	end
-
-	-- If we can safely compare to nil, it's not a secret value.
-	return okNil and (not isNil)
-end
-
 
 
 --[[
