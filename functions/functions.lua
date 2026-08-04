@@ -10,6 +10,7 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local pairs, type, unpack, select, pcall = pairs, type, unpack, select, pcall
 local format, srep, slen = string.format, string.rep, string.len
 
+
 --[[
 	Media functions
 --]]
@@ -41,25 +42,77 @@ DraeUI.FetchMedia = function(class, key, fallback)
 	return fallback
 end
 
-
-
 --[[
 	Font functions
 --]]
 
--- Create and set font
-DraeUI.CreateFontObject = function(parent, size, font, anchorAt, oX, oY, type, anchor, anchorTo)
-	local fo = parent:CreateFontString(nil, "OVERLAY")
-	fo:SetFont(font, size, type or "OUTLINE")
+do
+    local FALLBACK_FONT = "Fonts\\FRIZQT__.TTF"
 
-	if anchor then
-		fo:SetPoint(anchorAt, anchor, anchorTo, oX, oY)
+    --[[
+		Adapted from the Presence module's SetSafeFont, which is where the pattern
+		came from.
+	--]]
+    DraeUI.SetFont = function(fontString, font, size, flags)
+        if (not fontString) then
+            return false
+        end
+
+        flags = flags or "OUTLINE"
+
+        if (font and fontString:SetFont(font, size, flags)) then
+            return true
+        end
+
+        local fallback = DraeUI.media and DraeUI.media.font
+
+        if (fallback and fallback ~= font and fontString:SetFont(fallback, size, flags)) then
+            return true
+        end
+
+        return fontString:SetFont(FALLBACK_FONT, size, flags)
+    end
+end
+
+--[[
+	Create a positioned font string.
+
+	Everything is optional - font defaults to the UI font and size to fontsize1,
+	which is what most callers want, so the common case is just a point and an
+	offset.
+
+		DraeUI.CreateFontObject(parent, { point = "RIGHT", x = -5, y = 0 })
+
+	Anchor to something other than the parent by naming it:
+
+		DraeUI.CreateFontObject(parent, {
+			point = "CENTER", relTo = frame.Health, relPoint = "TOP", y = 4,
+		})
+
+	justify follows point unless you say otherwise, and width/height save the
+	SetSize call that used to follow most of these.
+--]]
+DraeUI.CreateFontObject = function(parent, opts)
+	opts = opts or {}
+
+	local point = opts.point or "LEFT"
+	local font = opts.font or (DraeUI.media and DraeUI.media.font)
+	local size = opts.size or DraeUI.config["general"].fontsize1
+
+	local fo = parent:CreateFontString(nil, opts.layer or "OVERLAY")
+
+	DraeUI.SetFont(fo, font, size, opts.flags)
+
+	fo:SetJustifyH(opts.justify or point)
+
+	if (opts.relTo) then
+		fo:SetPoint(point, opts.relTo, opts.relPoint or point, opts.x or 0, opts.y or 0)
 	else
-		fo:SetJustifyH(anchorAt or "LEFT")
+		fo:SetPoint(point, opts.x or 0, opts.y or 0)
+	end
 
-		if oX or oY then
-			fo:SetPoint(anchorAt or "LEFT", oX or 0, oY or 0)
-		end
+	if (opts.width or opts.height) then
+		fo:SetSize(opts.width or 0, opts.height or 0)
 	end
 
 	return fo

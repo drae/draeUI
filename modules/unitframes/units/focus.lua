@@ -45,9 +45,14 @@ local StyleDrae_Focus = function(frame)
 	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
 	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
 
-	local info = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "CENTER",
-		0, 4, nil, frame.Health, "TOP")
-	info:SetSize(125, 20)
+	local info = DraeUI.CreateFontObject(text, {
+		point = "CENTER",
+		relTo = frame.Health,
+		relPoint = "TOP",
+		y = 4,
+		width = 125,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]|r")
 
 	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22, DraeUI.config["frames"].auras.maxFocusBuff or 15,

@@ -47,11 +47,15 @@ local StyleDrae_TargetTarget = function(frame)
 	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
 	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
 
-	--	frame.Health.value = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "LEFT", 5, 15)
-	local info = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "CENTER",
-		0, 4, nil, frame.Health, "TOP")
-
-	info:SetSize(125, 20)
+	--	frame.Health.value = DraeUI.CreateFontObject(frame.Health, { point = "LEFT", x = 5, y = 15 })
+	local info = DraeUI.CreateFontObject(text, {
+		point = "CENTER",
+		relTo = frame.Health,
+		relPoint = "TOP",
+		y = 4,
+		width = 125,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
 	-- Auras - just debuffs for target of target

@@ -70,12 +70,18 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	end
 
 	-- Cast time
-	castbar.Time = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize2, DraeUI["media"].font, "RIGHT", -5,
-		0)
+	castbar.Time = DraeUI.CreateFontObject(castbar, {
+		size = DraeUI.config["general"].fontsize2,
+		point = "RIGHT",
+		x = -5,
+	})
 
 	-- Spell name
-	castbar.Text = DraeUI.CreateFontObject(castbar, DraeUI.config["general"].fontsize2, DraeUI["media"].font, "LEFT", 5,
-		0)
+	castbar.Text = DraeUI.CreateFontObject(castbar, {
+		size = DraeUI.config["general"].fontsize2,
+		point = "LEFT",
+		x = 5,
+	})
 
 	-- Uniterruptable show shield
 	local shieldFrame = CreateFrame("Frame", nil, castbar)
@@ -157,8 +163,14 @@ do
 			_G[bar .. "Text"]:SetFont(DraeUI["media"].font, 10)
 			_G[bar .. "Text"]:SetPoint("LEFT", _G[bar .. "StatusBar"], 5, 1)
 
-			_G[bar .. "TextTime"] = DraeUI.CreateFontObject(_G[bar .. "StatusBar"], 10, DraeUI["media"].font, "RIGHT", -5,
-				1, "NONE") -- Our timer
+			-- Our timer
+			_G[bar .. "TextTime"] = DraeUI.CreateFontObject(_G[bar .. "StatusBar"], {
+				size = 10,
+				flags = "NONE",
+				point = "RIGHT",
+				x = -5,
+				y = 1,
+			})
 
 			_G[bar .. "StatusBar"]:ClearAllPoints()
 			_G[bar .. "StatusBar"]:SetStatusBarTexture(DraeUI.media.statusbar)

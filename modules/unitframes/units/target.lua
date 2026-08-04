@@ -43,12 +43,15 @@ local StyleDrae_Target = function(frame)
 	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
 	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
 
-	frame.Health.value = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
-		"LEFT", 5, 12)
+	frame.Health.value = DraeUI.CreateFontObject(text, { point = "LEFT", x = 5, y = 12 })
 
-	local level = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "RIGHT",
-		-5, 12)
-	level:SetSize(190, 20)
+	local level = DraeUI.CreateFontObject(text, {
+		point = "RIGHT",
+		x = -5,
+		y = 12,
+		width = 190,
+		height = 20,
+	})
 	frame:Tag(level, "[drae:afk] [drae:shortclassification][drae:unitcolour][name]|r | [level]")
 
 	-- Flags for PvP, leader, etc.

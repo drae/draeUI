@@ -40,20 +40,22 @@ local StyleDrae_Player = function(frame)
 	local textHp = CreateFrame("Frame", nil, frame.Health)
 	textHp:SetAllPoints(frame.Health)
 
-	frame.Health.value = DraeUI.CreateFontObject(textHp, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
-		"RIGHT", -5, 12)
+	frame.Health.value = DraeUI.CreateFontObject(textHp, { point = "RIGHT", x = -5, y = 12 })
 
-	local level = DraeUI.CreateFontObject(textHp, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "LEFT",
-		5, 12)
-	level:SetSize(40, 20)
+	local level = DraeUI.CreateFontObject(textHp, {
+		point = "LEFT",
+		x = 5,
+		y = 12,
+		width = 40,
+		height = 20,
+	})
 	frame:Tag(level, "[level]")
 
 	-- PP
 	local textPp = CreateFrame("Frame", nil, frame.Power)
 	textPp:SetAllPoints(frame.Power)
 
-	frame.Power.value = DraeUI.CreateFontObject(textPp, DraeUI.config["general"].fontsize1, DraeUI["media"].font,
-		"RIGHT", 5, 12)
+	frame.Power.value = DraeUI.CreateFontObject(textPp, { point = "RIGHT", x = 5, y = 12 })
 
 	-- Combat icon
 	local combat = textHp:CreateTexture(nil, "OVERLAY")

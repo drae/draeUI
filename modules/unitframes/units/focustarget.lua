@@ -47,9 +47,14 @@ local StyleDrae_FocusTarget = function(frame)
 	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
 	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
 
-	local info = DraeUI.CreateFontObject(text, DraeUI.config["general"].fontsize1, DraeUI["media"].font, "CENTER",
-		0, 4, nil, frame.Health, "TOP")
-	info:SetSize(125, 20)
+	local info = DraeUI.CreateFontObject(text, {
+		point = "CENTER",
+		relTo = frame.Health,
+		relPoint = "TOP",
+		y = 4,
+		width = 125,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
 	-- The number here is the size of the raid icon

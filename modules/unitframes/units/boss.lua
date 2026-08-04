@@ -19,14 +19,24 @@ local StyleDrae_Boss = function(frame)
 	UF.CreateUnitFrameBackground(frame)
 
 
-	local info = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize0, DraeUI["media"].font, "LEFT",
-		-2, 22)
-	info:SetSize(140, 20)
+	local info = DraeUI.CreateFontObject(frame.Health, {
+		size = DraeUI.config["general"].fontsize0,
+		point = "LEFT",
+		x = -2,
+		y = 22,
+		width = 140,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
-	local level = DraeUI.CreateFontObject(frame.Health, DraeUI.config["general"].fontsize0, DraeUI["media"].font, "RIGHT",
-		2, 22)
-	level:SetSize(40, 20)
+	local level = DraeUI.CreateFontObject(frame.Health, {
+		size = DraeUI.config["general"].fontsize0,
+		point = "RIGHT",
+		x = 2,
+		y = 22,
+		width = 40,
+		height = 20,
+	})
 	frame:Tag(level, "[level]")
 
 	-- Auras - just debuffs for target of target
