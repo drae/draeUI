@@ -46,10 +46,9 @@ DraeUI.config = {
 
 		colours = {
 			--[[
-				Everything here is applied onto oUF.colors by DraeUI:OnEnable,
-				or read directly at the point of use. They are partial
-				overrides - any key left out keeps oUF's Blizzard-derived
-				default.
+				Everything from here down to `quest` is applied onto oUF.colors
+				by DraeUI:OnEnable. They are partial overrides - any key left
+				out keeps oUF's Blizzard-derived default.
 
 				Keyed by oUF's own key names. Power uses the string token
 				because that's oUF's canonical key; it aliases the numeric
@@ -121,6 +120,57 @@ DraeUI.config = {
 
 			-- Offline/ghost/dead health text
 			healthText = { 170 / 255, 170 / 255, 170 / 255 },
+
+			--[[
+				Presence toast accents, keyed by the category a notification
+				resolves to. Named "quest" because the ported files reach it as
+				QUEST_COLORS, but it covers achievements, scenarios, zones and
+				rares too.
+			--]]
+			quest = {
+				DEFAULT = { 0.90, 0.90, 0.90 },
+				CURRENT = { 0.95, 0.55, 0.45 },
+				AVAILABLE = { 0.28, 0.48, 0.88 },
+				CURRENT_EVENT = { 0.28, 0.48, 0.88 },
+				NEARBY = { 0.35, 0.75, 0.98 },
+				CAMPAIGN = { 1.00, 0.82, 0.20 },
+				IMPORTANT = { 1.00, 0.45, 0.80 },
+				LEGENDARY = { 1.00, 0.50, 0.00 },
+				DUNGEON = { 0.64, 0.21, 0.93 },
+				RAID = { 0.85, 0.25, 0.25 },
+				DELVES = { 0.32, 0.72, 0.68 },
+				SCENARIO = { 0.38, 0.52, 0.88 },
+				SCENARIO_STAGE = { 0.55, 0.65, 0.75 },
+				WORLD = { 0.78, 0.42, 0.95 },
+				WEEKLY = { 0.25, 0.88, 0.92 },
+				PREY = { 0.72, 0.22, 0.22 },
+				DAILY = { 0.25, 0.88, 0.92 },
+				CALLING = { 0.20, 0.60, 1.00 },
+				COMPLETE = { 0.20, 1.00, 0.40 },
+				RARE = { 0.96, 0.56, 0.08 },
+				RARE_LOOT = { 0.96, 0.56, 0.08 },
+				ACHIEVEMENT = { 0.78, 0.48, 0.22 },
+				ENDEAVOR = { 0.45, 0.95, 0.75 },
+				ENDEAVORS = { 0.45, 0.95, 0.75 },
+				DECOR = { 0.65, 0.55, 0.45 },
+				APPEARANCE = { 135 / 255, 96 / 255, 1 },
+				APPEARANCES = { 135 / 255, 96 / 255, 1 },
+				RECIPE = { 0.55, 0.75, 0.45 },
+				RECIPES = { 0.55, 0.75, 0.45 },
+				ADVENTURE = { 0.90, 0.80, 0.50 },
+			},
+
+			-- The two Presence toasts that aren't category-keyed
+			bossEmote = { 1, 0.2, 0.2 },
+			discovery = { 0.4, 1, 0.5 },
+
+			-- Zone toasts, when presence.zoneTypeColouring is on
+			zone = {
+				friendly = { 0.1, 1.0, 0.1 },
+				hostile = { 1.0, 0.1, 0.1 },
+				contested = { 1.0, 0.7, 0.0 },
+				sanctuary = { 0.41, 0.8, 0.94 },
+			},
 		}
 	},
 
@@ -130,6 +180,110 @@ DraeUI.config = {
 			width = 450,
 			height = 20,
 		}
+	},
+
+	--[[
+		Presence - cinematic zone/quest/achievement toasts.
+	--]]
+	presence = {
+		-- Centre-screen frame. y is measured from the top, so negative is down
+		frame = {
+			y = -180,
+			scale = 1,
+			uiScale = 1,
+		},
+
+		--[[
+				Durations in seconds. enabled = false makes toasts appear and vanish
+				instantly; hold scales how long each type stays up for.
+		--]]
+		animation = {
+			enabled = true,
+			entrance = 0.7,
+			exit = 0.8,
+			hold = 1,
+		},
+
+		-- Stay quiet in instanced content; toasts are for the open world
+		suppress = {
+			dungeon = true,
+			raid = true,
+			delve = true,
+			pvp = true,
+			battleground = true,
+		},
+
+		-- One switch per kind of toast
+		toasts = {
+			levelUp = true,
+			bossEmote = false, -- Leave boss emotes to Blizzard's own frame
+			achievement = true,
+			achievementProgress = false, -- Noisy; every criteria tick fires one
+
+			zoneChange = true,
+			subzoneChange = true,
+
+			questAccept = true,
+			questComplete = true,
+			questUpdate = true,
+			worldQuestAccept = true,
+			worldQuest = true,
+
+			scenarioStart = true,
+			scenarioUpdate = true,
+			scenarioComplete = true,
+		},
+
+		--[[
+			Toast text sizes.
+
+			Which set a toast uses is decided by its type, not chosen here:
+			zone changes and level ups are large, quest and scenario toasts
+			medium, progress updates small. primary is the heading, secondary
+			the line under it.
+
+			discovery is the "Discovered <subzone>" line appended to a zone
+			toast. Clamped on read - 12-72 for primary, 12-40 for the rest -
+			so a slip here can't produce an unreadable toast.
+		--]]
+		fontSize = {
+			large = { primary = 48, secondary = 24 },
+			medium = { primary = 36, secondary = 22 },
+			small = { primary = 28, secondary = 20 },
+
+			discovery = 16,
+		},
+
+		-- Font flags per element: OUTLINE, THICKOUTLINE, MONOCHROME or NONE
+		outline = {
+			title = "OUTLINE",
+			subtitle = "OUTLINE",
+			discovery = "OUTLINE",
+		},
+
+		shadow = {
+			x = 1,
+			y = -1,
+			alpha = 0.8,
+		},
+
+		-- Append "Discovered <subzone>" to a zone toast when exploring
+		discovery = true,
+
+		-- Progress toasts show just the objective line, no "QUEST UPDATE" heading
+		hideQuestUpdateTitle = true,
+
+		-- Drop the zone name from a subzone toast when the zone hasn't changed
+		hideZoneForSubzone = false,
+
+		worldQuestSound = true,
+
+		-- Colour zone toasts by PvP status rather than category, from
+		-- general.colours.zone
+		zoneTypeColouring = false,
+
+		-- Tint toasts with the player's class colour
+		classColour = false,
 	},
 
 	-- Unit Frame settings

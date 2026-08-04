@@ -26,6 +26,17 @@ modules\buffbar\Load_Auras.xml
 # Skins - static UI artwork
 modules\skins\init.lua
 
+# Presence - cinematic zone/quest/achievement notifications.
+modules\presence\init.lua
+modules\presence\core.lua
+modules\presence\scenario.lua
+modules\presence\quest.lua
+modules\presence\achievement.lua
+modules\presence\blizzard.lua
+modules\presence\zone.lua
+modules\presence\errors.lua
+modules\presence\events.lua
+
 # Unitframes
 modules\unitframes\auras.xml
 modules\unitframes\init.lua
