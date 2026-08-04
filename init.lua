@@ -118,43 +118,62 @@ DraeUI.OnEnable = function(self)
 		end
 	end)
 
-	oUF.colors.power["MANA"]        = oUF:CreateColor(46 / 255, 158 / 255, 255 / 255)
-	oUF.colors.power["RAGE"]        = oUF:CreateColor(199 / 255, 64 / 255, 64 / 255)
-	oUF.colors.power["FOCUS"]       = oUF:CreateColor(255 / 255, 128 / 255, 64 / 255)
-	oUF.colors.power["ENERGY"]      = oUF:CreateColor(255 / 255, 249 / 255, 105 / 255)
-	oUF.colors.power["RUNIC_POWER"] = oUF:CreateColor(0 / 255, 204 / 255, 255 / 255)
-	oUF.colors.power["LUNAR_POWER"] = oUF:CreateColor(77 / 255, 133 / 255, 230 / 255) --, atlas = '_Druid-LunarBar)
-	oUF.colors.power["MAELSTROM"]   = oUF:CreateColor(0, 128 / 255, 255 / 255)     --, atlas = '_Shaman-MaelstromBar)
-	oUF.colors.power["INSANITY"]    = oUF:CreateColor(102 / 255, 0, 204 / 255)     --, atlas = '_Priest-InsanityBar)
-	oUF.colors.power["FURY"]        = oUF:CreateColor(201 / 255, 66 / 255, 252 / 255) --, atlas = '_DemonHunter-DemonicFuryBar)
-	oUF.colors.power["PAIN"]        = oUF:CreateColor(255 / 255, 156 / 255, 0)     --, atlas = '_DemonHunter-DemonicPainBar)
-	oUF.colors.power["ALT_POWER"]   = oUF:CreateColor(51 / 255, 102 / 255, 204 / 255)
+	do
+		--[[
+				Push config.general.colours onto oUF's palette.
 
-	oUF.colors.power[0]             = oUF:CreateColor(46 / 255, 158 / 255, 255 / 255)
-	oUF.colors.power[1]             = oUF:CreateColor(199 / 255, 64 / 255, 64 / 255)
-	oUF.colors.power[2]             = oUF:CreateColor(255 / 255, 128 / 255, 64 / 255)
-	oUF.colors.power[3]             = oUF:CreateColor(255 / 255, 249 / 255, 105 / 255)
-	oUF.colors.power[6]             = oUF:CreateColor(0 / 255, 204 / 255, 255 / 255)
-	oUF.colors.power[8]             = oUF:CreateColor(77 / 255, 133 / 255, 230 / 255) --, atlas = '_Druid-LunarBar)
-	oUF.colors.power[11]            = oUF:CreateColor(0, 128 / 255, 255 / 255)     --, atlas = '_Shaman-MaelstromBar)
-	oUF.colors.power[13]            = oUF:CreateColor(102 / 255, 0, 204 / 255)     --, atlas = '_Priest-InsanityBar)
-	oUF.colors.power[17]            = oUF:CreateColor(201 / 255, 66 / 255, 252 / 255) --, atlas = '_DemonHunter-DemonicFuryBar)
-	oUF.colors.power[18]            = oUF:CreateColor(255 / 255, 156 / 255, 0)     --, atlas = '_DemonHunter-DemonicPainBar)
+				This has to happen here rather than at file scope: config.defaults.lua
+				loads after init.lua, so DraeUI.config doesn't exist yet at load. It
+				also has to happen before oUF:Spawn - AceAddon enables the addon
+				before its modules, so DraeUI:OnEnable beats UF:OnEnable. That matters
+				for `dispel`, which oUF snapshots into a per-element colour curve when
+				the aura element is enabled; mutating it later wouldn't propagate.
+		--]]
+		local colours = DraeUI.config["general"].colours
 
-	oUF.colors.reaction[2]          = oUF:CreateColor(255 / 255, 0, 0)
-	oUF.colors.reaction[4]          = oUF:CreateColor(255 / 255, 255 / 255, 0)
-	oUF.colors.reaction[5]          = oUF:CreateColor(0 / 255, 255 / 255, 0)
+		--[[
+				Mutate the colour object oUF already made rather than replacing it.
 
-	oUF.colors.charmed              = oUF:CreateColor(255 / 255, 0, 102 / 255)
-	oUF.colors.disconnected         = oUF:CreateColor(230 / 255, 230 / 255, 230 / 255)
-	oUF.colors.tapped               = oUF:CreateColor(153 / 255, 153 / 255, 153 / 255)
+				oUF aliases the numeric power-type IDs to the *same* objects as the
+				string tokens (colors.power[0] == colors.power.MANA), so assigning a
+				fresh colour to the token orphans the numeric key and any element
+				that looks up by ID gets Blizzard's original. Mutating in place
+				updates both at once, and keeps oUF's .atlas / .curve metadata.
+		--]]
+		local ApplyColour = function(tbl, key, rgb)
+			local existing = tbl[key]
 
-	oUF.colors.debuffTypes          = {
-		["Magic"] = oUF:CreateColor(51 / 255, 153 / 255, 255 / 255),
-		["Curse"] = oUF:CreateColor(153 / 255, 0, 255 / 255),
-		["Disease"] = oUF:CreateColor(153 / 255, 102 / 255, 0),
-		["Poison"] = oUF:CreateColor(0, 153 / 255, 0)
-	}
+			if (existing and existing.SetRGB) then
+				existing:SetRGB(rgb[1], rgb[2], rgb[3])
+			else
+				tbl[key] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
+			end
+		end
+
+		for token, rgb in next, colours.power do
+			ApplyColour(oUF.colors.power, token, rgb)
+		end
+
+		for reaction, rgb in next, colours.reaction do
+			ApplyColour(oUF.colors.reaction, reaction, rgb)
+		end
+
+		ApplyColour(oUF.colors, "disconnected", colours.disconnected)
+		ApplyColour(oUF.colors, "tapped", colours.tapped)
+
+		--[[
+				colors.dispel holds the raw DEBUFF_TYPE_*_COLOR globals, so these get
+				assigned, never mutated - SetRGB'ing them would edit Blizzard's own
+				shared colour objects.
+		--]]
+		for name, rgb in next, colours.dispel do
+			local index = oUF.Enum.DispelType[name]
+
+			if (index) then
+				oUF.colors.dispel[index] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
+			end
+		end
+	end
 end
 
 do

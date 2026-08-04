@@ -12,6 +12,17 @@ local GameTooltip                          = GameTooltip
 local UnitFrame_OnEnter, UnitFrame_OnLeave = UnitFrame_OnEnter, UnitFrame_OnLeave
 local UnitIsConnected, UnitIsGhost         = UnitIsConnected, UnitIsGhost
 local UnitIsDead, AbbreviateNumbers        = UnitIsDead, AbbreviateNumbers
+local unpack                               = unpack
+-- Blizzard's own localised globals. The literal fallbacks are insurance only:
+-- these are read at file scope and land in a health update, so a client that
+-- ever dropped one would error every frame in combat rather than look wrong
+local PLAYER_OFFLINE                       = PLAYER_OFFLINE or "Offline"
+local DEAD                                 = DEAD or "Dead"
+
+local COLOURS                              = DraeUI.config["general"].colours
+
+-- Health bar stand-in text (offline/ghost/dead) is greyed out
+local GREY                                 = DraeUI.Hex(COLOURS.healthText)
 
 --[[
 		General frame related functions
@@ -213,12 +224,14 @@ do
 	local PostUpdateHealth = function(health, u, cur)
 		if (not health.value) then return end
 
+		-- PLAYER_OFFLINE and DEAD are Blizzard's own localised globals; there's no
+		-- equivalent for ghost, so that one comes from config/locale.enGB.lua
 		if (not UnitIsConnected(u)) then
-			health.value:SetText("|cffaaaaaaOffline|r")
+			health.value:SetText(GREY .. PLAYER_OFFLINE .. "|r")
 		elseif (UnitIsGhost(u)) then
-			health.value:SetText("|cffaaaaaaGhost|r")
+			health.value:SetText(GREY .. DraeUI.L["GHOST"] .. "|r")
 		elseif (UnitIsDead(u)) then
-			health.value:SetText("|cffaaaaaaDead|r")
+			health.value:SetText(GREY .. DEAD .. "|r")
 		else
 			health.value:SetText(AbbreviateNumbers(cur, abbrevData))
 		end
@@ -247,7 +260,7 @@ do
 		-- Total healing required to increase units health due to a heal absorb debuff/effect
 		local myBar = CreateFrame('StatusBar', nil, frame)
 		myBar:SetStatusBarTexture(DraeUI.media.statusbar)
-		myBar:SetStatusBarColor(0, 1.0, 0.3, 0.25)
+		myBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingPlayer))
 		myBar:SetPoint('TOP')
 		myBar:SetPoint('BOTTOM')
 		myBar:SetPoint('LEFT', hp:GetStatusBarTexture(), 'RIGHT')
@@ -255,7 +268,7 @@ do
 
 		local otherBar = CreateFrame('StatusBar', nil, frame)
 		otherBar:SetStatusBarTexture(DraeUI.media.statusbar)
-		otherBar:SetStatusBarColor(0, 1.0, 0, 0.25)
+		otherBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingOther))
 		otherBar:SetPoint('TOP')
 		otherBar:SetPoint('BOTTOM')
 		otherBar:SetPoint('LEFT', myBar:GetStatusBarTexture(), 'RIGHT')
@@ -263,7 +276,7 @@ do
 
 		local absorbBar = CreateFrame('StatusBar', nil, frame)
 		absorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
-		absorbBar:SetStatusBarColor(1.0, 1.0, 1.0, 0.33)
+		absorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.damageAbsorb))
 		absorbBar:SetPoint('TOP')
 		absorbBar:SetPoint('BOTTOM')
 		absorbBar:SetPoint('RIGHT', hp:GetStatusBarTexture())
@@ -272,7 +285,7 @@ do
 
 		local healAbsorbBar = CreateFrame('StatusBar', nil, frame)
 		healAbsorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
-		healAbsorbBar:SetStatusBarColor(1.0, 0, 0.8, 0.33)
+		healAbsorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healAbsorb))
 		healAbsorbBar:SetPoint('TOP')
 		healAbsorbBar:SetPoint('BOTTOM')
 		healAbsorbBar:SetPoint('LEFT', otherBar:GetStatusBarTexture(), 'RIGHT')
@@ -281,7 +294,7 @@ do
 		-- Damage (shields/absorbs) greater than health
 		local overAbsorb = hp:CreateTexture(nil, "OVERLAY")
 		overAbsorb:SetTexture("Interface\\Buttons\\White8x8")
-		overAbsorb:SetVertexColor(1, 1, 1, 0.5) -- Always white
+		overAbsorb:SetVertexColor(unpack(COLOURS.healthPrediction.overAbsorb))
 		overAbsorb:SetBlendMode("ADD")
 		overAbsorb:SetPoint("TOP")
 		overAbsorb:SetPoint("BOTTOM")
@@ -291,7 +304,7 @@ do
 		-- Healing absorb greater than health
 		local overHealAbsorb = hp:CreateTexture(nil, "OVERLAY")
 		overHealAbsorb:SetTexture("Interface\\Buttons\\White8x8")
-		overHealAbsorb:SetVertexColor(1.0, 0, 0, 0.5)
+		overHealAbsorb:SetVertexColor(unpack(COLOURS.healthPrediction.overHealAbsorb))
 		overHealAbsorb:SetBlendMode("ADD")
 		overHealAbsorb:SetPoint("TOP")
 		overHealAbsorb:SetPoint("BOTTOM")
@@ -408,7 +421,7 @@ do
 			tile = false,
 			edgeSize = 3
 		}
-		border:SetBackdropBorderColor(0, 0, 0)
+		border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
 		button.Border = border
 
 		local icon = button:CreateTexture(nil, "BACKGROUND")

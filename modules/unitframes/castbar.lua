@@ -12,15 +12,13 @@ local _G = _G
 local unpack, pairs, format = unpack, pairs, string.format
 local mfloor, mceil, strlen = math.floor, math.ceil, string.len
 
--- color
-local CastingColor    = { 0.3, 0.3, 1.0 }
-local ChannelingColor = { 1.0, 0.3, 0.3 }
+local COLOURS = DraeUI.config["general"].colours.castbar
 
 --[[
 		Castbar functions
 --]]
 local PostCastStart = function(self, unit)
-	self:SetStatusBarColor(unpack(self.channeling and ChannelingColor or CastingColor))
+	self:SetStatusBarColor(unpack(self.channeling and COLOURS.channeling or COLOURS.casting))
 end
 
 local PostCastFail = function(self, unit, spellId)
@@ -36,7 +34,8 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	castbar:SetSize(width, height)
 	castbar:SetPoint(anchorAt, anchor or self, anchorTo, xOffset, yOffset)
 	castbar:SetStatusBarTexture(DraeUI.media.statusbar)
-	castbar:SetStatusBarColor(0.5, 0.5, 1, 1)
+	-- Only visible until the first PostCastStart, but match it anyway
+	castbar:SetStatusBarColor(unpack(COLOURS.casting))
 
 	-- hold time
 	castbar.timeToHold = 1.0
@@ -66,7 +65,7 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 	if (self.unit and self.unit == "player") then
 		local safezone = castbar:CreateTexture(nil, "OVERLAY")
 		safezone:SetTexture("Interface\\Buttons\\White8x8")
-		safezone:SetVertexColor(1.0, 0, 0, 0.75)
+		safezone:SetVertexColor(unpack(COLOURS.safezone))
 		castbar.SafeZone = safezone
 	end
 
