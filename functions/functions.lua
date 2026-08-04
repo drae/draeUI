@@ -4,9 +4,42 @@
 --]]
 local DraeUI = select(2, ...)
 
+local LSM = LibStub("LibSharedMedia-3.0")
+
 -- Localise a bunch of functions
 local pairs, type, unpack, select, pcall = pairs, type, unpack, select, pcall
 local format, srep, slen = string.format, string.rep, string.len
+
+--[[
+	Media functions
+--]]
+
+--[[
+	Resolve a config value to a usable path.
+
+	Config normally holds LibSharedMedia keys ("Proza"), but a value that already
+	contains a slash is taken as a literal path and passed straight through, so a
+	font or texture that was never registered with LSM can still be pointed at.
+	The fallback covers an LSM key that doesn't resolve - typically media that got
+	commented out of media/sharedmedia.lua.
+--]]
+DraeUI.FetchMedia = function(class, key, fallback)
+	if (type(key) ~= "string" or key == "") then
+		return fallback
+	end
+
+	if (key:find("\\") or key:find("/")) then
+		return key
+	end
+
+	local ok, path = pcall(LSM.Fetch, LSM, class, key, true)
+
+	if (ok and type(path) == "string" and path ~= "") then
+		return path
+	end
+
+	return fallback
+end
 
 --[[
 

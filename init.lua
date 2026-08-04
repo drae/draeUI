@@ -7,8 +7,6 @@ local oUF = DraeUI.oUF or oUF
 
 LibStub("AceAddon-3.0"):NewAddon(DraeUI, addon, "AceEvent-3.0")
 
-local LSM = LibStub("LibSharedMedia-3.0")
-
 --
 local CreateFrame = CreateFrame
 local UnitClass, UnitName, GetRealmName, UnitGUID, GetScreenHeight, GetScreenWidth, GetCVar =
@@ -35,25 +33,33 @@ DraeUI.OnInitialize = function(self)
 	self.playerRealm = GetRealmName()
 	self.playerGuid = UnitGUID("player")
 
+	--[[
+		Config holds LSM keys; FetchMedia turns them into paths and falls back to
+		the shipped file when a key isn't registered. Built here rather than at
+		file scope because config has to have loaded first - which also means
+		nothing may read DraeUI.media before OnInitialize.
+	--]]
+	local general = self.config["general"]
+	local FetchMedia = self.FetchMedia
+
 	self.media = {
-		font = LSM:Fetch("font", self.config["general"].font)
-			or "Interface\\AddOns\\draeUI\\media\\fonts\\prozaregular-regular.ttf",
-		fontSmall = LSM:Fetch("font", self.config["general"].fontSmall)
-			or "Interface\\AddOns\\draeUI\\media\\fonts\\liberationsans.ttf",
-		fontTitles = LSM:Fetch("font", self.config["general"].fontTitles)
-			or "Interface\\AddOns\\draeUI\\media\\fonts\\vollkorn-medium.ttf",
+		font = FetchMedia("font", general.font, "Interface\\AddOns\\draeUI\\media\\fonts\\prozaregular-regular.ttf"),
+		fontSmall = FetchMedia("font", general.fontSmall, "Interface\\AddOns\\draeUI\\media\\fonts\\liberationsans.ttf"),
+		fontTitles = FetchMedia("font", general.fontTitles, "Interface\\AddOns\\draeUI\\media\\fonts\\vollkorn-medium.ttf"),
 
-		statusbar = LSM:Fetch("statusbar", self.config["general"].statusbar)
-			or "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
-		statusbar_power = LSM:Fetch("statusbar", self.config["general"].statusbar_power)
-			or "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
-		statusbar_absorb = LSM:Fetch("statusbar", self.config["general"].statusbar_absorb)
-			or "Interface\\AddOns\\draeUI\\media\\statusbars\\DF_Stripes_Soft",
+		statusbar = FetchMedia("statusbar", general.statusbar, "Interface\\AddOns\\draeUI\\media\\statusbars\\striped"),
+		statusbar_power = FetchMedia(
+			"statusbar",
+			general.statusbar_power,
+			"Interface\\AddOns\\draeUI\\media\\statusbars\\striped"
+		),
+		statusbar_absorb = FetchMedia(
+			"statusbar",
+			general.statusbar_absorb,
+			"Interface\\AddOns\\draeUI\\media\\statusbars\\DF_Stripes_Soft"
+		),
 
-
-
-		sound1 = LSM:Fetch("sound", self.config["general"].sound1)
-			or "Interface\\AddOns\\draeUI\\media\\sounds\\heart.ogg",
+		sound1 = FetchMedia("sound", general.sound1, "Interface\\AddOns\\draeUI\\media\\sounds\\heart.ogg"),
 	}
 end
 
