@@ -35,7 +35,7 @@ local SetTooltip = function(button)
             if (color) then
                 GameTooltip:AddLine(" ")
                 GameTooltip:AddLine(
-                    ("Cast by %s%s|r"):format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster)))
+                    DraeUI.L["CAST_BY"]:format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster)))
             end
         end
 

@@ -11,7 +11,10 @@ media\media.xml
 
 init.lua
 
+# Settings, then every on-screen string that isn't a Blizzard global. The locale
+# must precede the modules - some of them snapshot DraeUI.L at file scope.
 config\config.defaults.lua
+config\locale.enGB.lua
 
 functions\functions.lua
 functions\game.lua
