@@ -15,6 +15,7 @@
     "diagnostics.globals": [
         "DraeUI",
         "oUF",
+        "_COLORS",
         "LibStub",
         "SlashCmdList",
         "ClickCastFrames",
@@ -36,7 +37,25 @@
         "OrderHallCommandBar",
         "ArenaPrepFrames",
         "ArenaEnemyFrames",
-        "CharacterMicroButton"
+        "CharacterMicroButton",
+        "AlertFrame",
+        "UIErrorsFrame",
+        "ZoneTextFrame",
+        "SubZoneTextFrame",
+        "LevelUpDisplay",
+        "RaidBossEmoteFrame",
+        "BossBanner",
+        "EventToastManagerFrame",
+        "WorldQuestCompleteBannerFrame",
+        "ObjectiveTrackerBonusBannerFrame",
+        "ObjectiveTrackerTopBannerFrame",
+        "LE_QUEST_FREQUENCY_DAILY",
+        "LE_QUEST_FREQUENCY_WEEKLY",
+        "QuestUtils_IsQuestWorldQuest",
+        "DEAD",
+        "BOSS",
+        "UNKNOWN",
+        "PLAYER_OFFLINE"
     ],
     "diagnostics.disable": [
         "lowercase-global"
