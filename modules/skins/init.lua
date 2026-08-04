@@ -35,5 +35,5 @@ Skins.OnEnable = function(self)
 
 	-- Guarded: the micro button bar has been reshuffled repeatedly across
 	-- expansions, so don't assume the anchor exists
-	CreateOverlay(_G.CharacterMicroButton, 64, 512, "BACKGROUND", "MicroMenu.tga", "CENTER", 11, -203)
+	CreateOverlay(CharacterMicroButton, 64, 512, "BACKGROUND", "MicroMenu.tga", "CENTER", 11, -203)
 end

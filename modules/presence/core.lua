@@ -376,6 +376,9 @@ end
 -- Uses user-configured colors if set, otherwise sane defaults.
 -- @return table|nil {r,g,b} or nil if zone type is unknown
 local function GetZoneTypeColor()
+    -- draeUI: the global is deprecated, but it's a guarded fallback and only
+    -- reached on a client that has no C_PvP.GetZonePVPInfo
+    ---@diagnostic disable-next-line: deprecated
     local pvpType = (C_PvP and C_PvP.GetZonePVPInfo) and C_PvP.GetZonePVPInfo() or (GetZonePVPInfo and GetZonePVPInfo()) or nil
     if not pvpType or pvpType == "" then return nil end
     -- draeUI: the four are in config.general.colours.zone, keyed by PvP type

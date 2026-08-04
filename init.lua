@@ -83,7 +83,7 @@ DraeUI.OnEnable = function(self)
 
 	self:RegisterEvent("ADDON_LOADED", function()
 		if not killedOrderHall and C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") then
-			local bar = _G.OrderHallCommandBar
+			local bar = OrderHallCommandBar
 
 			if bar then
 				bar:Hide()
@@ -96,7 +96,7 @@ DraeUI.OnEnable = function(self)
 
 		-- Hide ArenaUI
 		if not killedArena and C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and DraeUI.config["frames"].hideArena then
-			local prep, enemy = _G.ArenaPrepFrames, _G.ArenaEnemyFrames
+			local prep, enemy = ArenaPrepFrames, ArenaEnemyFrames
 
 			if prep and enemy then
 				SetCVar("showArenaEnemyFrames", "0")

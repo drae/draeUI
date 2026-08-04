@@ -385,6 +385,8 @@ do
 	local UpdateTooltip = function(button)
 		if (GameTooltip:IsForbidden()) then return end
 
+		-- Real since 10.0, but the generated annotations don't carry it
+		---@diagnostic disable-next-line: undefined-field
 		GameTooltip:SetUnitAuraByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
 	end
 

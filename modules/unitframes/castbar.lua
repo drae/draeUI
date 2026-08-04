@@ -85,7 +85,8 @@ UF.CreateCastBar = function(self, width, height, anchor, anchorAt, anchorTo, xOf
 
 	-- Uniterruptable show shield
 	local shieldFrame = CreateFrame("Frame", nil, castbar)
-	shieldFrame:SetAllPoints(castbar)
+	-- No argument: castbar is already the parent
+	shieldFrame:SetAllPoints()
 	local shield = shieldFrame:CreateTexture(nil, "OVERLAY")
 	shield:SetTexture("Interface\\TARGETINGFRAME\\PortraitQuestBadge")
 	shield:SetPoint("CENTER", castbar)

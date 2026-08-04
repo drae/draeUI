@@ -143,6 +143,9 @@ local function GetMainStepCriteria()
         if cOk and criteriaInfo then
             local text = (criteriaInfo.description and criteriaInfo.description ~= "") and criteriaInfo.description
                 or (criteriaInfo.quantityString and criteriaInfo.quantityString ~= "") and criteriaInfo.quantityString or ""
+            -- draeUI: only `completed` is annotated; `complete` is the older
+            -- spelling and the pair is deliberate
+            ---@diagnostic disable-next-line: undefined-field
             local finished = criteriaInfo.complete or criteriaInfo.completed or false
             local qty = criteriaInfo.quantity
             local total = criteriaInfo.totalQuantity

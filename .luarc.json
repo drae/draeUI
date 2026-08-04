@@ -52,6 +52,8 @@
         "LE_QUEST_FREQUENCY_DAILY",
         "LE_QUEST_FREQUENCY_WEEKLY",
         "QuestUtils_IsQuestWorldQuest",
+        "GetTrackedAchievements",
+        "SOUNDKIT",
         "DEAD",
         "BOSS",
         "UNKNOWN",

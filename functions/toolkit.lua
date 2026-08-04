@@ -169,12 +169,15 @@ addapi(object)
 addapi(object:CreateTexture())
 addapi(object:CreateFontString())
 
-object = EnumerateFrames()
-while (object) do
-	if (not handled[object:GetObjectType()]) then
-		addapi(object)
-		handled[object:GetObjectType()] = true
+-- Its own local rather than reusing `object`: EnumerateFrames returns Frame?,
+-- and the walk has nothing to do with the template frame created above
+local frame = EnumerateFrames()
+
+while (frame) do
+	if (not handled[frame:GetObjectType()]) then
+		addapi(frame)
+		handled[frame:GetObjectType()] = true
 	end
 
-	object = EnumerateFrames(object)
+	frame = EnumerateFrames(frame)
 end
