@@ -47,11 +47,15 @@ DraeUI.OnInitialize = function(self)
 		fontSmall = FetchMedia("font", general.fontSmall, "Interface\\AddOns\\draeUI\\media\\fonts\\liberationsans.ttf"),
 		fontTitles = FetchMedia("font", general.fontTitles, "Interface\\AddOns\\draeUI\\media\\fonts\\vollkorn-medium.ttf"),
 
-		statusbar = FetchMedia("statusbar", general.statusbar, "Interface\\AddOns\\draeUI\\media\\statusbars\\striped"),
+		statusbar = FetchMedia(
+			"statusbar",
+			general.statusbar,
+			"Interface\\AddOns\\draeUI\\media\\statusbars\\hnd_gradient1"
+		),
 		statusbar_power = FetchMedia(
 			"statusbar",
 			general.statusbar_power,
-			"Interface\\AddOns\\draeUI\\media\\statusbars\\striped"
+			"Interface\\AddOns\\draeUI\\media\\statusbars\\hnd_gradient1"
 		),
 		statusbar_absorb = FetchMedia(
 			"statusbar",

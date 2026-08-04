@@ -10,10 +10,8 @@ local DraeUI = select(2, ...)
 DraeUI.config = {
 	general = {
 		-- Textures
-		statusbar = "Striped",
-		statusbar_power = "Striped",
-		statusbar_raid = "Striped",
-		statusbar_raid_power = "Striped",
+		statusbar = "Gradient1",
+		statusbar_power = "Gradient1",
 		statusbar_absorb = "DF Stripes Soft",
 
 		font = "Proza",
