@@ -339,9 +339,13 @@ do
 		pp.colorTapping = true
 		pp.colorDisconnected = true
 		pp.colorPower = true
-		pp.useAtlas = true
 
-		pp.__bar_texture = DraeUI.media.statusbar_power
+		-- Which powers actually have an atlas left to use is decided in init.lua
+		-- from config.general.powerAtlas
+		pp.colorPowerAtlas = true
+
+		-- What oUF restores for the powers that don't
+		pp.__texture = DraeUI.media.statusbar_power
 
 		pp.PostUpdate = PostUpdatePower
 

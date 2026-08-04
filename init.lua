@@ -173,6 +173,40 @@ DraeUI.OnEnable = function(self)
 				oUF.colors.dispel[index] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
 			end
 		end
+
+		--[[
+				Blizzard now ships bar artwork for nearly every power type, but most
+				of it is just the stock HUD bar recoloured - only a handful of class
+				powers have genuinely distinctive art. general.powerAtlas is the
+				allowlist of tokens allowed to keep theirs.
+
+				Power elements set colorPowerAtlas unconditionally; which powers
+				actually use an atlas is decided here, by clearing .atlas on the
+				ones we don't want. oUF then finds no atlas for them and falls back
+				to statusbar_power tinted with colours.power.
+
+				Clearing the field directly rather than calling SetAtlas(nil):
+				SetAtlas validates through C_Texture.GetAtlasInfo and errors on nil.
+
+				Whatever shipped with an atlas is recorded first, so it stays
+				possible to see what's on offer:
+				/run for k,v in pairs(DraeUI.powerAtlases) do print(k,v) end
+		--]]
+		local atlasWanted = DraeUI.config["general"].powerAtlas or {}
+
+		DraeUI.powerAtlases = {}
+
+		for token, colour in next, oUF.colors.power do
+			-- Staged powers (stagger, soul fragments) are arrays of colours, not
+			-- colours, and carry no .atlas of their own - they skip this
+			if (type(token) == "string" and colour.atlas) then
+				DraeUI.powerAtlases[token] = colour.atlas
+
+				if (not atlasWanted[token]) then
+					colour.atlas = nil
+				end
+			end
+		end
 	end
 end
 
