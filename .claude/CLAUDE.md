@@ -43,7 +43,7 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
   
 - **buffbar/** (modules/buffbar/): Aura tracking system
 - **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
-- **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. See `modules/presence/resync.md` before touching those four.
+- **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. Those four are StyLua-ignored so they stay diffable against upstream; every deliberate divergence in them carries a `-- draeUI:` comment.
 
 ### Library Dependencies
 

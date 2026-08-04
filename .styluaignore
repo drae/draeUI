@@ -5,8 +5,8 @@ libs/
 # Annotation checkouts
 .tools/
 
-# Still verbatim from HorizonSuite - see modules/presence/resync.md. Same
-# reasoning as libs/: reformatting turns every upstream re-sync into a conflict.
+# Still verbatim from HorizonSuite. Same reasoning as libs/: reformatting turns
+# every upstream re-sync into a conflict.
 # Everything else in that folder has been rewritten and is ours, so it formats.
 modules/presence/core.lua
 modules/presence/quest.lua

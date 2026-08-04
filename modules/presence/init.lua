@@ -4,8 +4,10 @@
 		emotes, replacing Blizzard's zone text and banner frames.
 
 		Ported from HorizonSuite by Crystilac (MIT - see LICENSE.HorizonSuite).
-		Four of the upstream files are still close to verbatim; the rest has been
-		rewritten against draeUI's own API. See resync.md.
+		core, quest, scenario and achievement are still close to verbatim, and
+		are StyLua-ignored so they stay diffable against upstream; every
+		deliberate divergence in them is marked with a `-- draeUI:` comment. The
+		rest has been rewritten against draeUI's own API.
 
 		Those four spell the module `addon` and reach everything through it, so
 		what's left here is what they need that isn't a plain draeUI call: the

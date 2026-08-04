@@ -10,7 +10,7 @@
 		enabled check in any handler here, and nothing may register at file scope.
 
 		Rewritten from HorizonSuite's PresenceEvents.lua. The rare-defeated
-		detection that lived here is gone; see resync.md.
+		detection that lived here is gone.
 --]]
 local DraeUI = select(2, ...)
 
