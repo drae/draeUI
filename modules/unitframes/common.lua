@@ -433,8 +433,12 @@ do
 		icon:SetAllPoints(button)
 		button.Icon = icon
 
-		local overlay = button:CreateTexture(nil, "OVERLAY")
-		button.Overlay = overlay
+		--[[
+				No button.Overlay. oUF's own aura buttons carry a UI-Debuff-Overlays
+				texture that it tints by dispel type; draeUI shows that on the
+				backdrop border instead (see PostUpdateButton), and leaving an
+				untextured Overlay here just makes oUF tint and show nothing.
+		--]]
 
 		local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
 		cd:SetReverse(true)
@@ -470,18 +474,24 @@ do
 		return button
 	end
 
-	-- oUF calls this as element:PostUpdateButton(button, unit, data, position)
-	local PostUpdateButton = function(_, button, unit, data)
-		--[[	local color = data.dispelName and oUF.colors.debuffTypes[data.dispelName]
+	--[[
+			oUF calls this as element:PostUpdateButton(button, unit, data, position)
 
-		if (color) then
-			button.Border:SetBackdropBorderColor(color:GetRGB())
+			element.dispelColorCurve is built by oUF when the aura element is
+			enabled, from oUF.colors.dispel - which init.lua has already overridden
+			from config by then. GetAuraDispelTypeColor returns nil for auras with
+			no dispel type, which is when the border falls back to plain.
+	--]]
+	local PostUpdateButton = function(element, button, unit, data)
+		local colour = C_UnitAuras.GetAuraDispelTypeColor(unit, data.auraInstanceID, element.dispelColorCurve)
+
+		if (colour) then
+			button.Border:SetBackdropBorderColor(colour:GetRGB())
 		else
-			button.Border:SetBackdropBorderColor(0, 0, 0)
+			button.Border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
 		end
 
 		button.Icon:SetDesaturated(data.isHarmfulAura and not data.isPlayerAura)
-		]]
 	end
 
 	-- boss1..boss5 etc. share a single config key, so strip any trailing index
