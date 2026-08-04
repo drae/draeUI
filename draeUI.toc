@@ -2,8 +2,6 @@
 ## Author: Drae
 ## Title: draeUI
 ## Category: Unit Frames
-## SavedVariables: draeUIDB
-## SavedVariablesPerCharacter: draeUICharDB
 ## OptionalDeps: SharedMedia
 ## X-Embeds: LibSharedMedia-3.0
 ## X-oUF: draeUF

@@ -20,30 +20,20 @@ local CHAT_FONT_HEIGHTS = CHAT_FONT_HEIGHTS
 --
 _G.DraeUI = DraeUI
 
---
-DraeUI.defaults = {
-	global = {},
-}
-
 --[[
 		OnInitialize fires after ADDON_LOADED
 		OnEnabled fires after PLAYER_LOGIN
+
+		No saved variables: every setting lives in config/config.defaults.lua and
+		is hand-edited. AceDB used to be set up here, but nothing ever read or
+		wrote the table it created, so it only served to write an empty file on
+		logout.
 --]]
 DraeUI.OnInitialize = function(self)
 	self.playerClass = select(2, UnitClass("player"))
 	self.playerName = UnitName("player")
 	self.playerRealm = GetRealmName()
 	self.playerGuid = UnitGUID("player")
-
-	--[[
-		.db 		-> (profile) -> data stored under "name-realm" tables and available to all chars on this account
-		.dbGlobal 	-> (global)	 ->	data stored under single table available to all chars on this account
-		.dbClass 	-> (class)	 ->	data stored under class name
-		.dbChar		-> (profile) ->	data stored under "name-realm" tables and accessible to only this char
-	--]]
-	local db = LibStub("AceDB-3.0"):New("draeUIDB", DraeUI.defaults)
-
-	self.dbGlobal = db.global
 
 	self.media = {
 		font = LSM:Fetch("font", self.config["general"].font)
