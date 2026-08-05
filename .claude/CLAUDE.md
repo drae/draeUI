@@ -198,7 +198,24 @@ fresh `oUF:CreateColor()` over it silently drops the atlas.
 
 ### Secret Values and Taint
 
-Some Blizzard tables are keyed by `secretwrap()` values, and `pairs()` over one from
+Two separate rules, both of which this codebase has been bitten by.
+
+**You cannot branch on a secret value.** `if secret then` from addon-tainted execution
+errors with *"attempted to perform boolean test on ... (a secret boolean value)"*. You
+*can* still hand one to a widget setter, and that's the intended escape hatch:
+`Region:SetAlphaFromBoolean(value, ifTrue, ifFalse)` and
+`Region:SetVertexColorFromBoolean(value, ifTrue, ifFalse)` — both live on `Frame` too,
+since `Frame : Region`. `DraeUI.CanAccessValue` (functions/game.lua) is the last resort
+for when you genuinely have to read one; it returns false rather than erroring.
+
+The live example is `notInterruptible` from `UnitCastingInfo`/`UnitChannelInfo`, which is
+secret when the caster is another player and plain otherwise — so this class of bug only
+shows up on other players' casts, never your own or an NPC's. oUF drives its castbar
+Shield through `SetAlphaFromBoolean` for exactly this reason, and
+`modules/unitframes/castbar.lua` drives the uninterruptible fill overlay the same way.
+
+**You cannot iterate a secret-keyed table.** Some Blizzard tables are keyed by
+`secretwrap()` values, and `pairs()` over one from
 addon-tainted execution errors with *"attempted to iterate a table that cannot be
 accessed while tainted"*. Direct indexing still works — only iteration is blocked.
 

@@ -77,19 +77,48 @@ local FADE_HOLD = 0.5
 local INTERRUPT_HOLD = 1.3
 
 --[[
-	Which artwork a cast is wearing. Mirrors CastingBarMixin:GetEffectiveType,
-	in the order Blizzard test it.
+	Which artwork a cast is wearing.
+
+	Blizzard's CastingBarMixin:GetEffectiveType tests notInterruptible first, but
+	we can't: in 12.0 UnitCastingInfo returns that field as a secret boolean for
+	other players, and addon-tainted code can't perform a boolean test on a
+	secret. Both discriminators left here are oUF's own plain booleans. The
+	uninterruptible artwork is handled by the overlay instead - see
+	SyncUninterruptible.
 --]]
 local ArtFor = function(element)
-	if element.notInterruptible then
-		return ATLAS.uninterruptible
-	end
+	return element.channeling and ATLAS.channel or ATLAS.standard
+end
 
-	if element.channeling then
-		return ATLAS.channel
-	end
+--[[
+	The uninterruptible fill.
 
-	return ATLAS.standard
+	A secret value can be handed to a widget setter even though it can't be read,
+	which is how oUF drives the shield off the same field. So the artwork lives on
+	a StatusBar of its own stacked over the fill, and the secret only ever reaches
+	SetAlphaFromBoolean.
+
+	It carries the bar's own duration object rather than being anchored to the
+	fill's rect, so it crops as it fills instead of stretching - the same reason
+	oUF hands the real bar a timer.
+--]]
+local SyncUninterruptible = function(element)
+	local overlay = element.Uninterruptible
+
+	overlay:SetAlphaFromBoolean(element.notInterruptible, 1, 0)
+
+	local duration = element:GetTimerDuration()
+
+	if duration then
+		-- oUF picks RemainingTime only for a channel that isn't empowered, so
+		-- channeling on its own is the matching test
+		overlay:SetTimerDuration(
+			duration,
+			element.smoothing,
+			element.channeling and Enum.StatusBarTimerDirection.RemainingTime
+				or Enum.StatusBarTimerDirection.ElapsedTime
+		)
+	end
 end
 
 --[[
@@ -160,8 +189,15 @@ local PostCastStart = function(element, unit)
 
 	element.Flash:Hide()
 
+	SyncUninterruptible(element)
+
 	StopAnims(element)
 	element:SetAlpha(1)
+end
+
+-- Delays and channel updates re-time the bar, so the overlay has to follow
+local PostCastUpdate = function(element, unit)
+	SyncUninterruptible(element)
 end
 
 local PostCastStop = function(element, unit, empowerComplete)
@@ -192,6 +228,9 @@ local PostCastFail = function(element, unit)
 	element.art = ATLAS.interrupted
 	element.fill:SetAtlas(ATLAS.interrupted.full)
 
+	-- The interrupted fill wins; plain SetAlpha, no secret in play
+	element.Uninterruptible:SetAlpha(0)
+
 	element.SparkGlow:Hide()
 	element.SparkShadow:Hide()
 	element.Flash:Hide()
@@ -213,12 +252,13 @@ local PostCastInterrupted = function(element, unit, interruptedBy)
 	PostCastFail(element, unit)
 end
 
--- The cast became (un)interruptible mid-flight; re-pick the fill
+--[[
+	The cast became (un)interruptible mid-flight. oUF assigns a plain boolean on
+	this path rather than the API's secret one, but SetAlphaFromBoolean takes
+	either.
+--]]
 local PostCastInterruptible = function(element, unit)
-	local art = ArtFor(element)
-	element.art = art
-
-	element.fill:SetAtlas(art.filling)
+	SyncUninterruptible(element)
 end
 
 local OnHide = function(element)
@@ -228,6 +268,7 @@ local OnHide = function(element)
 	element.Flash:Hide()
 	element.SparkGlow:Hide()
 	element.SparkShadow:Hide()
+	element.Uninterruptible:SetAlpha(0)
 
 	if element.InterruptGlow then
 		element.InterruptGlow:SetAlpha(0)
@@ -339,6 +380,24 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar:SetStatusBarTexture(ATLAS.standard.filling)
 	castbar.fill = castbar:GetStatusBarTexture()
 	castbar.fill:SetDrawLayer("BORDER")
+
+	--[[
+		The uninterruptible fill, stacked over the one above. A bar of its own
+		rather than a texture so it crops as it fills; see SyncUninterruptible for
+		why it exists at all.
+
+		The frame level matches the parent deliberately. A child frame one level up
+		would draw over every region the parent owns - border, shield, spark and
+		all - whereas at the same level the regions interleave by draw layer, so
+		BORDER 1 lands above the fill and still below the border art at ARTWORK 4.
+	--]]
+	local uninterruptible = CreateFrame("StatusBar", nil, castbar)
+	uninterruptible:SetAllPoints(castbar)
+	uninterruptible:SetFrameLevel(castbar:GetFrameLevel())
+	uninterruptible:SetStatusBarTexture(ATLAS.uninterruptible.filling)
+	uninterruptible:GetStatusBarTexture():SetDrawLayer("BORDER", 1)
+	uninterruptible:SetAlpha(0)
+	castbar.Uninterruptible = uninterruptible
 
 	--[[
 		The plaque the spell name sits on. Blizzard anchor it from the bar's top
@@ -463,6 +522,7 @@ UF.CreateCastBar = function(frame, cfg)
 	CreateAnimations(castbar)
 
 	castbar.PostCastStart = PostCastStart
+	castbar.PostCastUpdate = PostCastUpdate
 	castbar.PostCastStop = PostCastStop
 	castbar.PostCastFail = PostCastFail
 	castbar.PostCastInterrupted = PostCastInterrupted
