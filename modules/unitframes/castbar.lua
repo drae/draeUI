@@ -81,11 +81,11 @@ local INTERRUPT_HOLD = 1.3
 	in the order Blizzard test it.
 --]]
 local ArtFor = function(element)
-	if (element.notInterruptible) then
+	if element.notInterruptible then
 		return ATLAS.uninterruptible
 	end
 
-	if (element.channeling) then
+	if element.channeling then
 		return ATLAS.channel
 	end
 
@@ -106,7 +106,7 @@ end
 local SliceEnds = function(texture, atlas, cap)
 	local info = C_Texture.GetAtlasInfo(atlas)
 
-	if (not info or info.sliceData) then
+	if not info or info.sliceData then
 		return
 	end
 
@@ -123,7 +123,7 @@ local SliceEnds = function(texture, atlas, cap)
 
 	-- Nine-slice still needs something in the middle to stretch
 	local limit = info.width * 0.4
-	if (cap > limit) then
+	if cap > limit then
 		cap = limit
 	end
 
@@ -136,7 +136,7 @@ local StopAnims = function(element)
 	element.HoldFadeOut:Stop()
 	element.FlashAnim:Stop()
 
-	if (element.InterruptGlowAnim) then
+	if element.InterruptGlowAnim then
 		element.InterruptGlowAnim:Stop()
 		element.InterruptShakeAnim:Stop()
 	end
@@ -153,7 +153,7 @@ local PostCastStart = function(element, unit)
 
 	element.Spark:SetAtlas(element.empowering and "ui-castingbar-empower-cursor" or "ui-castingbar-pip")
 
-	if (element.fx) then
+	if element.fx then
 		element.SparkGlow:SetShown(not element.channeling)
 		element.SparkShadow:SetShown(element.channeling == true)
 	end
@@ -196,12 +196,12 @@ local PostCastFail = function(element, unit)
 	element.SparkShadow:Hide()
 	element.Flash:Hide()
 
-	if (element.InterruptGlowAnim) then
+	if element.InterruptGlowAnim then
 		element.InterruptGlow:SetAlpha(0)
 		element.InterruptGlowAnim:Play()
 
 		-- Blizzard check the same CVar before shaking anything
-		if ((tonumber(GetCVar("ShakeStrengthUI")) or 0) > 0) then
+		if (tonumber(GetCVar("ShakeStrengthUI")) or 0) > 0 then
 			element.InterruptShakeAnim:Play()
 		end
 	end
@@ -229,7 +229,7 @@ local OnHide = function(element)
 	element.SparkGlow:Hide()
 	element.SparkShadow:Hide()
 
-	if (element.InterruptGlow) then
+	if element.InterruptGlow then
 		element.InterruptGlow:SetAlpha(0)
 	end
 end
@@ -273,7 +273,7 @@ local CreateAnimations = function(element)
 	flashAlpha:SetDuration(0.2)
 	element.FlashAnim = flash
 
-	if (not element.fx) then
+	if not element.fx then
 		return
 	end
 
@@ -305,7 +305,7 @@ local CreateAnimations = function(element)
 		move:SetOffset(offset[1], offset[2])
 		move:SetDuration(order == 1 and 0.1 or 0)
 
-		if (order > 1) then
+		if order > 1 then
 			move:SetStartDelay(0.05)
 		end
 	end
@@ -317,7 +317,7 @@ end
 	Create a cast bar. cfg is an entry from DraeUI.config["castbar"].
 --]]
 UF.CreateCastBar = function(frame, cfg)
-	if (not cfg) then
+	if not cfg then
 		return
 	end
 
@@ -396,7 +396,7 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar.Text = text
 
 	-- Off by default, as it is in Blizzard's Edit Mode. Their placement when on
-	if (cfg.time == true) then
+	if cfg.time == true then
 		local time = castbar:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
 		time:SetPoint("LEFT", castbar, "RIGHT", 10, 0)
 		castbar.Time = time
@@ -406,7 +406,7 @@ UF.CreateCastBar = function(frame, cfg)
 		Not part of the CLASSIC look - Blizzard's ShouldIconBeShown() returns
 		false unless the bar is a unit frame one. Opt in per unit if you want it.
 	--]]
-	if (cfg.icon == true) then
+	if cfg.icon == true then
 		local icon = castbar:CreateTexture(nil, "ARTWORK", nil, 4)
 		icon:SetSize(height, height)
 		icon:SetPoint("RIGHT", castbar, "LEFT", -5, 0)
@@ -450,7 +450,7 @@ UF.CreateCastBar = function(frame, cfg)
 	sparkGlow:AddMaskTexture(mask)
 	sparkShadow:AddMaskTexture(mask)
 
-	if (castbar.fx) then
+	if castbar.fx then
 		local interruptGlow = castbar:CreateTexture(nil, "BACKGROUND", nil, 1)
 		interruptGlow:SetAtlas("cast_interrupt_outerglow")
 		interruptGlow:SetBlendMode("ADD")
@@ -493,7 +493,7 @@ UF.SuppressBlizzardCastBars = function()
 		local frame = _G[name]
 		local spellbar = frame and frame.spellbar
 
-		if (spellbar) then
+		if spellbar then
 			-- Plain field write; ShouldShowCastBar() reads it and nothing we
 			-- leave registered can set it back
 			spellbar.showCastbar = false

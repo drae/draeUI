@@ -16,7 +16,9 @@ local TEXTURE_PATH = "Interface\\AddOns\\draeUI\\media\\textures\\"
 		Anchor a decorative texture to a parent frame
 --]]
 local CreateOverlay = function(parent, width, height, layer, texture, point, x, y)
-	if (not parent) then return end
+	if not parent then
+		return
+	end
 
 	local frame = CreateFrame("Frame", nil, parent)
 	frame:SetSize(width, height)

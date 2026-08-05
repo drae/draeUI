@@ -28,14 +28,16 @@ local NoOp = function() end
 
 -- Position orbs dynamically based on current max power
 local UpdatePowerPositions = function(element)
-	if not element then return end
+	if not element then
+		return
+	end
 
 	local max = element.__max or 0
-	if (element.__lastMaxPositioned ~= max and max > 0) then
+	if element.__lastMaxPositioned ~= max and max > 0 then
 		local _prev
 
 		for i = max, 1, -1 do
-			if (_prev) then
+			if _prev then
 				element[i]:SetPoint("RIGHT", _prev, "LEFT", -5, 0)
 			else
 				element[i]:SetPoint("RIGHT", element)
@@ -56,7 +58,7 @@ end
 local PostUpdate = function(element, cur, max, hasMaxChanged)
 	-- oUF skips the cur/max lookup entirely on ClassPowerDisable, so both
 	-- arrive nil - just drop the orbs back to inactive without animating
-	if (not cur or not max) then
+	if not cur or not max then
 		for i = 1, #element do
 			element[i].isActive = false
 		end
@@ -64,29 +66,29 @@ local PostUpdate = function(element, cur, max, hasMaxChanged)
 		return
 	end
 
-	if (hasMaxChanged) then
+	if hasMaxChanged then
 		UpdatePowerPositions(element)
 	end
 
 	for i = 1, max do
 		local orb = element[i]
 
-		if (orb) then
+		if orb then
 			local shouldBeActive = i <= cur
 
-			if (shouldBeActive ~= orb.isActive) then
+			if shouldBeActive ~= orb.isActive then
 				-- Cancel any running animations
-				if (orb.activateGroup:IsPlaying()) then
+				if orb.activateGroup:IsPlaying() then
 					orb.activateGroup:Stop()
 				end
 
-				if (orb.deactivateGroup:IsPlaying()) then
+				if orb.deactivateGroup:IsPlaying() then
 					orb.deactivateGroup:Stop()
 				end
 
 				orb.isActive = shouldBeActive
 
-				if (shouldBeActive) then
+				if shouldBeActive then
 					orb.activateGroup:Play()
 				else
 					orb.deactivateGroup:Play()
@@ -224,7 +226,7 @@ UF.CreateClassPowerBar = function(self, point, anchor, relpoint, xOffset, yOffse
 		iconFadeIn1:SetDuration(0.4)
 		iconFadeIn1:SetOrder(1)
 
-		-- <Alpha childKey="Chi_Icon" fromAlpha="0" toAlpha="1" startDelay=".4" duration=".43" order="1"/>		
+		-- <Alpha childKey="Chi_Icon" fromAlpha="0" toAlpha="1" startDelay=".4" duration=".43" order="1"/>
 		local iconFadeIn2 = rs[i].activateGroup:CreateAnimation("Alpha")
 		iconFadeIn2:SetChildKey("icon")
 		iconFadeIn2:SetFromAlpha(0)
@@ -310,7 +312,6 @@ UF.CreateClassPowerBar = function(self, point, anchor, relpoint, xOffset, yOffse
 		glowFadeIn3:SetStartDelay(0.5)
 		glowFadeIn3:SetDuration(0.33)
 		glowFadeIn3:SetOrder(1)
-
 
 		-- Deactivate animation
 		rs[i].deactivateGroup = rs[i]:CreateAnimationGroup()
@@ -411,7 +412,6 @@ UF.CreateClassPowerBar = function(self, point, anchor, relpoint, xOffset, yOffse
 			local orb = self:GetParent()
 			orb.windFx:Show()
 		end)
-
 
 		-- Animation state tracking
 		rs[i].isActive = false

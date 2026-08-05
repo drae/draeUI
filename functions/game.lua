@@ -16,28 +16,28 @@ local pcall, pairs, type, tonumber = pcall, pairs, type, tonumber
 	Access secret value checks
 --]]
 DraeUI.CanAccessValue = function(v)
-    -- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
-    local okNil, isNil = pcall(function()
-        return v == nil
-    end)
+	-- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
+	local okNil, isNil = pcall(function()
+		return v == nil
+	end)
 
-    -- If it's actually nil, treat it as NOT accessible.
-    if okNil and isNil then
-        return false
-    end
+	-- If it's actually nil, treat it as NOT accessible.
+	if okNil and isNil then
+		return false
+	end
 
-    if (canaccessvalue) then
-        local ok, res = pcall(canaccessvalue, v)
-        return ok and res or false
-    end
+	if canaccessvalue then
+		local ok, res = pcall(canaccessvalue, v)
+		return ok and res or false
+	end
 
-    if (issecretvalue) then
-        local ok, res = pcall(issecretvalue, v)
-        return ok and (not res) or false
-    end
+	if issecretvalue then
+		local ok, res = pcall(issecretvalue, v)
+		return ok and not res or false
+	end
 
-    -- If we can safely compare to nil, it's not a secret value.
-    return okNil and (not isNil)
+	-- If we can safely compare to nil, it's not a secret value.
+	return okNil and not isNil
 end
 
 --[[
@@ -52,10 +52,10 @@ DraeUI.IsInPartyDungeon = function()
 end
 
 DraeUI.IsDelveActive = function()
-	if (C_PartyInfo and C_PartyInfo.IsDelveInProgress) then
+	if C_PartyInfo and C_PartyInfo.IsDelveInProgress then
 		local ok, inDelve = pcall(C_PartyInfo.IsDelveInProgress)
 
-		if (ok and inDelve) then
+		if ok and inDelve then
 			return true
 		end
 	end
@@ -80,7 +80,7 @@ do
 		otherwise - neither is reliable on its own during zone-in.
 	--]]
 	DraeUI.GetActiveDelveTier = function()
-		if (not DraeUI.IsDelveActive()) then
+		if not DraeUI.IsDelveActive() then
 			return nil
 		end
 
@@ -96,35 +96,35 @@ do
 
 		local setID
 
-		if (C_Scenario and C_Scenario.GetStepInfo) then
+		if C_Scenario and C_Scenario.GetStepInfo then
 			local ok, info = pcall(function()
 				return { C_Scenario.GetStepInfo() }
 			end)
 
-			if (ok and type(info) == "table" and #info >= 12) then
+			if ok and type(info) == "table" and #info >= 12 then
 				local widgetSet = info[12]
 
-				if (type(widgetSet) == "number" and widgetSet ~= 0) then
+				if type(widgetSet) == "number" and widgetSet ~= 0 then
 					setID = widgetSet
 				end
 			end
 		end
 
-		if (not setID and C_UIWidgetManager.GetObjectiveTrackerWidgetSetID) then
+		if not setID and C_UIWidgetManager.GetObjectiveTrackerWidgetSetID then
 			local ok, objectiveSet = pcall(C_UIWidgetManager.GetObjectiveTrackerWidgetSetID)
 
-			if (ok and type(objectiveSet) == "number") then
+			if ok and type(objectiveSet) == "number" then
 				setID = objectiveSet
 			end
 		end
 
-		if (not setID) then
+		if not setID then
 			return nil
 		end
 
 		local ok, widgets = pcall(C_UIWidgetManager.GetAllWidgetsBySetID, setID)
 
-		if (not ok or type(widgets) ~= "table") then
+		if not ok or type(widgets) ~= "table" then
 			return nil
 		end
 
@@ -134,17 +134,17 @@ do
 				or (type(widget) == "number" and widget > 0) and widget
 			local widgetType = (type(widget) == "table") and widget.widgetType
 
-			if (widgetID and (not widgetType or widgetType == WIDGET_TYPE_SCENARIO_HEADER_DELVES)) then
+			if widgetID and (not widgetType or widgetType == WIDGET_TYPE_SCENARIO_HEADER_DELVES) then
 				local infoOk, widgetInfo =
 					pcall(C_UIWidgetManager.GetScenarioHeaderDelvesWidgetVisualizationInfo, widgetID)
 
-				if (infoOk and type(widgetInfo) == "table") then
+				if infoOk and type(widgetInfo) == "table" then
 					local tierText = widgetInfo.tierText
 
-					if (type(tierText) == "string" and tierText ~= "") then
+					if type(tierText) == "string" and tierText ~= "" then
 						local tier = tonumber(tierText:match("%d+"))
 
-						if (tier and tier >= TIER_MIN and tier <= TIER_MAX) then
+						if tier and tier >= TIER_MIN and tier <= TIER_MAX then
 							return tier
 						end
 					end
@@ -166,13 +166,13 @@ do
 	local cachedDelveName
 
 	DraeUI.GetDelveName = function()
-		if (C_Map and C_Map.GetBestMapForUnit and C_Map.GetMapInfo) then
+		if C_Map and C_Map.GetBestMapForUnit and C_Map.GetMapInfo then
 			local mapID = C_Map.GetBestMapForUnit("player")
 
-			if (mapID) then
+			if mapID then
 				local ok, info = pcall(C_Map.GetMapInfo, mapID)
 
-				if (ok and info and info.name and info.name ~= "" and info.name ~= "Delves") then
+				if ok and info and info.name and info.name ~= "" and info.name ~= "Delves" then
 					cachedDelveName = info.name
 
 					return info.name
@@ -183,13 +183,13 @@ do
 		local zone = (GetZoneText and GetZoneText()) or ""
 		local sub = (GetSubZoneText and GetSubZoneText()) or ""
 
-		if (zone ~= "" and zone ~= "Delves") then
+		if zone ~= "" and zone ~= "Delves" then
 			cachedDelveName = zone
 
 			return zone
 		end
 
-		if (sub ~= "" and sub ~= "Delves") then
+		if sub ~= "" and sub ~= "Delves" then
 			cachedDelveName = sub
 
 			return sub
@@ -197,7 +197,7 @@ do
 
 		local ok, name = pcall(C_Scenario.GetInfo)
 
-		if (ok and name and name ~= "" and name ~= "Delves") then
+		if ok and name and name ~= "" and name ~= "Delves" then
 			cachedDelveName = name
 
 			return name
@@ -205,7 +205,7 @@ do
 
 		local instanceOk, instanceName = pcall(GetInstanceInfo)
 
-		if (instanceOk and instanceName and instanceName ~= "" and instanceName ~= "Delves") then
+		if instanceOk and instanceName and instanceName ~= "" and instanceName ~= "Delves" then
 			cachedDelveName = instanceName
 
 			return instanceName
@@ -223,17 +223,17 @@ end
 	Quest classification
 --]]
 DraeUI.IsQuestWorldQuest = function(questID)
-	if (not questID or questID <= 0) then
+	if not questID or questID <= 0 then
 		return false
 	end
 
 	-- Bare global rather than _G[...]: this is a FrameXML helper that's always
 	-- loaded, and the guard is only for the day Blizzard renames it
-	if (QuestUtils_IsQuestWorldQuest and QuestUtils_IsQuestWorldQuest(questID)) then
+	if QuestUtils_IsQuestWorldQuest and QuestUtils_IsQuestWorldQuest(questID) then
 		return true
 	end
 
-	if (C_QuestLog and C_QuestLog.IsWorldQuest and C_QuestLog.IsWorldQuest(questID)) then
+	if C_QuestLog and C_QuestLog.IsWorldQuest and C_QuestLog.IsWorldQuest(questID) then
 		return true
 	end
 
@@ -242,19 +242,19 @@ end
 
 -- Enum.QuestFrequency value for a quest in the log, or nil when it isn't
 DraeUI.GetQuestFrequency = function(questID)
-	if (not questID or not (C_QuestLog and C_QuestLog.GetLogIndexForQuestID)) then
+	if not questID or not (C_QuestLog and C_QuestLog.GetLogIndexForQuestID) then
 		return nil
 	end
 
 	local logIndex = C_QuestLog.GetLogIndexForQuestID(questID)
 
-	if (not logIndex or not C_QuestLog.GetInfo) then
+	if not logIndex or not C_QuestLog.GetInfo then
 		return nil
 	end
 
 	local ok, info = pcall(C_QuestLog.GetInfo, logIndex)
 
-	if (ok and info and info.frequency ~= nil) then
+	if ok and info and info.frequency ~= nil then
 		return info.frequency
 	end
 
@@ -282,65 +282,65 @@ end
 	returned here.
 --]]
 DraeUI.GetQuestBaseCategory = function(questID)
-	if (not questID or questID <= 0) then
+	if not questID or questID <= 0 then
 		return "DEFAULT"
 	end
 
-	if (DraeUI.IsQuestWorldQuest(questID)) then
+	if DraeUI.IsQuestWorldQuest(questID) then
 		return "WORLD"
 	end
 
-	if (C_QuestLog and C_QuestLog.GetQuestTagInfo) then
+	if C_QuestLog and C_QuestLog.GetQuestTagInfo then
 		local ok, tagInfo = pcall(C_QuestLog.GetQuestTagInfo, questID)
 
-		if (ok and tagInfo) then
-			if (tagInfo.tagID == 62) then
+		if ok and tagInfo then
+			if tagInfo.tagID == 62 then
 				return "RAID"
 			end
 
-			if (tagInfo.tagID == 81) then
+			if tagInfo.tagID == 81 then
 				return "DUNGEON"
 			end
 		end
 	end
 
-	if (C_QuestInfoSystem and C_QuestInfoSystem.GetQuestClassification) then
+	if C_QuestInfoSystem and C_QuestInfoSystem.GetQuestClassification then
 		local classification = C_QuestInfoSystem.GetQuestClassification(questID)
 
-		if (classification == Enum.QuestClassification.Calling) then
+		if classification == Enum.QuestClassification.Calling then
 			return "CALLING"
 		end
 
-		if (classification == Enum.QuestClassification.Campaign) then
+		if classification == Enum.QuestClassification.Campaign then
 			return "CAMPAIGN"
 		end
 
-		if (classification == Enum.QuestClassification.Recurring) then
+		if classification == Enum.QuestClassification.Recurring then
 			-- Recurring covers daily and weekly both; frequency disambiguates
 			return DraeUI.IsDailyQuestFrequency(DraeUI.GetQuestFrequency(questID)) and "DAILY" or "WEEKLY"
 		end
 
-		if (classification == Enum.QuestClassification.Meta) then
+		if classification == Enum.QuestClassification.Meta then
 			return "WEEKLY"
 		end
 
-		if (classification == Enum.QuestClassification.Important) then
+		if classification == Enum.QuestClassification.Important then
 			return "IMPORTANT"
 		end
 
-		if (classification == Enum.QuestClassification.Legendary) then
+		if classification == Enum.QuestClassification.Legendary then
 			return "LEGENDARY"
 		end
 	end
 
 	local frequency = DraeUI.GetQuestFrequency(questID)
 
-	if (frequency ~= nil) then
-		if (DraeUI.IsWeeklyQuestFrequency(frequency)) then
+	if frequency ~= nil then
+		if DraeUI.IsWeeklyQuestFrequency(frequency) then
 			return "WEEKLY"
 		end
 
-		if (DraeUI.IsDailyQuestFrequency(frequency)) then
+		if DraeUI.IsDailyQuestFrequency(frequency) then
 			return "DAILY"
 		end
 	end

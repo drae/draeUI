@@ -10,7 +10,6 @@ local LSM = LibStub("LibSharedMedia-3.0")
 local pairs, type, unpack, select, pcall = pairs, type, unpack, select, pcall
 local format, srep, slen = string.format, string.rep, string.len
 
-
 --[[
 	Media functions
 --]]
@@ -25,17 +24,17 @@ local format, srep, slen = string.format, string.rep, string.len
 	commented out of media/sharedmedia.lua.
 --]]
 DraeUI.FetchMedia = function(class, key, fallback)
-	if (type(key) ~= "string" or key == "") then
+	if type(key) ~= "string" or key == "" then
 		return fallback
 	end
 
-	if (key:find("\\") or key:find("/")) then
+	if key:find("\\") or key:find("/") then
 		return key
 	end
 
 	local ok, path = pcall(LSM.Fetch, LSM, class, key, true)
 
-	if (ok and type(path) == "string" and path ~= "") then
+	if ok and type(path) == "string" and path ~= "" then
 		return path
 	end
 
@@ -47,31 +46,31 @@ end
 --]]
 
 do
-    local FALLBACK_FONT = "Fonts\\FRIZQT__.TTF"
+	local FALLBACK_FONT = "Fonts\\FRIZQT__.TTF"
 
-    --[[
+	--[[
 		Adapted from the Presence module's SetSafeFont, which is where the pattern
 		came from.
 	--]]
-    DraeUI.SetFont = function(fontString, font, size, flags)
-        if (not fontString) then
-            return false
-        end
+	DraeUI.SetFont = function(fontString, font, size, flags)
+		if not fontString then
+			return false
+		end
 
-        flags = flags or "OUTLINE"
+		flags = flags or "OUTLINE"
 
-        if (font and fontString:SetFont(font, size, flags)) then
-            return true
-        end
+		if font and fontString:SetFont(font, size, flags) then
+			return true
+		end
 
-        local fallback = DraeUI.media and DraeUI.media.font
+		local fallback = DraeUI.media and DraeUI.media.font
 
-        if (fallback and fallback ~= font and fontString:SetFont(fallback, size, flags)) then
-            return true
-        end
+		if fallback and fallback ~= font and fontString:SetFont(fallback, size, flags) then
+			return true
+		end
 
-        return fontString:SetFont(FALLBACK_FONT, size, flags)
-    end
+		return fontString:SetFont(FALLBACK_FONT, size, flags)
+	end
 end
 
 --[[
@@ -105,13 +104,13 @@ DraeUI.CreateFontObject = function(parent, opts)
 
 	fo:SetJustifyH(opts.justify or point)
 
-	if (opts.relTo) then
+	if opts.relTo then
 		fo:SetPoint(point, opts.relTo, opts.relPoint or point, opts.x or 0, opts.y or 0)
 	else
 		fo:SetPoint(point, opts.x or 0, opts.y or 0)
 	end
 
-	if (opts.width or opts.height) then
+	if opts.width or opts.height then
 		fo:SetSize(opts.width or 0, opts.height or 0)
 	end
 

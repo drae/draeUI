@@ -38,11 +38,11 @@ oUF.Tags.Events["drae:shortclassification"] = "UNIT_CLASSIFICATION_CHANGED"
 oUF.Tags.Methods["drae:unitcolour"] = function(u)
 	local colour
 
-	if (not UnitIsConnected(u)) then
+	if not UnitIsConnected(u) then
 		colour = _COLORS.disconnected
-	elseif (not UnitPlayerControlled(u) and UnitIsTapDenied(u)) then
+	elseif not UnitPlayerControlled(u) and UnitIsTapDenied(u) then
 		colour = _COLORS.tapped
-	elseif (UnitIsPlayer(u) or UnitInPartyIsAI(u)) then
+	elseif UnitIsPlayer(u) or UnitInPartyIsAI(u) then
 		colour = _COLORS.class[select(2, UnitClass(u))]
 	else
 		colour = _COLORS.reaction[UnitReaction(u, "player") or 0]
@@ -56,22 +56,22 @@ oUF.Tags.Methods["drae:afk"] = function(u)
 	-- result means pcall'ing a boolean, which always fails
 	local ok, afk = pcall(UnitIsAFK, u)
 
-	if (ok and DraeUI.CanAccessValue(afk) and afk) then
+	if ok and DraeUI.CanAccessValue(afk) and afk then
 		return "|cffff0000 AFK -|r"
 	end
 
 	local okDnd, dnd = pcall(UnitIsDND, u)
 
-	if (okDnd and DraeUI.CanAccessValue(dnd) and dnd) then
+	if okDnd and DraeUI.CanAccessValue(dnd) and dnd then
 		return "|cffff0000 DND -|r"
 	end
 end
 
 oUF.Tags.Methods["drae:shortclassification"] = function(u)
 	local c = UnitClassification(u)
-	if (c == "rare") then
+	if c == "rare" then
 		return "[R] "
-	elseif (c == "minus") then
+	elseif c == "minus" then
 		return "[-] "
 	end
 end

@@ -55,8 +55,19 @@ local StyleDrae_Focus = function(frame)
 	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]|r")
 
-	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22, DraeUI.config["frames"].auras.maxFocusBuff or 15,
-		DraeUI.config["frames"].auras.auraLrg, 8, "RIGHT", "DOWN")
+	UF.AddBuffs(
+		frame,
+		"TOPLEFT",
+		frame.Health,
+		"BOTTOMLEFT",
+		0,
+		-22,
+		DraeUI.config["frames"].auras.maxFocusBuff or 15,
+		DraeUI.config["frames"].auras.auraLrg,
+		8,
+		"RIGHT",
+		"DOWN"
+	)
 
 	UF.CreateCastBar(frame, DraeUI.config["castbar"].focus)
 

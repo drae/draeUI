@@ -60,17 +60,17 @@ DraeUI.config = {
 				throw any override away - class colours must stay oUF's.
 			--]]
 			power = {
-				MANA        = { 46 / 255, 158 / 255, 255 / 255 },
-				RAGE        = { 199 / 255, 64 / 255, 64 / 255 },
-				FOCUS       = { 255 / 255, 128 / 255, 64 / 255 },
-				ENERGY      = { 255 / 255, 249 / 255, 105 / 255 },
+				MANA = { 46 / 255, 158 / 255, 255 / 255 },
+				RAGE = { 199 / 255, 64 / 255, 64 / 255 },
+				FOCUS = { 255 / 255, 128 / 255, 64 / 255 },
+				ENERGY = { 255 / 255, 249 / 255, 105 / 255 },
 				RUNIC_POWER = { 0 / 255, 204 / 255, 255 / 255 },
 				LUNAR_POWER = { 77 / 255, 133 / 255, 230 / 255 },
-				MAELSTROM   = { 0, 128 / 255, 255 / 255 },
-				INSANITY    = { 102 / 255, 0, 204 / 255 },
-				FURY        = { 201 / 255, 66 / 255, 252 / 255 },
-				PAIN        = { 255 / 255, 156 / 255, 0 },
-				ALTERNATE   = { 51 / 255, 102 / 255, 204 / 255 },
+				MAELSTROM = { 0, 128 / 255, 255 / 255 },
+				INSANITY = { 102 / 255, 0, 204 / 255 },
+				FURY = { 201 / 255, 66 / 255, 252 / 255 },
+				PAIN = { 255 / 255, 156 / 255, 0 },
+				ALTERNATE = { 51 / 255, 102 / 255, 204 / 255 },
 			},
 
 			-- FACTION_BAR_COLORS indices; 1/3/6/7/8 keep Blizzard's
@@ -165,7 +165,7 @@ DraeUI.config = {
 				contested = { 1.0, 0.7, 0.0 },
 				sanctuary = { 0.41, 0.8, 0.94 },
 			},
-		}
+		},
 	},
 
 	--[[
@@ -343,15 +343,15 @@ DraeUI.config = {
 		playerYoffset = -320,
 		targetXoffset = 0,
 		targetYoffset = 480,
-		totXoffset = 30,   -- Relative to right of target
+		totXoffset = 30, -- Relative to right of target
 		totYoffset = 0,
 		focusXoffset = 50, -- Relative to left of target
 		focusYoffset = 0,
 		focusTargetXoffset = 30, -- Relative to right of focus target
 		focusTargetYoffset = 0,
-		petXoffset = -50,  --62, 	-- Relative to left of player
-		petYoffset = 0,    ---100,
-		bossXoffset = 0,   -- Relative to left of target
+		petXoffset = -50, --62, 	-- Relative to left of player
+		petYoffset = 0, ---100,
+		bossXoffset = 0, -- Relative to left of target
 		bossYoffset = 200,
 		-- Aura settings
 		auras = {
@@ -379,18 +379,18 @@ DraeUI.config = {
 				["focus"] = 3,
 				["focustarget"] = 3,
 				["boss"] = 3,
-				["other"] = 3 -- focus, focus target, pet, etc.
+				["other"] = 3, -- focus, focus target, pet, etc.
 			},
 			debuffs_per_row = {
 				["player"] = 4,
 				["target"] = 5,
 				["focus"] = 3,
-				["other"] = 3
+				["other"] = 3,
 			},
 			showBuffsOnPlayer = false, -- Short term buffs on myself or my pet
 			showDebuffsOnPlayer = true, -- Debuffs on myself or pet
 			showBuffsOnTarget = true,
 			showDebuffsOnTarget = false,
-		}
+		},
 	},
 }

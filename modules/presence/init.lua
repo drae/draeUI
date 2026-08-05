@@ -84,7 +84,7 @@ end
 -- Returns the player's class colour when the toggle is on, nil otherwise. A nil
 -- return leaves the toast on its per-type colour.
 Presence.GetModuleClassColor = function()
-	if (not PRESENCE.classColour) then
+	if not PRESENCE.classColour then
 		return nil
 	end
 
@@ -104,13 +104,13 @@ end
 --]]
 do
 	local IsPreyQuest = function(questID)
-		if (not questID or not (C_QuestLog and C_QuestLog.GetTitleForQuestID)) then
+		if not questID or not (C_QuestLog and C_QuestLog.GetTitleForQuestID) then
 			return false
 		end
 
 		local ok, title = pcall(C_QuestLog.GetTitleForQuestID, questID)
 
-		if (not ok or not title) then
+		if not ok or not title then
 			return false
 		end
 
@@ -120,7 +120,7 @@ do
 	Presence.GetQuestBaseCategory = function(questID)
 		local category = DraeUI.GetQuestBaseCategory(questID)
 
-		if ((category == "WORLD" or category == "WEEKLY" or category == "DAILY") and IsPreyQuest(questID)) then
+		if (category == "WORLD" or category == "WEEKLY" or category == "DAILY") and IsPreyQuest(questID) then
 			return "PREY"
 		end
 

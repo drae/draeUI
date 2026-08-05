@@ -44,8 +44,16 @@ DraeUI.OnInitialize = function(self)
 
 	self.media = {
 		font = FetchMedia("font", general.font, "Interface\\AddOns\\draeUI\\media\\fonts\\prozaregular-regular.ttf"),
-		fontSmall = FetchMedia("font", general.fontSmall, "Interface\\AddOns\\draeUI\\media\\fonts\\liberationsans.ttf"),
-		fontTitles = FetchMedia("font", general.fontTitles, "Interface\\AddOns\\draeUI\\media\\fonts\\vollkorn-medium.ttf"),
+		fontSmall = FetchMedia(
+			"font",
+			general.fontSmall,
+			"Interface\\AddOns\\draeUI\\media\\fonts\\liberationsans.ttf"
+		),
+		fontTitles = FetchMedia(
+			"font",
+			general.fontTitles,
+			"Interface\\AddOns\\draeUI\\media\\fonts\\vollkorn-medium.ttf"
+		),
 
 		statusbar = FetchMedia(
 			"statusbar",
@@ -143,7 +151,7 @@ DraeUI.OnEnable = function(self)
 		local ApplyColour = function(tbl, key, rgb)
 			local existing = tbl[key]
 
-			if (existing and existing.SetRGB) then
+			if existing and existing.SetRGB then
 				existing:SetRGB(rgb[1], rgb[2], rgb[3])
 			else
 				tbl[key] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
@@ -169,7 +177,7 @@ DraeUI.OnEnable = function(self)
 		for name, rgb in next, colours.dispel do
 			local index = oUF.Enum.DispelType[name]
 
-			if (index) then
+			if index then
 				oUF.colors.dispel[index] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
 			end
 		end
@@ -199,10 +207,10 @@ DraeUI.OnEnable = function(self)
 		for token, colour in next, oUF.colors.power do
 			-- Staged powers (stagger, soul fragments) are arrays of colours, not
 			-- colours, and carry no .atlas of their own - they skip this
-			if (type(token) == "string" and colour.atlas) then
+			if type(token) == "string" and colour.atlas then
 				DraeUI.powerAtlases[token] = colour.atlas
 
-				if (not atlasWanted[token]) then
+				if not atlasWanted[token] then
 					colour.atlas = nil
 				end
 			end
@@ -351,7 +359,6 @@ do
 		self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 	end
 end
-
 
 -- Console commands
 do

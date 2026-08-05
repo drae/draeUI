@@ -16,7 +16,7 @@ local DraeUI = select(2, ...)
 local Presence = DraeUI:GetModule("Presence", true)
 local PRESENCE = DraeUI.config["presence"]
 
-if (not Presence) then
+if not Presence then
 	return
 end
 
@@ -53,14 +53,14 @@ end
 -- A zone toast is the one thing that can interrupt a discovery line, so flush it
 -- whenever we've just queued one
 local FlushPendingDiscovery = function()
-	if (Presence.pendingDiscovery) then
+	if Presence.pendingDiscovery then
 		Presence.ShowDiscoveryLine()
 		Presence.pendingDiscovery = nil
 	end
 end
 
 local CancelPendingDelveZone = function()
-	if (pendingDelveZoneTimer) then
+	if pendingDelveZoneTimer then
 		pendingDelveZoneTimer:Cancel()
 		pendingDelveZoneTimer = nil
 	end
@@ -71,7 +71,7 @@ end
 local ShowDelveZone = function(zoneText, subtitle)
 	CancelPendingDelveZone()
 
-	if (Presence.CancelZoneAnim) then
+	if Presence.CancelZoneAnim then
 		Presence.CancelZoneAnim()
 	end
 
@@ -100,12 +100,12 @@ end
 local TryFireDelveZoneNotification
 
 TryFireDelveZoneNotification = function()
-	if (
+	if
 		not Presence:IsEnabled()
 		or not Presence.IsTypeEnabled("zoneChange")
 		or ShouldSuppress()
 		or not DraeUI.IsDelveActive()
-	) then
+	then
 		CancelPendingDelveZone()
 
 		return
@@ -114,7 +114,7 @@ TryFireDelveZoneNotification = function()
 	local zoneText = GetZoneText() or UNKNOWN
 	local tier = DraeUI.GetActiveDelveTier()
 
-	if (tier) then
+	if tier then
 		ShowDelveZone(zoneText, L["PRESENCE_DELVE_TIER"]:format(tier))
 
 		return
@@ -122,7 +122,7 @@ TryFireDelveZoneNotification = function()
 
 	pendingDelveZoneRetryCount = pendingDelveZoneRetryCount + 1
 
-	if (pendingDelveZoneRetryCount * DELVE_TIER_WAIT_INTERVAL >= DELVE_TIER_WAIT_MAX) then
+	if pendingDelveZoneRetryCount * DELVE_TIER_WAIT_INTERVAL >= DELVE_TIER_WAIT_MAX then
 		ShowDelveZone(zoneText, L["PRESENCE_DELVE"])
 	else
 		pendingDelveZoneTimer = C_Timer.NewTimer(DELVE_TIER_WAIT_INTERVAL, TryFireDelveZoneNotification)
@@ -137,17 +137,17 @@ local ScheduleZoneNotification = function(isNewArea)
 	local sub = GetSubZoneText() or ""
 
 	-- A subzone that matches the zone name isn't a move worth announcing
-	if (not isNewArea and sub ~= "" and zone == sub) then
+	if not isNewArea and sub ~= "" and zone == sub then
 		return
 	end
 
-	if (isNewArea) then
+	if isNewArea then
 		lastKnownZone = zone
 		CancelPendingDelveZone()
 	end
 
 	local FireZoneNotification = function()
-		if (not Presence:IsEnabled() or ShouldSuppress()) then
+		if not Presence:IsEnabled() or ShouldSuppress() then
 			return
 		end
 
@@ -155,37 +155,36 @@ local ScheduleZoneNotification = function(isNewArea)
 		zone = GetZoneText() or UNKNOWN
 		sub = GetSubZoneText() or ""
 
-		if (Presence.CancelZoneAnim) then
+		if Presence.CancelZoneAnim then
 			Presence.CancelZoneAnim()
 		end
 
 		local opts = {}
 
-		if (isNewArea) then
+		if isNewArea then
 			lastKnownZone = zone
 
-			if (not Presence.IsTypeEnabled("zoneChange")) then
+			if not Presence.IsTypeEnabled("zoneChange") then
 				return
 			end
 
 			local displaySub = sub
 
-			if (DraeUI.IsDelveActive()) then
+			if DraeUI.IsDelveActive() then
 				opts.category = "DELVES"
 
 				local tier = DraeUI.GetActiveDelveTier()
 
-				if (not tier) then
+				if not tier then
 					-- Hand off to the poller; it fires the toast when the tier lands
 					pendingDelveZoneRetryCount = 0
-					pendingDelveZoneTimer =
-						C_Timer.NewTimer(DELVE_TIER_WAIT_INTERVAL, TryFireDelveZoneNotification)
+					pendingDelveZoneTimer = C_Timer.NewTimer(DELVE_TIER_WAIT_INTERVAL, TryFireDelveZoneNotification)
 
 					return
 				end
 
 				displaySub = L["PRESENCE_DELVE_TIER"]:format(tier)
-			elseif (DraeUI.IsInPartyDungeon()) then
+			elseif DraeUI.IsInPartyDungeon() then
 				opts.category = "DUNGEON"
 			end
 
@@ -195,15 +194,15 @@ local ScheduleZoneNotification = function(isNewArea)
 
 			Presence.QueueOrPlay("ZONE_CHANGE", Strip(zone), Strip(displaySub), opts)
 		else
-			if (not Presence.IsTypeEnabled("subzoneChange")) then
+			if not Presence.IsTypeEnabled("subzoneChange") then
 				return
 			end
 
-			if (sub == "" or DraeUI.IsDelveActive()) then
+			if sub == "" or DraeUI.IsDelveActive() then
 				return
 			end
 
-			if (DraeUI.IsInPartyDungeon()) then
+			if DraeUI.IsInPartyDungeon() then
 				opts.category = "DUNGEON"
 			end
 
@@ -225,13 +224,12 @@ local ScheduleZoneNotification = function(isNewArea)
 				)
 
 			local notifTitle = Strip(displayTitle)
-			local notifSub = (PRESENCE.hideZoneForSubzone and sameZone) and ""
-				or Strip(displayParent)
+			local notifSub = (PRESENCE.hideZoneForSubzone and sameZone) and "" or Strip(displayParent)
 
 			-- Crossing back and forth over a subzone border re-fires the event
 			local now = GetTime()
 
-			if (notifTitle == lastSubzoneTitleShown and (now - lastSubzoneTitleTime) < SUBZONE_DEDUP_TIME) then
+			if notifTitle == lastSubzoneTitleShown and (now - lastSubzoneTitleTime) < SUBZONE_DEDUP_TIME then
 				return
 			end
 
@@ -244,7 +242,7 @@ local ScheduleZoneNotification = function(isNewArea)
 		FlushPendingDiscovery()
 	end
 
-	if (Presence.RequestDebounced) then
+	if Presence.RequestDebounced then
 		Presence.RequestDebounced("zone", ZONE_DEBOUNCE, FireZoneNotification)
 	end
 end
@@ -265,7 +263,7 @@ Presence.Zone_OnZoneChanged = function()
 	local zone = GetZoneText() or ""
 	local sub = GetSubZoneText()
 
-	if (sub and sub ~= "" and sub ~= zone) then
+	if sub and sub ~= "" and sub ~= zone then
 		ScheduleZoneNotification(false)
 	end
 end
@@ -273,7 +271,7 @@ end
 -- Delve data arriving is the signal the tier widget may now be readable, so stop
 -- waiting out the retry interval and check immediately
 Presence.Zone_OnDelveDataUpdate = function()
-	if (not pendingDelveZoneTimer or not DraeUI.IsDelveActive()) then
+	if not pendingDelveZoneTimer or not DraeUI.IsDelveActive() then
 		return
 	end
 

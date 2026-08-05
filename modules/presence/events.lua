@@ -16,7 +16,7 @@ local DraeUI = select(2, ...)
 
 local Presence = DraeUI:GetModule("Presence", true)
 
-if (not Presence) then
+if not Presence then
 	return
 end
 
@@ -69,24 +69,24 @@ local ADAPTED_EVENTS = {
 		so they don't exist to be suppressed until their addon turns up.
 --]]
 Presence.OnAddonLoaded = function(_, _, addonName)
-	if (addonName == "Blizzard_WorldQuestComplete") then
+	if addonName == "Blizzard_WorldQuestComplete" then
 		C_Timer.After(0.1, Presence.KillWorldQuestBanner)
 
 		return
 	end
 
-	if (
+	if
 		addonName ~= "Blizzard_LevelUpDisplay"
 		and addonName ~= "Blizzard_RaidBossEmoteFrame"
 		and addonName ~= "Blizzard_EventToastManager"
-	) then
+	then
 		return
 	end
 
 	-- Immediately, so Blizzard can't get a frame on screen in between
 	Presence.ApplyBlizzardSuppression()
 
-	if (addonName == "Blizzard_EventToastManager") then
+	if addonName == "Blizzard_EventToastManager" then
 		Presence.HookEventToastManager()
 	end
 
@@ -109,16 +109,20 @@ Presence.OnPlayerEnteringWorld = function()
 end
 
 Presence.OnPlayerLevelUp = function(_, _, level)
-	if (not Presence.IsTypeEnabled("levelUp")) then
+	if not Presence.IsTypeEnabled("levelUp") then
 		return
 	end
 
 	Presence.ApplyBlizzardSuppression()
-	Presence.QueueOrPlay("LEVEL_UP", L["PRESENCE_LEVEL_UP"], L["PRESENCE_YOU_HAVE_REACHED_LEVEL_X"]:format(level or "??"))
+	Presence.QueueOrPlay(
+		"LEVEL_UP",
+		L["PRESENCE_LEVEL_UP"],
+		L["PRESENCE_YOU_HAVE_REACHED_LEVEL_X"]:format(level or "??")
+	)
 end
 
 Presence.OnRaidBossEmote = function(_, _, msg, unitName)
-	if (not Presence.IsTypeEnabled("bossEmote")) then
+	if not Presence.IsTypeEnabled("bossEmote") then
 		return
 	end
 
@@ -171,7 +175,7 @@ end
 Presence.OnDelveDataUpdate = function()
 	Presence.Zone_OnDelveDataUpdate()
 
-	if (DraeUI.IsDelveActive()) then
+	if DraeUI.IsDelveActive() then
 		Presence.Scenario_OnScenarioCriteriaUpdate()
 	end
 end

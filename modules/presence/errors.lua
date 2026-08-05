@@ -16,7 +16,7 @@ local DraeUI = select(2, ...)
 
 local Presence = DraeUI:GetModule("Presence", true)
 
-if (not Presence) then
+if not Presence then
 	return
 end
 
@@ -45,7 +45,7 @@ local alertsMuted = false
 		UIErrorsFrame
 --]]
 local UIErrors_OnAddMessage = function(self, msg)
-	if (msg and msg:find(L["PRESENCE_DISCOVERED"], 1, true)) then
+	if msg and msg:find(L["PRESENCE_DISCOVERED"], 1, true) then
 		Presence.SetPendingDiscovery()
 
 		--[[
@@ -55,19 +55,19 @@ local UIErrors_OnAddMessage = function(self, msg)
 		--]]
 		local phase = Presence.animPhase and Presence.animPhase()
 
-		if (phase == "entrance" or phase == "hold" or phase == "crossfade") then
+		if phase == "entrance" or phase == "hold" or phase == "crossfade" then
 			Presence.ShowDiscoveryLine()
 			Presence.pendingDiscovery = nil
 		end
 
-		if (self.Clear) then
+		if self.Clear then
 			self:Clear()
 		end
 
 		return
 	end
 
-	if (Presence.IsQuestText and Presence.IsQuestText(msg) and self.Clear) then
+	if Presence.IsQuestText and Presence.IsQuestText(msg) and self.Clear then
 		self:Clear()
 	end
 end
@@ -78,14 +78,14 @@ end
 		OnDisable doesn't need a matching unhook.
 --]]
 Presence.HookUIErrorsFrame = function()
-	if (uiErrorsHooked or not UIErrorsFrame) then
+	if uiErrorsHooked or not UIErrorsFrame then
 		return
 	end
 
 	uiErrorsHooked = true
 
 	hooksecurefunc(UIErrorsFrame, "AddMessage", function(self, msg)
-		if (not Presence:IsEnabled()) then
+		if not Presence:IsEnabled() then
 			return
 		end
 
@@ -99,14 +99,14 @@ end
 		pcall throughout: AlertFrame may not exist yet and its methods can throw.
 --]]
 Presence.MuteAlerts = function()
-	if (alertsMuted) then
+	if alertsMuted then
 		return
 	end
 
 	alertsMuted = true
 
 	pcall(function()
-		if (not (AlertFrame and AlertFrame.UnregisterEvent)) then
+		if not (AlertFrame and AlertFrame.UnregisterEvent) then
 			return
 		end
 
@@ -117,14 +117,14 @@ Presence.MuteAlerts = function()
 end
 
 Presence.RestoreAlerts = function()
-	if (not alertsMuted) then
+	if not alertsMuted then
 		return
 	end
 
 	alertsMuted = false
 
 	pcall(function()
-		if (not (AlertFrame and AlertFrame.RegisterEvent)) then
+		if not (AlertFrame and AlertFrame.RegisterEvent) then
 			return
 		end
 

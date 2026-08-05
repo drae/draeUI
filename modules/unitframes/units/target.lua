@@ -58,10 +58,32 @@ local StyleDrae_Target = function(frame)
 	UF.FlagIcons(frame, true)
 
 	-- Auras
-	UF.AddBuffs(frame, "BOTTOMLEFT", frame.Health, "TOPLEFT", 0, 22, DraeUI.config["frames"].auras.maxTargetBuff or 8,
-		DraeUI.config["frames"].auras.auraHge, 8, "RIGHT", "UP")
-	UF.AddDebuffs(frame, "BOTTOMRIGHT", frame.Health, "TOPRIGHT", 0, 22,
-		DraeUI.config["frames"].auras.maxTargetDebuff or 6, DraeUI.config["frames"].auras.auraLrg, 8, "LEFT", "UP")
+	UF.AddBuffs(
+		frame,
+		"BOTTOMLEFT",
+		frame.Health,
+		"TOPLEFT",
+		0,
+		22,
+		DraeUI.config["frames"].auras.maxTargetBuff or 8,
+		DraeUI.config["frames"].auras.auraHge,
+		8,
+		"RIGHT",
+		"UP"
+	)
+	UF.AddDebuffs(
+		frame,
+		"BOTTOMRIGHT",
+		frame.Health,
+		"TOPRIGHT",
+		0,
+		22,
+		DraeUI.config["frames"].auras.maxTargetDebuff or 6,
+		DraeUI.config["frames"].auras.auraLrg,
+		8,
+		"LEFT",
+		"UP"
+	)
 
 	-- Castbar
 	UF.CreateCastBar(frame, DraeUI.config["castbar"].target)

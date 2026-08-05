@@ -17,7 +17,7 @@ local DraeUI = select(2, ...)
 local Presence = DraeUI:GetModule("Presence", true)
 local PRESENCE = DraeUI.config["presence"]
 
-if (not Presence) then
+if not Presence then
 	return
 end
 
@@ -57,20 +57,20 @@ local eventToastHooked = false
 		Private helpers
 --]]
 local SuppressFrame = function(frame)
-	if (frame) then
+	if frame then
 		frame:Suppress()
 	end
 end
 
 local RestoreFrame = function(frame)
-	if (not frame or not DraeUI.IsSuppressed(frame)) then
+	if not frame or not DraeUI.IsSuppressed(frame) then
 		return
 	end
 
 	frame:Restore()
 
 	-- Zone text is event-driven and would come back mute otherwise
-	if (frame == _G["ZoneTextFrame"] or frame == _G["SubZoneTextFrame"]) then
+	if frame == _G["ZoneTextFrame"] or frame == _G["SubZoneTextFrame"] then
 		pcall(function()
 			for i = 1, #ZONE_TEXT_EVENTS do
 				frame:RegisterEvent(ZONE_TEXT_EVENTS[i])
@@ -83,11 +83,11 @@ end
 local SetFrameSuppressed = function(name, enabled)
 	local frame = _G[name]
 
-	if (not frame) then
+	if not frame then
 		return
 	end
 
-	if (enabled) then
+	if enabled then
 		SuppressFrame(frame)
 	else
 		RestoreFrame(frame)
@@ -103,7 +103,7 @@ end
 		change, and repeatedly during the post-reload sweep.
 --]]
 Presence.ApplyBlizzardSuppression = function()
-	if (not Presence:IsEnabled()) then
+	if not Presence:IsEnabled() then
 		return
 	end
 
@@ -139,17 +139,17 @@ end
 		handler, which can land after ours.
 --]]
 Presence.ReapplyZoneSuppression = function()
-	if (not Presence:IsEnabled()) then
+	if not Presence:IsEnabled() then
 		return
 	end
 
-	if (Presence.IsTypeEnabled("zoneChange")) then
+	if Presence.IsTypeEnabled("zoneChange") then
 		SuppressFrame(_G["ZoneTextFrame"])
 	end
 
 	local subzoneOn = Presence.IsTypeEnabled("subzoneChange")
 
-	if (subzoneOn or PRESENCE.hideZoneForSubzone) then
+	if subzoneOn or PRESENCE.hideZoneForSubzone then
 		SuppressFrame(_G["SubZoneTextFrame"])
 	end
 end
@@ -170,7 +170,7 @@ end
 		Only if we're actually showing world quest toasts ourselves.
 --]]
 Presence.KillWorldQuestBanner = function()
-	if (not Presence.IsTypeEnabled("worldQuest")) then
+	if not Presence.IsTypeEnabled("worldQuest") then
 		return
 	end
 
@@ -187,14 +187,14 @@ end
 Presence.HookEventToastManager = function()
 	local etm = _G["EventToastManagerFrame"]
 
-	if (eventToastHooked or not etm) then
+	if eventToastHooked or not etm then
 		return
 	end
 
 	eventToastHooked = true
 
 	local HideToast = function(self)
-		if (DraeUI.IsSuppressed(self)) then
+		if DraeUI.IsSuppressed(self) then
 			pcall(function()
 				self:Hide()
 				self:SetAlpha(0)
@@ -203,7 +203,7 @@ Presence.HookEventToastManager = function()
 	end
 
 	for _, method in ipairs({ "DisplayToast", "ShowNextToast", "ReleaseToasts", "ShowToast" }) do
-		if (etm[method]) then
+		if etm[method] then
 			pcall(hooksecurefunc, etm, method, HideToast)
 		end
 	end
@@ -213,17 +213,17 @@ local SweepSuppressedFrames = function()
 	for i = 1, #MANAGED_FRAMES do
 		local frame = _G[MANAGED_FRAMES[i]]
 
-		if (frame and DraeUI.IsSuppressed(frame)) then
+		if frame and DraeUI.IsSuppressed(frame) then
 			pcall(function()
-				if (frame:IsShown()) then
+				if frame:IsShown() then
 					frame:Hide()
 				end
 
 				frame:SetAlpha(0)
 
-				if (frame.GetChildren) then
+				if frame.GetChildren then
 					for _, child in ipairs({ frame:GetChildren() }) do
-						if (child and child.IsShown and child:IsShown()) then
+						if child and child.IsShown and child:IsShown() then
 							pcall(child.Hide, child)
 						end
 					end
@@ -235,17 +235,17 @@ end
 
 local DrainAlertFrameQueue = function()
 	pcall(function()
-		if (not AlertFrame) then
+		if not AlertFrame then
 			return
 		end
 
-		if (type(AlertFrame.alertQueue) == "table") then
+		if type(AlertFrame.alertQueue) == "table" then
 			wipe(AlertFrame.alertQueue)
 		end
 
-		if (AlertFrame.GetChildren) then
+		if AlertFrame.GetChildren then
 			for _, child in ipairs({ AlertFrame:GetChildren() }) do
-				if (child and child.IsShown and child:IsShown()) then
+				if child and child.IsShown and child:IsShown() then
 					pcall(child.Hide, child)
 				end
 			end
@@ -265,7 +265,7 @@ Presence.ReapplySuppressionAfterReload = function()
 	SweepSuppressedFrames()
 	DrainAlertFrameQueue()
 
-	if (reloadSweepTicker) then
+	if reloadSweepTicker then
 		reloadSweepTicker:Cancel()
 	end
 
@@ -274,8 +274,8 @@ Presence.ReapplySuppressionAfterReload = function()
 	reloadSweepTicker = C_Timer.NewTicker(SWEEP_INTERVAL, function()
 		ticks = ticks + 1
 
-		if (not Presence:IsEnabled() or ticks >= SWEEP_TICKS) then
-			if (reloadSweepTicker) then
+		if not Presence:IsEnabled() or ticks >= SWEEP_TICKS then
+			if reloadSweepTicker then
 				reloadSweepTicker:Cancel()
 				reloadSweepTicker = nil
 			end
@@ -297,7 +297,7 @@ Presence.DumpBlizzardSuppression = function()
 
 	Print("|cFF00CCFF--- Notification types & Blizzard suppression ---|r")
 
-	if (not Presence:IsEnabled()) then
+	if not Presence:IsEnabled() then
 		Print("Module disabled - Blizzard frames not managed by Presence")
 
 		return
@@ -306,7 +306,7 @@ Presence.DumpBlizzardSuppression = function()
 	local State = function(name)
 		local frame = _G[name]
 
-		if (not frame) then
+		if not frame then
 			return "nil"
 		end
 
@@ -326,11 +326,7 @@ Presence.DumpBlizzardSuppression = function()
 		Presence.IsAnyToastEnabled and Presence.IsAnyToastEnabled() or false,
 		"EventToastManagerFrame"
 	)
-	Line(
-		"World quest:",
-		Presence.IsTypeEnabled("worldQuest"),
-		"WorldQuestCompleteBannerFrame"
-	)
+	Line("World quest:", Presence.IsTypeEnabled("worldQuest"), "WorldQuestCompleteBannerFrame")
 
 	Print("|cFF00CCFF--- End suppression debug ---|r")
 end

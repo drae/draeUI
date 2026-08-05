@@ -18,7 +18,6 @@ local StyleDrae_Boss = function(frame)
 	UF.CreatePowerBar(frame, 150, 0, -2.5)
 	UF.CreateUnitFrameBackground(frame)
 
-
 	local info = DraeUI.CreateFontObject(frame.Health, {
 		size = DraeUI.config["general"].fontsize0,
 		point = "LEFT",
@@ -40,7 +39,19 @@ local StyleDrae_Boss = function(frame)
 	frame:Tag(level, "[level]")
 
 	-- Auras - just debuffs for target of target
-	UF.AddBuffs(frame, "RIGHT", frame.Health, "LEFT", 20, 0, 2, DraeUI.config["frames"].auras.auraSml, 8, "RIGHT", "DOWN")
+	UF.AddBuffs(
+		frame,
+		"RIGHT",
+		frame.Health,
+		"LEFT",
+		20,
+		0,
+		2,
+		DraeUI.config["frames"].auras.auraSml,
+		8,
+		"RIGHT",
+		"DOWN"
+	)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

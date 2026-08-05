@@ -2,27 +2,27 @@
 		Common event handling, specific events are handled
 		in their local functions
 --]]
-local DraeUI                                = select(2, ...)
-local oUF                                   = DraeUI.oUF or oUF
-local UF                                    = DraeUI:GetModule("UnitFrames")
+local DraeUI = select(2, ...)
+local oUF = DraeUI.oUF or oUF
+local UF = DraeUI:GetModule("UnitFrames")
 
 -- Local copies
-local CreateFrame                          = CreateFrame
-local GameTooltip                          = GameTooltip
+local CreateFrame = CreateFrame
+local GameTooltip = GameTooltip
 local UnitFrame_OnEnter, UnitFrame_OnLeave = UnitFrame_OnEnter, UnitFrame_OnLeave
-local UnitIsConnected, UnitIsGhost         = UnitIsConnected, UnitIsGhost
-local UnitIsDead, AbbreviateNumbers        = UnitIsDead, AbbreviateNumbers
-local unpack                               = unpack
+local UnitIsConnected, UnitIsGhost = UnitIsConnected, UnitIsGhost
+local UnitIsDead, AbbreviateNumbers = UnitIsDead, AbbreviateNumbers
+local unpack = unpack
 -- Blizzard's own localised globals. The literal fallbacks are insurance only:
 -- these are read at file scope and land in a health update, so a client that
 -- ever dropped one would error every frame in combat rather than look wrong
-local PLAYER_OFFLINE                       = PLAYER_OFFLINE or "Offline"
-local DEAD                                 = DEAD or "Dead"
+local PLAYER_OFFLINE = PLAYER_OFFLINE or "Offline"
+local DEAD = DEAD or "Dead"
 
-local COLOURS                              = DraeUI.config["general"].colours
+local COLOURS = DraeUI.config["general"].colours
 
 -- Health bar stand-in text (offline/ghost/dead) is greyed out
-local GREY                                 = DraeUI.Hex(COLOURS.healthText)
+local GREY = DraeUI.Hex(COLOURS.healthText)
 
 --[[
 		General frame related functions
@@ -41,7 +41,7 @@ end
 
 UF.CommonPostInit = function(self, size, noRaidIcons)
 	-- raid target icons for all frames
-	if (not noRaidIcons) then
+	if not noRaidIcons then
 		local raidIcon = self.Health:CreateTexture(nil, "OVERLAY")
 		raidIcon:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons")
 		raidIcon:SetPoint("TOP", self.Health, "BOTTOM", 0, size / 2)
@@ -52,7 +52,7 @@ UF.CommonPostInit = function(self, size, noRaidIcons)
 
 	self.Range = {
 		insideAlpha = 1.0,
-		outsideAlpha = 1 / 2
+		outsideAlpha = 1 / 2,
 	}
 end
 
@@ -72,7 +72,9 @@ end
 	colour rather than a zero alpha.
 --]]
 UF.CreateBorder = function(self, sizing)
-	if (not self or type(self) ~= "table" or self.borderTexture) then return end
+	if not self or type(self) ~= "table" or self.borderTexture then
+		return
+	end
 
 	local size = 14 --sizing == "smaller" and 8 or sizing == "small" and 12 or 16
 
@@ -144,7 +146,7 @@ UF.CreateUnitFrameBackground = function(frame)
 	backdrop:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 0, 0)
 	backdrop:SetBackdrop({
 		bgFile = "Interface\\BUTTONS\\WHITE8X8",
-		insets = { left = 0, right = 0, top = 0, bottom = 0 }
+		insets = { left = 0, right = 0, top = 0, bottom = 0 },
 	})
 	backdrop:SetBackdropColor(0, 0, 0, 1)
 
@@ -222,15 +224,17 @@ do
 
 	-- oUF calls this as PostUpdate(unit, cur, max, lossPerc)
 	local PostUpdateHealth = function(health, u, cur)
-		if (not health.value) then return end
+		if not health.value then
+			return
+		end
 
 		-- PLAYER_OFFLINE and DEAD are Blizzard's own localised globals; there's no
 		-- equivalent for ghost, so that one comes from config/locale.enGB.lua
-		if (not UnitIsConnected(u)) then
+		if not UnitIsConnected(u) then
 			health.value:SetText(GREY .. PLAYER_OFFLINE .. "|r")
-		elseif (UnitIsGhost(u)) then
+		elseif UnitIsGhost(u) then
 			health.value:SetText(GREY .. DraeUI.L["GHOST"] .. "|r")
-		elseif (UnitIsDead(u)) then
+		elseif UnitIsDead(u) then
 			health.value:SetText(GREY .. DEAD .. "|r")
 		else
 			health.value:SetText(AbbreviateNumbers(cur, abbrevData))
@@ -258,37 +262,37 @@ do
 		frame.Health = hp
 
 		-- Total healing required to increase units health due to a heal absorb debuff/effect
-		local myBar = CreateFrame('StatusBar', nil, frame)
+		local myBar = CreateFrame("StatusBar", nil, frame)
 		myBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		myBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingPlayer))
-		myBar:SetPoint('TOP')
-		myBar:SetPoint('BOTTOM')
-		myBar:SetPoint('LEFT', hp:GetStatusBarTexture(), 'RIGHT')
+		myBar:SetPoint("TOP")
+		myBar:SetPoint("BOTTOM")
+		myBar:SetPoint("LEFT", hp:GetStatusBarTexture(), "RIGHT")
 		myBar:SetWidth(width)
 
-		local otherBar = CreateFrame('StatusBar', nil, frame)
+		local otherBar = CreateFrame("StatusBar", nil, frame)
 		otherBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		otherBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingOther))
-		otherBar:SetPoint('TOP')
-		otherBar:SetPoint('BOTTOM')
-		otherBar:SetPoint('LEFT', myBar:GetStatusBarTexture(), 'RIGHT')
+		otherBar:SetPoint("TOP")
+		otherBar:SetPoint("BOTTOM")
+		otherBar:SetPoint("LEFT", myBar:GetStatusBarTexture(), "RIGHT")
 		otherBar:SetWidth(width)
 
-		local absorbBar = CreateFrame('StatusBar', nil, frame)
+		local absorbBar = CreateFrame("StatusBar", nil, frame)
 		absorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		absorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.damageAbsorb))
-		absorbBar:SetPoint('TOP')
-		absorbBar:SetPoint('BOTTOM')
-		absorbBar:SetPoint('RIGHT', hp:GetStatusBarTexture())
+		absorbBar:SetPoint("TOP")
+		absorbBar:SetPoint("BOTTOM")
+		absorbBar:SetPoint("RIGHT", hp:GetStatusBarTexture())
 		absorbBar:SetWidth(width)
 		absorbBar:SetReverseFill(true)
 
-		local healAbsorbBar = CreateFrame('StatusBar', nil, frame)
+		local healAbsorbBar = CreateFrame("StatusBar", nil, frame)
 		healAbsorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		healAbsorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healAbsorb))
-		healAbsorbBar:SetPoint('TOP')
-		healAbsorbBar:SetPoint('BOTTOM')
-		healAbsorbBar:SetPoint('LEFT', otherBar:GetStatusBarTexture(), 'RIGHT')
+		healAbsorbBar:SetPoint("TOP")
+		healAbsorbBar:SetPoint("BOTTOM")
+		healAbsorbBar:SetPoint("LEFT", otherBar:GetStatusBarTexture(), "RIGHT")
 		healAbsorbBar:SetWidth(width)
 
 		-- Damage (shields/absorbs) greater than health
@@ -308,7 +312,7 @@ do
 		overHealAbsorb:SetBlendMode("ADD")
 		overHealAbsorb:SetPoint("TOP")
 		overHealAbsorb:SetPoint("BOTTOM")
-		overHealAbsorb:SetPoint('RIGHT', hp, 'LEFT')
+		overHealAbsorb:SetPoint("RIGHT", hp, "LEFT")
 		overHealAbsorb:SetWidth(4)
 
 		frame.HealthPrediction = {
@@ -317,7 +321,7 @@ do
 			damageAbsorb = absorbBar,
 			healAbsorb = healAbsorbBar,
 			overDamageAbsorbIndicator = overAbsorb,
-			overHealAbsorbIndicator = overHealAbsorb
+			overHealAbsorbIndicator = overHealAbsorb,
 		}
 	end
 end
@@ -325,7 +329,9 @@ end
 do
 	-- oUF calls this as PostUpdate(unit, cur, min, max)
 	local PostUpdatePower = function(power, u, cur)
-		if (not power.value) then return end
+		if not power.value then
+			return
+		end
 
 		power.value:SetText(AbbreviateNumbers(cur))
 	end
@@ -383,7 +389,9 @@ end
 -- Aura handling
 do
 	local UpdateTooltip = function(button)
-		if (GameTooltip:IsForbidden()) then return end
+		if GameTooltip:IsForbidden() then
+			return
+		end
 
 		-- Real since 10.0, but the generated annotations don't carry it
 		---@diagnostic disable-next-line: undefined-field
@@ -391,18 +399,24 @@ do
 	end
 
 	local onEnter = function(button)
-		if (GameTooltip:IsForbidden() or not button:IsVisible()) then return end
+		if GameTooltip:IsForbidden() or not button:IsVisible() then
+			return
+		end
 
 		-- Avoid parenting GameTooltip to frames with anchoring restrictions,
 		-- otherwise it'll inherit said restrictions which will cause issues with
 		-- its further positioning, clamping, etc
-		GameTooltip:SetOwner(button,
-			button:GetParent().__restricted and 'ANCHOR_CURSOR' or button:GetParent().tooltipAnchor)
+		GameTooltip:SetOwner(
+			button,
+			button:GetParent().__restricted and "ANCHOR_CURSOR" or button:GetParent().tooltipAnchor
+		)
 		button:UpdateTooltip()
 	end
 
 	local onLeave = function()
-		if (GameTooltip:IsForbidden()) then return end
+		if GameTooltip:IsForbidden() then
+			return
+		end
 
 		GameTooltip:Hide()
 	end
@@ -417,16 +431,15 @@ do
 		button:SetWidth(element.size or 16)
 		button:SetHeight(element.size or 16)
 
-		local border = CreateFrame("Frame", nil, button,
-			BackdropTemplateMixin and "BackdropTemplate")
+		local border = CreateFrame("Frame", nil, button, BackdropTemplateMixin and "BackdropTemplate")
 		border:SetPoint("TOPLEFT", button, -3, 3)
 		border:SetPoint("BOTTOMRIGHT", button, 3, -3)
 		border:SetFrameStrata("BACKGROUND")
-		border:SetBackdrop {
+		border:SetBackdrop({
 			edgeFile = "Interface\\Buttons\\WHITE8x8",
 			tile = false,
-			edgeSize = 3
-		}
+			edgeSize = 3,
+		})
 		border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
 		button.Border = border
 
@@ -487,7 +500,7 @@ do
 	local PostUpdateButton = function(element, button, unit, data)
 		local colour = C_UnitAuras.GetAuraDispelTypeColor(unit, data.auraInstanceID, element.dispelColorCurve)
 
-		if (colour) then
+		if colour then
 			button.Border:SetBackdropBorderColor(colour:GetRGB())
 		else
 			button.Border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
@@ -498,13 +511,27 @@ do
 
 	-- boss1..boss5 etc. share a single config key, so strip any trailing index
 	local ConfigUnit = function(unit)
-		if (not unit) then return "other" end
+		if not unit then
+			return "other"
+		end
 
 		local base = unit:gsub("%d+$", "") -- gsub returns a count too, so bind it
 		return base
 	end
 
-	UF.AddDebuffs = function(self, point, relativeFrame, relativePoint, ofsx, ofsy, num, size, spacing, growthx, growthy)
+	UF.AddDebuffs = function(
+		self,
+		point,
+		relativeFrame,
+		relativePoint,
+		ofsx,
+		ofsy,
+		num,
+		size,
+		spacing,
+		growthx,
+		growthy
+	)
 		local perRow = DraeUI.config["frames"].auras.debuffs_per_row
 		local debuffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
 

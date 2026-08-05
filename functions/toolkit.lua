@@ -15,22 +15,24 @@ do
 	hiddenFrame:Hide()
 
 	local FrameShown = function(frame, shown)
-		if shown then frame:Hide() end
+		if shown then
+			frame:Hide()
+		end
 	end
 
 	Kill = function(object)
-		if (object.UnregisterAllEvents) then
+		if object.UnregisterAllEvents then
 			object:UnregisterAllEvents()
 		end
 
 		-- Unregistering events on its own doesn't stop anything else re-showing
 		-- the frame, so hook Show regardless of which branch we took above
-		if (object.Show) then
-			hooksecurefunc(object, 'Show', object.Hide)
+		if object.Show then
+			hooksecurefunc(object, "Show", object.Hide)
 		end
 
-		if (object.SetShown) then
-			hooksecurefunc(object, 'SetShown', FrameShown)
+		if object.SetShown then
+			hooksecurefunc(object, "SetShown", FrameShown)
 		end
 
 		pcall(object.Hide, object)
@@ -61,19 +63,21 @@ do
 	local suppressed = {}
 
 	local SuppressedShown = function(object)
-		if (suppressed[object]) then
+		if suppressed[object] then
 			object:Hide()
 		end
 	end
 
 	Suppress = function(object)
-		if (not object) then return end
+		if not object then
+			return
+		end
 
 		local hooked = suppressed[object] ~= nil
 
 		-- Only snapshot on the first suppress; a second call would record the
 		-- hidden parent as the original and strand the frame there forever
-		if (not suppressed[object]) then
+		if not suppressed[object] then
 			local point, relativeTo, relativePoint, x, y = object:GetPoint(1)
 
 			suppressed[object] = {
@@ -90,15 +94,17 @@ do
 			object:SetAlpha(0)
 		end)
 
-		if (not hooked and object.Show) then
-			pcall(hooksecurefunc, object, 'Show', SuppressedShown)
+		if not hooked and object.Show then
+			pcall(hooksecurefunc, object, "Show", SuppressedShown)
 		end
 	end
 
 	Restore = function(object)
 		local state = object and suppressed[object]
 
-		if (not state) then return end
+		if not state then
+			return
+		end
 
 		-- Clear the flag first: SetParent/SetAlpha can trigger a Show, and the
 		-- hook is still installed
@@ -109,9 +115,14 @@ do
 			object:SetAlpha(state.alpha or 1)
 			object:ClearAllPoints()
 
-			if (state.point) then
-				object:SetPoint(state.point[1], state.point[2] or UIParent, state.point[3] or "CENTER",
-					state.point[4] or 0, state.point[5] or 0)
+			if state.point then
+				object:SetPoint(
+					state.point[1],
+					state.point[2] or UIParent,
+					state.point[3] or "CENTER",
+					state.point[4] or 0,
+					state.point[5] or 0
+				)
 			else
 				object:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 			end
@@ -127,33 +138,43 @@ do
 end
 
 local StripTextures = function(object, option)
-    if not object.GetNumRegions or (object.Panel and not object.Panel.CanBeRemoved) then return end
+	if not object.GetNumRegions or (object.Panel and not object.Panel.CanBeRemoved) then
+		return
+	end
 
-    -- Grab the region list once; select(i, obj:GetRegions()) inside the loop
-    -- rebuilt and discarded the whole vararg on every iteration
-    local regions = { object:GetRegions() }
+	-- Grab the region list once; select(i, obj:GetRegions()) inside the loop
+	-- rebuilt and discarded the whole vararg on every iteration
+	local regions = { object:GetRegions() }
 
-    for i = 1, #regions do
-        local region = regions[i]
-        if region and region:GetObjectType() == "Texture" then
-            if not option then
-                region:SetTexture(nil)
-            elseif type(option) == "boolean" then
-                region:Kill()
-            elseif type(option) == "string" and (region:GetDrawLayer() == option or region:GetTexture() ~= option) then
-                region:SetTexture(nil)
-            end
-        end
-    end
+	for i = 1, #regions do
+		local region = regions[i]
+		if region and region:GetObjectType() == "Texture" then
+			if not option then
+				region:SetTexture(nil)
+			elseif type(option) == "boolean" then
+				region:Kill()
+			elseif type(option) == "string" and (region:GetDrawLayer() == option or region:GetTexture() ~= option) then
+				region:SetTexture(nil)
+			end
+		end
+	end
 end
 
 local addapi = function(object)
 	local mt = getmetatable(object).__index
 
-	if not object.Kill then mt.Kill = Kill end
-	if not object.Suppress then mt.Suppress = Suppress end
-	if not object.Restore then mt.Restore = Restore end
-	if not object.StripTextures then mt.StripTextures = StripTextures end
+	if not object.Kill then
+		mt.Kill = Kill
+	end
+	if not object.Suppress then
+		mt.Suppress = Suppress
+	end
+	if not object.Restore then
+		mt.Restore = Restore
+	end
+	if not object.StripTextures then
+		mt.StripTextures = StripTextures
+	end
 end
 
 --[[
@@ -162,7 +183,7 @@ end
 local object = CreateFrame("Frame")
 
 local handled = {
-	["Frame"] = true
+	["Frame"] = true,
 }
 
 addapi(object)
@@ -173,8 +194,8 @@ addapi(object:CreateFontString())
 -- and the walk has nothing to do with the template frame created above
 local frame = EnumerateFrames()
 
-while (frame) do
-	if (not handled[frame:GetObjectType()]) then
+while frame do
+	if not handled[frame:GetObjectType()] then
 		addapi(frame)
 		handled[frame:GetObjectType()] = true
 	end

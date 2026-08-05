@@ -25,33 +25,52 @@ UF.OnEnable = function(self)
 	-- keep a usable reference
 	oUF:SetActiveStyle("DraePlayer")
 	UF.player = oUF:Spawn("player", "DraePlayer")
-	UF.player:SetPoint("CENTER", UIParent, DraeUI.config["frames"].playerXoffset,
-		DraeUI.config["frames"].playerYoffset)
+	UF.player:SetPoint("CENTER", UIParent, DraeUI.config["frames"].playerXoffset, DraeUI.config["frames"].playerYoffset)
 
 	-- Target
 	oUF:SetActiveStyle("DraeTarget")
-	oUF:Spawn("target", "DraeTarget"):SetPoint("CENTER", UIParent, DraeUI.config["frames"].targetXoffset,
-		DraeUI.config["frames"].targetYoffset)
+	oUF:Spawn("target", "DraeTarget")
+		:SetPoint("CENTER", UIParent, DraeUI.config["frames"].targetXoffset, DraeUI.config["frames"].targetYoffset)
 
 	-- Target of target
 	oUF:SetActiveStyle("DraeTargetTarget")
-	oUF:Spawn("targettarget", "DraeTargetTarget"):SetPoint("BOTTOMLEFT", "DraeTarget", "BOTTOMRIGHT",
-		DraeUI.config["frames"].totXoffset, DraeUI.config["frames"].totYoffset)
+	oUF:Spawn("targettarget", "DraeTargetTarget"):SetPoint(
+		"BOTTOMLEFT",
+		"DraeTarget",
+		"BOTTOMRIGHT",
+		DraeUI.config["frames"].totXoffset,
+		DraeUI.config["frames"].totYoffset
+	)
 
 	-- Focus
 	oUF:SetActiveStyle("DraeFocus")
-	oUF:Spawn("focus", "DraeFocus"):SetPoint("TOPLEFT", "DraePlayer", "TOPRIGHT",
-		DraeUI.config["frames"].focusXoffset, DraeUI.config["frames"].focusYoffset)
+	oUF:Spawn("focus", "DraeFocus"):SetPoint(
+		"TOPLEFT",
+		"DraePlayer",
+		"TOPRIGHT",
+		DraeUI.config["frames"].focusXoffset,
+		DraeUI.config["frames"].focusYoffset
+	)
 
 	-- Focus target
 	oUF:SetActiveStyle("DraeFocusTarget")
-	oUF:Spawn("focustarget", "DraeFocusTarget"):SetPoint("LEFT", "DraeFocus", "RIGHT",
-		DraeUI.config["frames"].focusTargetXoffset, DraeUI.config["frames"].focusTargetYoffset)
+	oUF:Spawn("focustarget", "DraeFocusTarget"):SetPoint(
+		"LEFT",
+		"DraeFocus",
+		"RIGHT",
+		DraeUI.config["frames"].focusTargetXoffset,
+		DraeUI.config["frames"].focusTargetYoffset
+	)
 
 	-- Pet
 	oUF:SetActiveStyle("DraePet")
-	oUF:Spawn("pet", "DraePet"):SetPoint("BOTTOMRIGHT", "DraePlayer", "TOPRIGHT", DraeUI.config["frames"].petXoffset,
-		DraeUI.config["frames"].petYoffset)
+	oUF:Spawn("pet", "DraePet"):SetPoint(
+		"BOTTOMRIGHT",
+		"DraePlayer",
+		"TOPRIGHT",
+		DraeUI.config["frames"].petXoffset,
+		DraeUI.config["frames"].petYoffset
+	)
 	--[[
 	-- Boss frames
 	if (DraeUI.config["frames"].showBoss) then
