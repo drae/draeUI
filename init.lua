@@ -87,7 +87,11 @@ DraeUI.OnEnable = function(self)
 		matching addon loads - they have to be read from _G here rather than
 		cached at file scope.
 	--]]
-	local killedOrderHall, killedArena = false, false
+	-- killedArena seeds true when hideArena is off: the branch below then has
+	-- nothing to do, and without this the handler never reaches its unregister and
+	-- keeps polling IsAddOnLoaded on every ADDON_LOADED for the session
+	local killedOrderHall = false
+	local killedArena = not DraeUI.config["frames"].hideArena
 
 	self:RegisterEvent("ADDON_LOADED", function()
 		if not killedOrderHall and C_AddOns.IsAddOnLoaded("Blizzard_OrderHallUI") then
@@ -103,7 +107,7 @@ DraeUI.OnEnable = function(self)
 		end
 
 		-- Hide ArenaUI
-		if not killedArena and C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") and DraeUI.config["frames"].hideArena then
+		if not killedArena and C_AddOns.IsAddOnLoaded("Blizzard_ArenaUI") then
 			local prep, enemy = ArenaPrepFrames, ArenaEnemyFrames
 
 			if prep and enemy then

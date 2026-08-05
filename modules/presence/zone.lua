@@ -248,17 +248,39 @@ local ScheduleZoneNotification = function(isNewArea)
 end
 
 --[[
+		Next frame: Blizzard's own zone handler runs after ours and re-shows the
+		frame. ZONE_CHANGED and ZONE_CHANGED_INDOORS routinely arrive together, and
+		one re-apply covers both, so collapse them onto a single timer.
+--]]
+local zoneSuppressionPending = false
+
+local ReapplyZoneSuppressionNow = function()
+	zoneSuppressionPending = false
+
+	Presence.ReapplyZoneSuppression()
+end
+
+local ScheduleZoneSuppression = function()
+	if zoneSuppressionPending then
+		return
+	end
+
+	zoneSuppressionPending = true
+
+	C_Timer.After(0, ReapplyZoneSuppressionNow)
+end
+
+--[[
 		Event handlers
 --]]
 Presence.Zone_OnZoneChangedNewArea = function()
-	-- Next frame: Blizzard's own zone handler runs after ours and re-shows the frame
-	C_Timer.After(0, Presence.ReapplyZoneSuppression)
+	ScheduleZoneSuppression()
 
 	ScheduleZoneNotification(true)
 end
 
 Presence.Zone_OnZoneChanged = function()
-	C_Timer.After(0, Presence.ReapplyZoneSuppression)
+	ScheduleZoneSuppression()
 
 	local zone = GetZoneText() or ""
 	local sub = GetSubZoneText()
