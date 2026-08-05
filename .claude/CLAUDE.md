@@ -61,6 +61,32 @@ Located in `libs/` and loaded via libs.xml:
 
 ## Key Conventions
 
+### Code Style — StyLua is authoritative
+
+**Don't hand-format. Run `mise run fmt` before committing and `mise run fmt:check` to
+verify.** The whole addon was reformatted in `d0fbb1d`, so a clean tree is a fixed point:
+`stylua .` is a no-op, and `fmt:check` passing is a real gate rather than an aspiration.
+Format-on-save is enabled in `.vscode/settings.json` and should stay that way.
+
+The addon previously wrote guards as `if (cond) then`. **That style is gone** — StyLua
+strips the redundant wrapper and has no option to preserve it, so writing new code that way
+just creates churn on the next format. Write `if cond then`. Parens that actually affect
+grouping or readability inside a condition are kept, so `if a and (b or c) then` survives
+untouched.
+
+Settings live in `stylua.toml`, and each one is a measured optimum rather than a taste call
+— the file records the numbers. Don't tune them casually.
+
+Two escape hatches, in order of preference:
+
+- **`-- stylua: ignore start` / `-- stylua: ignore end`** around a block whose hand-alignment
+  is worth keeping (a colour table in columns, say). Verified working; the markers
+  themselves must sit at the indentation StyLua expects for that scope, or it reformats the
+  marker line.
+- **`.styluaignore`** for whole files that must stay byte-comparable with upstream. It
+  currently covers `libs/`, `.tools/`, and the four verbatim `modules/presence/` files.
+  Adding to it is a decision about provenance, not about style.
+
 ### Addon Namespace Pattern
 
 ```lua

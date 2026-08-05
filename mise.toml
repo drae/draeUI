@@ -14,6 +14,10 @@
 # shared (%LOCALAPPDATA%\mise vs ~/.local/share/mise), so run `mise install`
 # once per environment. .tools/ is gitignored plain text - if both environments
 # open the same directory it's shared, otherwise run sync-defs there too.
+# Same goes for the blame config, which lives in .git/config rather than the
+# tree - run this once per environment too:
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
 #
 
 [tools]
@@ -106,5 +110,7 @@ description = "Format addon Lua with StyLua"
 run = "stylua ."
 
 [tasks."fmt:check"]
-description = "Fail if anything is unformatted (for CI)"
+# Passes on a clean tree as of d0fbb1d. If this fails, something is genuinely
+# unformatted - `mise run fmt` is the fix.
+description = "Fail if anything is unformatted"
 run = "stylua --check ."

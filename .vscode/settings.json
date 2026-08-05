@@ -19,13 +19,16 @@
     // found, so this is an optimisation rather than a requirement.
     "stylua.searchBinaryInPATH": true,
 
-    // formatOnSave is deliberately OFF: StyLua strips the `if (cond) then`
-    // parentheses used throughout this addon and there's no setting to keep
-    // them, so formatting is opt-in via `mise run fmt` (or format-selection)
-    // until you decide whether to accept its style wholesale.
+    // formatOnSave is ON: the whole addon was reformatted with StyLua in
+    // d0fbb1d, so the tree is a fixed point and saving a file you haven't
+    // edited produces no diff. If it ever does, the extension's pinned version
+    // above has drifted from the one mise installs - fix that, don't switch
+    // this off. Hand-aligned tables are protected per-block with
+    // `-- stylua: ignore start` / `-- stylua: ignore end`, not by disabling
+    // the formatter.
     "[lua]": {
         "editor.defaultFormatter": "JohnnyMorganz.stylua",
-        "editor.formatOnSave": false,
+        "editor.formatOnSave": true,
         "editor.insertSpaces": false,
         "editor.tabSize": 4
     },

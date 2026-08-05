@@ -1,11 +1,25 @@
-# Matched to the existing codebase so `mise run fmt` doesn't rewrite the world:
-# tabs, and a column limit wide enough for the current oUF-style call chains.
+# These values ARE the house style - the addon was reformatted to match them in
+# d0fbb1d, so `stylua .` on a clean tree is a no-op. They aren't arbitrary:
+# each was measured against the pre-reformat tree for the smallest diff, and
+# every alternative was worse. Don't tune casually.
+#
+#   column_width               100/110/[120]/140/160 -> 593/578/572/600/620
+#   collapse_simple_statement  [Never]/FunctionOnly/ConditionalOnly/Always
+#                              -> 572/649/798/875
+#   quote_style                [AutoPreferDouble]/ForceDouble/AutoPreferSingle
+#                              /ForceSingle -> 572/573/1216/1216
+#
+# 120 columns is also what the oUF-style call chains want; narrower splits them
+# and wider re-joins wraps that read better broken.
 column_width = 120
 line_endings = "Unix"
 indent_type = "Tabs"
 indent_width = 4
 quote_style = "AutoPreferDouble"
-# The codebase parenthesises every call, including single string/table args
+# Governs *call* parens only - `f "str"` becomes `f("str")`. It has no bearing
+# on conditional parens: StyLua always strips the redundant `if (cond) then`
+# wrapper and offers no setting to keep it. That misreading is why this file
+# once claimed the config preserved the old style; it never could.
 call_parentheses = "Always"
 collapse_simple_statement = "Never"
 
