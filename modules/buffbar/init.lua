@@ -20,24 +20,39 @@ local SetTooltip = function(button)
 
 		GameTooltip:SetUnitAura(button.header:GetAttribute("unit"), button:GetID(), button.filter)
 
-		if issecretvalue and not issecretvalue(button.caster) and UnitExists(button.caster) then
-			local color
+		--[[
+				Built once per aura, not once per refresh. Button_OnUpdate re-runs
+				this whole function at 10Hz so the duration in Blizzard's own lines
+				keeps ticking, but the caster line is byte-identical every time -
+				so cache it, and cache `false` for "nothing to show" so the negative
+				case stops recomputing too. UpdateAura clears it when the aura
+				changes.
+		--]]
+		if button.castByLine == nil then
+			button.castByLine = false
 
-			if UnitIsPlayer(button.caster) then
-				color = RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]
-			else
-				local reaction = UnitReaction(button.caster, "player")
-				color = reaction and FACTION_BAR_COLORS[reaction]
-			end
+			if issecretvalue and not issecretvalue(button.caster) and UnitExists(button.caster) then
+				local color
 
-			-- UnitReaction returns nil for units we have no reaction data on,
-			-- and not every class/reaction has an entry
-			if color then
-				GameTooltip:AddLine(" ")
-				GameTooltip:AddLine(
-					DraeUI.L["CAST_BY"]:format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster))
-				)
+				if UnitIsPlayer(button.caster) then
+					color = RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]
+				else
+					local reaction = UnitReaction(button.caster, "player")
+					color = reaction and FACTION_BAR_COLORS[reaction]
+				end
+
+				-- UnitReaction returns nil for units we have no reaction data on,
+				-- and not every class/reaction has an entry
+				if color then
+					button.castByLine =
+						DraeUI.L["CAST_BY"]:format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster))
+				end
 			end
+		end
+
+		if button.castByLine then
+			GameTooltip:AddLine(" ")
+			GameTooltip:AddLine(button.castByLine)
 		end
 
 		GameTooltip:Show()
@@ -68,6 +83,8 @@ local Button_OnShow = function(self)
 end
 
 local Button_OnHide = function(self)
+	self.castByLine = nil
+
 	if self.enchantIndex then
 		self.header.enchants[self.enchantIndex] = nil
 	else
@@ -100,6 +117,7 @@ local UpdateAura = function(button, index)
 	end
 
 	button.caster = aura.sourceUnit
+	button.castByLine = nil -- caster may have changed; SetTooltip rebuilds it on demand
 	button.Count:SetText((aura.charges == nil and "") or (aura.charges and aura.charges <= 1 and "") or aura.charges)
 	button.Icon:SetTexture(aura.icon)
 

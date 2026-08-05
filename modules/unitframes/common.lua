@@ -24,6 +24,13 @@ local COLOURS = DraeUI.config["general"].colours
 -- Health bar stand-in text (offline/ghost/dead) is greyed out
 local GREY = DraeUI.Hex(COLOURS.healthText)
 
+-- Built once. Every operand is a constant and these land in a health update, so
+-- assembling them per call was two concatenations and a fresh string on every
+-- UNIT_HEALTH for a dead or disconnected unit
+local OFFLINE_TEXT = GREY .. PLAYER_OFFLINE .. "|r"
+local GHOST_TEXT = GREY .. DraeUI.L["GHOST"] .. "|r"
+local DEAD_TEXT = GREY .. DEAD .. "|r"
+
 --[[
 		General frame related functions
 --]]
@@ -231,11 +238,11 @@ do
 		-- PLAYER_OFFLINE and DEAD are Blizzard's own localised globals; there's no
 		-- equivalent for ghost, so that one comes from config/locale.enGB.lua
 		if not UnitIsConnected(u) then
-			health.value:SetText(GREY .. PLAYER_OFFLINE .. "|r")
+			health.value:SetText(OFFLINE_TEXT)
 		elseif UnitIsGhost(u) then
-			health.value:SetText(GREY .. DraeUI.L["GHOST"] .. "|r")
+			health.value:SetText(GHOST_TEXT)
 		elseif UnitIsDead(u) then
-			health.value:SetText(GREY .. DEAD .. "|r")
+			health.value:SetText(DEAD_TEXT)
 		else
 			health.value:SetText(AbbreviateNumbers(cur, abbrevData))
 		end

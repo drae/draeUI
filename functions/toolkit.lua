@@ -68,33 +68,76 @@ do
 		end
 	end
 
+	--[[
+			The bodies of the two pcalls below, hoisted out so they can be passed
+			as arguments rather than captured. Written inline they were closures
+			over `object`/`state`, so every call allocated a closure and an upvalue
+			box - and Suppress runs nine times per SCENARIO_CRITERIA_UPDATE, which
+			in a Mythic+ is once per mob death.
+	--]]
+	local HoldDown = function(object, parent)
+		object:UnregisterAllEvents()
+		object:SetParent(parent)
+		object:Hide()
+		object:SetAlpha(0)
+	end
+
+	local PutBack = function(object, state)
+		object:SetParent(state.parent or UIParent)
+		object:SetAlpha(state.alpha or 1)
+		object:ClearAllPoints()
+
+		if state.point then
+			object:SetPoint(
+				state.point[1],
+				state.point[2] or UIParent,
+				state.point[3] or "CENTER",
+				state.point[4] or 0,
+				state.point[5] or 0
+			)
+		else
+			object:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+		end
+
+		object:Hide()
+	end
+
 	Suppress = function(object)
 		if not object then
 			return
 		end
 
-		local hooked = suppressed[object] ~= nil
+		--[[
+				Already held down. Callers re-apply suppression defensively - on
+				every zone change, and on every scenario criteria update - so this
+				is the common path and it usually has nothing to do.
+
+				Redo the work only when something actually got the frame back: shown,
+				faded up, or reparented out from under hiddenFrame. Skipping the
+				re-unregister on a frame that's still hidden, alpha 0 and parented
+				here can't produce a visible difference.
+		--]]
+		if suppressed[object] then
+			if object:IsShown() or object:GetAlpha() ~= 0 or object:GetParent() ~= hiddenFrame then
+				pcall(HoldDown, object, hiddenFrame)
+			end
+
+			return
+		end
 
 		-- Only snapshot on the first suppress; a second call would record the
 		-- hidden parent as the original and strand the frame there forever
-		if not suppressed[object] then
-			local point, relativeTo, relativePoint, x, y = object:GetPoint(1)
+		local point, relativeTo, relativePoint, x, y = object:GetPoint(1)
 
-			suppressed[object] = {
-				parent = object:GetParent(),
-				alpha = object:GetAlpha(),
-				point = point and { point, relativeTo, relativePoint, x, y } or nil,
-			}
-		end
+		suppressed[object] = {
+			parent = object:GetParent(),
+			alpha = object:GetAlpha(),
+			point = point and { point, relativeTo, relativePoint, x, y } or nil,
+		}
 
-		pcall(function()
-			object:UnregisterAllEvents()
-			object:SetParent(hiddenFrame)
-			object:Hide()
-			object:SetAlpha(0)
-		end)
+		pcall(HoldDown, object, hiddenFrame)
 
-		if not hooked and object.Show then
+		if object.Show then
 			pcall(hooksecurefunc, object, "Show", SuppressedShown)
 		end
 	end
@@ -110,25 +153,7 @@ do
 		-- hook is still installed
 		suppressed[object] = nil
 
-		pcall(function()
-			object:SetParent(state.parent or UIParent)
-			object:SetAlpha(state.alpha or 1)
-			object:ClearAllPoints()
-
-			if state.point then
-				object:SetPoint(
-					state.point[1],
-					state.point[2] or UIParent,
-					state.point[3] or "CENTER",
-					state.point[4] or 0,
-					state.point[5] or 0
-				)
-			else
-				object:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-			end
-
-			object:Hide()
-		end)
+		pcall(PutBack, object, state)
 	end
 
 	-- True while this object is being held down by :Suppress()

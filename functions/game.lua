@@ -15,29 +15,42 @@ local pcall, pairs, type, tonumber = pcall, pairs, type, tonumber
 --[[
 	Access secret value checks
 --]]
-DraeUI.CanAccessValue = function(v)
-	-- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
-	local okNil, isNil = pcall(function()
-		return v == nil
-	end)
+do
+	--[[
+			Hoisted. Written inline this was a closure over `v`, so every call
+			allocated a closure and an upvalue box - and the drae:afk tag calls
+			this twice per evaluation, on every target swap.
 
-	-- If it's actually nil, treat it as NOT accessible.
-	if okNil and isNil then
-		return false
+			pcall takes the function and its arguments, so the value goes in as
+			an argument instead (same as tags.lua's pcall(UnitIsAFK, u)). Same
+			comparison, same protected context, nothing allocated.
+	--]]
+	local IsNil = function(value)
+		return value == nil
 	end
 
-	if canaccessvalue then
-		local ok, res = pcall(canaccessvalue, v)
-		return ok and res or false
-	end
+	DraeUI.CanAccessValue = function(v)
+		-- Wrap the nil check in pcall so nil stays "safe" without tripping secret comparisons.
+		local okNil, isNil = pcall(IsNil, v)
 
-	if issecretvalue then
-		local ok, res = pcall(issecretvalue, v)
-		return ok and not res or false
-	end
+		-- If it's actually nil, treat it as NOT accessible.
+		if okNil and isNil then
+			return false
+		end
 
-	-- If we can safely compare to nil, it's not a secret value.
-	return okNil and not isNil
+		if canaccessvalue then
+			local ok, res = pcall(canaccessvalue, v)
+			return ok and res or false
+		end
+
+		if issecretvalue then
+			local ok, res = pcall(issecretvalue, v)
+			return ok and not res or false
+		end
+
+		-- If we can safely compare to nil, it's not a secret value.
+		return okNil and not isNil
+	end
 end
 
 --[[
@@ -97,16 +110,17 @@ do
 		local setID
 
 		if C_Scenario and C_Scenario.GetStepInfo then
-			local ok, info = pcall(function()
-				return { C_Scenario.GetStepInfo() }
-			end)
+			--[[
+					Capture the 12th return (widgetSetID) directly. Packing the whole
+					vararg into a table cost a closure plus a table on every 0.15s
+					poll during delve zone-in, and `#` on a vararg table that can
+					hold nils could report a border below 12 and bail even when the
+					widget set was there.
+			--]]
+			local ok, _, _, _, _, _, _, _, _, _, _, _, widgetSet = pcall(C_Scenario.GetStepInfo)
 
-			if ok and type(info) == "table" and #info >= 12 then
-				local widgetSet = info[12]
-
-				if type(widgetSet) == "number" and widgetSet ~= 0 then
-					setID = widgetSet
-				end
+			if ok and type(widgetSet) == "number" and widgetSet ~= 0 then
+				setID = widgetSet
 			end
 		end
 
