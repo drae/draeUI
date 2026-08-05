@@ -1,19 +1,28 @@
 --[[
 	Cast bars.
 
-	A replica of Blizzard's player cast bar - the "CLASSIC" look - extended to
-	the target and focus frames, which is the one thing Blizzard's own code
-	won't let you do: TargetSpellBarMixin:AdjustPosition() re-anchors their
-	target and focus bars to the parent frame on every aura row change, ToT
-	toggle, classification change and target swap.
+	A replica of Blizzard's player cast bar, extended to the target and focus
+	frames, which is the one thing Blizzard's own code won't let you do:
+	TargetSpellBarMixin:AdjustPosition() re-anchors their target and focus bars
+	to the parent frame on every aura row change, ToT toggle, classification
+	change and target swap.
 
-	Everything below is transcribed from CastingBarFrameBaseTemplate and
-	CastingBarMixin:SetLook("CLASSIC") in
-	Blizzard_UIPanels_Game/Mainline/CastingBarFrame - the same atlases, the same
-	draw layers, the same offsets, the same font objects. Two of the offsets are
-	re-expressed against the bar's bottom edge rather than its top so they land
-	correctly at sizes other than Blizzard's 208x11; those are commented where
-	they happen. Nothing else is invented.
+	Everything below is transcribed from CastingBarFrameBaseTemplate in
+	Blizzard_UIPanels_Game/Mainline/CastingBarFrame.xml - the same atlases, the
+	same draw layers, the same offsets, the same font objects.
+
+	**Read the XML, not CastingBarMixin:SetLook().** SetLook has no callers
+	anywhere in the interface code: `look` is nil on every cast bar in the game,
+	so its "CLASSIC" branch is dead and its numbers are stale. Most of them agree
+	with the XML anyway, which is what makes it such a convincing trap - but two
+	don't, and both are load-bearing. The shield is a 29x33 emblem off the left
+	end over the icon, not the 256x64 banner across the bar CLASSIC claims; and
+	the icon is shown, because ShouldIconBeShown() only bails when `look` is set
+	to something other than "UNITFRAME".
+
+	One offset is re-expressed against the bar's bottom edge rather than its top
+	so it lands correctly at heights other than Blizzard's 11; it's commented
+	where it happens. Nothing else is invented.
 
 	The player bar is deliberately left alone. It's Blizzard's own
 	PlayerCastingBarFrame, it already looks like this, and it stays in Edit Mode
@@ -75,6 +84,15 @@ local ATLAS = {
 -- FadeOutAnim is a 0.2 beat then a 0.3 fade; HoldFadeOutAnim holds a second first
 local FADE_HOLD = 0.5
 local INTERRUPT_HOLD = 1.3
+
+--[[
+	Every size and offset Blizzard authored for this bar assumes their 208x11 one,
+	so the numbers below are theirs verbatim, scaled by height/11. Note that means
+	*height* - none of them track how long the bar is. The shield in particular is
+	a fixed emblem: sizing it off the bar's width made it 553px wide and swallowed
+	the whole bar.
+--]]
+local BLIZZARD_BAR_HEIGHT = 11
 
 --[[
 	Which artwork a cast is wearing.
@@ -363,6 +381,7 @@ UF.CreateCastBar = function(frame, cfg)
 	end
 
 	local width, height = cfg.width, cfg.height
+	local scale = height / BLIZZARD_BAR_HEIGHT
 
 	local castbar = CreateFrame("StatusBar", nil, frame)
 	castbar:SetSize(width, height)
@@ -421,14 +440,16 @@ UF.CreateCastBar = function(frame, cfg)
 	SliceEnds(border, "ui-castingbar-frame", cfg.sliceCap)
 
 	--[[
-		The uninterruptible banner. Blizzard's CLASSIC numbers are 256x64 at
-		TOP, 0, 28 over a 208x11 bar; kept as those ratios so it stays in
-		proportion on a bar that isn't 208 wide.
+		The uninterruptible shield: a small emblem off the left end, over the
+		icon. Not the 256x64 banner across the bar that SetLook("CLASSIC")
+		describes - see the note at the top of the file about why SetLook doesn't
+		count. Sublevel 3 keeps it under the icon and border, which is the order
+		Blizzard declare the three in.
 	--]]
-	local shield = castbar:CreateTexture(nil, "ARTWORK", nil, 5)
+	local shield = castbar:CreateTexture(nil, "ARTWORK", nil, 3)
 	shield:SetAtlas("ui-castingbar-shield")
-	shield:SetSize(width * 1.23, height * 5.8)
-	shield:SetPoint("TOP", castbar, "TOP", 0, height * 2.55)
+	shield:SetSize(29 * scale, 33 * scale)
+	shield:SetPoint("TOPLEFT", castbar, "TOPLEFT", -27 * scale, 4 * scale)
 	castbar.Shield = shield
 
 	local flash = castbar:CreateTexture(nil, "OVERLAY", nil, 1)
@@ -462,35 +483,36 @@ UF.CreateCastBar = function(frame, cfg)
 	end
 
 	--[[
-		Not part of the CLASSIC look - Blizzard's ShouldIconBeShown() returns
-		false unless the bar is a unit frame one. Opt in per unit if you want it.
+		The spell icon. On by default because Blizzard's is: ShouldIconBeShown()
+		only bails when `look` is set to something other than "UNITFRAME", and
+		nothing ever sets it. 16x16 against an 11px bar, so it overhangs top and
+		bottom - that's theirs, not a mistake.
 	--]]
-	if cfg.icon == true then
+	if cfg.icon ~= false then
 		local icon = castbar:CreateTexture(nil, "ARTWORK", nil, 4)
-		icon:SetSize(height, height)
-		icon:SetPoint("RIGHT", castbar, "LEFT", -5, 0)
+		icon:SetSize(16 * scale, 16 * scale)
+		icon:SetPoint("RIGHT", castbar, "LEFT", -5 * scale, 0)
 		icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
 		castbar.Icon = icon
 	end
 
-	-- 8x20 on Blizzard's 11px bar
 	local spark = castbar:CreateTexture(nil, "OVERLAY", nil, 2)
 	spark:SetAtlas("ui-castingbar-pip")
-	spark:SetSize(8, height * 1.8)
+	spark:SetSize(8 * scale, 20 * scale)
 	spark:SetPoint("CENTER", castbar:GetStatusBarTexture(), "RIGHT", 0, 0)
 	castbar.Spark = spark
 
 	local sparkGlow = castbar:CreateTexture(nil, "OVERLAY", nil, 3)
 	sparkGlow:SetAtlas("cast_standard_pipglow")
 	sparkGlow:SetBlendMode("ADD")
-	sparkGlow:SetSize(37, height)
+	sparkGlow:SetSize(37 * scale, 12 * scale)
 	sparkGlow:SetPoint("RIGHT", spark, "LEFT", 2, 0)
 	sparkGlow:Hide()
 	castbar.SparkGlow = sparkGlow
 
 	local sparkShadow = castbar:CreateTexture(nil, "OVERLAY", nil, 3)
 	sparkShadow:SetAtlas("cast_channel_pipshadow")
-	sparkShadow:SetSize(11, 11)
+	sparkShadow:SetSize(11 * scale, 11 * scale)
 	sparkShadow:SetPoint("RIGHT", spark, "LEFT", 1, 0)
 	sparkShadow:Hide()
 	castbar.SparkShadow = sparkShadow
@@ -498,22 +520,31 @@ UF.CreateCastBar = function(frame, cfg)
 	--[[
 		BorderMask. Both bits of spark dressing trail behind the spark, so at the
 		start of a cast they hang off the left end of the bar - this is what
-		clips them to it. Blizzard's is 256x13 centred on a 208x11 bar, kept as
-		those ratios like the shield above.
+		clips them to it.
+
+		The one thing here that genuinely does track bar width: it has to cover
+		the bar to clip against it, so Blizzard's 256 over a 208 bar is the same
+		relationship rather than a coincidence.
 	--]]
 	local mask = castbar:CreateMaskTexture()
 	mask:SetAtlas("cast_standard_barmask", false, nil, nil, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-	mask:SetSize(width * 1.23, height + 2)
+	mask:SetSize(width * 1.23, 13 * scale)
 	mask:SetPoint("CENTER")
 
 	sparkGlow:AddMaskTexture(mask)
 	sparkShadow:AddMaskTexture(mask)
 
+	--[[
+		Knowingly not Blizzard's: they draw this at atlas size, centred, because
+		their bar is only 208 wide. A fixed glow floating in the middle of a 450px
+		one looks like a bug, so it spans the bar. It's a soft additive wash
+		rather than a hard-edged emblem, so stretching it costs nothing.
+	--]]
 	if castbar.fx then
 		local interruptGlow = castbar:CreateTexture(nil, "BACKGROUND", nil, 1)
 		interruptGlow:SetAtlas("cast_interrupt_outerglow")
 		interruptGlow:SetBlendMode("ADD")
-		interruptGlow:SetSize(width + (height * 0.5), height * 2.2)
+		interruptGlow:SetSize(width + (height * 0.5), 24 * scale)
 		interruptGlow:SetPoint("CENTER")
 		interruptGlow:SetAlpha(0)
 		castbar.InterruptGlow = interruptGlow

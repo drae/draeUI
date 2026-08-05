@@ -181,15 +181,16 @@ DraeUI.config = {
 		itself when nil), so the bar hangs off the health bar the way the rest
 		of the frame does.
 
-		The three flags are all off-by-default because that's what Blizzard's
-		bar does:
+		Every flag defaults to whatever Blizzard's own bar does, so leaving them
+		all unset gives you their bar:
 
-			time        the cast timer, off in their Edit Mode too
-			icon        the spell icon, which their player bar never shows
-			tradeSkills crafting casts, which they keep off unit frame bars
+			time        off - the cast timer, off in their Edit Mode too
+			tradeSkills off - crafting casts, which they keep off unit frames
+			icon        on  - the spell icon at the left end
+			fx          on  - interrupt shake, interrupt outer glow, and the
+			                  glow trailing the spark
 
-		fx is the reverse - on unless you say otherwise. It's the interrupt
-		shake, the interrupt outer glow and the glow trailing the spark.
+		icon is turned off below - the one deliberate departure from their bar.
 
 		sliceCap is how many pixels of each end of the framing art are held back
 		from stretching. Blizzard's border is drawn for a 208-wide bar and the
@@ -209,6 +210,7 @@ DraeUI.config = {
 			relPoint = "BOTTOMLEFT",
 			x = 0,
 			y = -25,
+			icon = false,
 		},
 
 		focus = {
@@ -219,6 +221,7 @@ DraeUI.config = {
 			relPoint = "TOPRIGHT",
 			x = 0,
 			y = 25,
+			icon = false,
 		},
 	},
 
