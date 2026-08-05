@@ -177,8 +177,12 @@ local function RequestDebounced(key, delay, callback)
         debounceTimers[key]:Cancel()
         debounceTimers[key] = nil
     end
-    if not C_Timer or not C_Timer.After then return end
-    debounceTimers[key] = C_Timer.After(delay, function()
+    -- draeUI: C_Timer.After returns nothing, so the handle stored here was always
+    -- nil, the Cancel above was unreachable, and every call scheduled another timer
+    -- that fired - this never actually debounced. NewTimer returns a cancellable
+    -- handle. Same bug and same fix as zone.lua's delve tier poll.
+    if not C_Timer or not C_Timer.NewTimer then return end
+    debounceTimers[key] = C_Timer.NewTimer(delay, function()
         debounceTimers[key] = nil
         if callback then callback() end
     end)
