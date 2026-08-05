@@ -9,6 +9,8 @@
 *.xml text eol=lf
 *.toml text eol=lf
 *.json text eol=lf
+# Extensionless, so `text=auto` above would give it CRLF on Windows
+.git-blame-ignore-revs text eol=lf
 
 # Custom for Visual Studio
 *.cs     diff=csharp
