@@ -10,8 +10,8 @@ local DraeUI = select(2, ...)
 DraeUI.config = {
 	general = {
 		-- Textures
-		statusbar = "Gradient1",
-		statusbar_power = "Gradient1",
+		statusbar = "Striped",
+		statusbar_power = "Striped",
 		statusbar_absorb = "DF Stripes Soft",
 
 		--[[
@@ -103,12 +103,6 @@ DraeUI.config = {
 			-- Aura icon border when the aura has no dispel type
 			auraBorder = { 0, 0, 0 },
 
-			castbar = {
-				casting = { 0.3, 0.3, 1.0 },
-				channeling = { 1.0, 0.3, 0.3 },
-				safezone = { 1.0, 0, 0, 0.75 },
-			},
-
 			healthPrediction = {
 				healingPlayer = { 0, 1.0, 0.3, 0.25 },
 				healingOther = { 0, 1.0, 0, 0.25 },
@@ -174,12 +168,58 @@ DraeUI.config = {
 		}
 	},
 
-	-- Used by UF.CreateMirrorCastbars to size the breath/feign death bars
+	--[[
+		Cast bars - replicas of Blizzard's player cast bar, on the target and
+		focus frames. Read by UF.CreateCastBar.
+
+		The player keeps Blizzard's own PlayerCastingBarFrame, so it isn't
+		listed here. Add an entry and a UF.CreateCastBar call in units/player.lua
+		if you ever want draeUI to own that one too.
+
+		All that lives here is size and placement; everything about how the bar
+		looks is Blizzard's. relTo names a key on the unit frame (the frame
+		itself when nil), so the bar hangs off the health bar the way the rest
+		of the frame does.
+
+		The three flags are all off-by-default because that's what Blizzard's
+		bar does:
+
+			time        the cast timer, off in their Edit Mode too
+			icon        the spell icon, which their player bar never shows
+			tradeSkills crafting casts, which they keep off unit frame bars
+
+		fx is the reverse - on unless you say otherwise. It's the interrupt
+		shake, the interrupt outer glow and the glow trailing the spark.
+
+		sliceCap is how many pixels of each end of the framing art are held back
+		from stretching. Blizzard's border is drawn for a 208-wide bar and the
+		atlas carries no slice data, so on a bar much wider than that the rounded
+		end caps stretch with everything else. Left unset it guesses generously,
+		which is the safe direction - too wide only pins some of the straight
+		middle, too narrow stretches the curve. Raise it if the ends still look
+		pulled; lower it if they look cropped.
+	--]]
 	castbar = {
-		player = {
+		-- 11 is the height of Blizzard's player cast bar
+		target = {
 			width = 450,
-			height = 20,
-		}
+			height = 11,
+			point = "TOPLEFT",
+			relTo = "Health",
+			relPoint = "BOTTOMLEFT",
+			x = 0,
+			y = -25,
+		},
+
+		focus = {
+			width = 150,
+			height = 11,
+			point = "BOTTOMRIGHT",
+			relTo = "Health",
+			relPoint = "TOPRIGHT",
+			x = 0,
+			y = 25,
+		},
 	},
 
 	--[[

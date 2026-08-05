@@ -35,7 +35,12 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
 - **unitframes/** (modules/unitframes/): Core unit frame functionality
   - `init.lua`: Spawns all unit frames using oUF:Spawn()
   - `common.lua`: Shared frame element setup
-  - `castbar.lua`: Cast bar implementation
+  - `castbar.lua`: Cast bars. A replica of Blizzard's player cast bar (their "CLASSIC"
+    look) on the target and focus frames, built as oUF Castbar elements from the
+    `ui-castingbar-*` atlases and their font objects. Only size and placement are
+    draeUI's, from `config.castbar`. The player keeps Blizzard's own
+    `PlayerCastingBarFrame`. **Do not try to instance `CastingBarFrameTemplate`
+    instead** - see the taint note below
   - `tags.lua`: Custom oUF tags
   - `units/*.lua`: Individual unit styles (player, target, pet, focus, boss, etc.)
   - `resources/*.lua`: Class-specific resource bars (monk.lua is active, others commented)
@@ -125,8 +130,11 @@ Cache WoW API functions and Lua built-ins at file scope.
 
 **Every colour value lives in `config.general.colours`.** Nothing else defines one.
 `DraeUI:OnEnable` (init.lua) applies the oUF-facing subset onto `oUF.colors`; the rest
-(`castbar`, `healthPrediction`, `auraBorder`, `healthText`, and Presence's
+(`healthPrediction`, `auraBorder`, `healthText`, and Presence's
 `quest`/`bossEmote`/`discovery`/`zone`) is read directly at the point of use.
+
+The cast bars are the one part of the UI with no entry here at all - every colour on
+them is baked into Blizzard's fill atlases.
 
 Rules for the oUF subset:
 
@@ -161,6 +169,25 @@ is recorded in `DraeUI.powerAtlases` first, for auditing the list.
 All of this depends on the applier mutating colours rather than replacing them — oUF
 attaches the atlas to the colour object it built from `PowerBarColor`, and assigning a
 fresh `oUF:CreateColor()` over it silently drops the atlas.
+
+### Secret Values and Taint
+
+Some Blizzard tables are keyed by `secretwrap()` values, and `pairs()` over one from
+addon-tainted execution errors with *"attempted to iterate a table that cannot be
+accessed while tainted"*. Direct indexing still works — only iteration is blocked.
+
+The one this codebase has already hit is `CastingBarTypeInfo` in
+`Blizzard_UIPanels_Game/Mainline/CastingBarFrame.lua`. `CastingBarMixin:ShowSpark`,
+`HideSpark` and `StopFinishAnims` all iterate it, and those sit on the main cast path,
+so **`CastingBarMixin` is unusable from an addon** — including on an instance of
+`CastingBarFrameTemplate` you created yourself, and including `SetUnit()`, which reaches
+`StopAnims`. Rebuild from the atlases instead; that's what `modules/unitframes/castbar.lua`
+does.
+
+The same rule bites teardown: `TargetFrame.spellbar:SetUnit(nil)` errors. Suppress those
+bars with a plain `showCastbar = false` field write plus `UnregisterAllEvents()`/`Hide()`.
+`:Kill()` is also wrong for them — it reparents, and `TargetSpellBarMixin:AdjustPosition`
+reads `auraRows` off its parent.
 
 ### Blizzard Frame Hiding
 

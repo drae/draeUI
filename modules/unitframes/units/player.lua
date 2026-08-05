@@ -71,7 +71,7 @@ local StyleDrae_Player = function(frame)
 	UF.AddDebuffs(frame, "BOTTOMLEFT", frame.Health, "TOPLEFT", 0, 15, DraeUI.config["frames"].auras.maxPlayerDebuff or 6,
 		DraeUI.config["frames"].auras.auraHge, 8, "RIGHT", "UP")
 
-	--	UF.CreateCastBar(frame, 220, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15, true)
+	-- No cast bar: the player keeps Blizzard's own PlayerCastingBarFrame
 
 	frame.ClassPower = UF.CreateClassPowerBar(frame, "CENTER", UIParent, "CENTER", 0, -275)
 

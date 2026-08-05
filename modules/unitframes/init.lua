@@ -18,6 +18,9 @@ UF.OnEnable = function(self)
 	_G["CompactRaidFrameContainer"]:Kill()
 	_G["CompactRaidFrameManager"]:Kill()
 
+	-- Ours replace these; see modules/unitframes/castbar.lua
+	UF.SuppressBlizzardCastBars()
+
 	-- Player - SetPoint returns nothing, so this has to be two statements to
 	-- keep a usable reference
 	oUF:SetActiveStyle("DraePlayer")

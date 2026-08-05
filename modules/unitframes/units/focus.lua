@@ -58,7 +58,7 @@ local StyleDrae_Focus = function(frame)
 	UF.AddBuffs(frame, "TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -22, DraeUI.config["frames"].auras.maxFocusBuff or 15,
 		DraeUI.config["frames"].auras.auraLrg, 8, "RIGHT", "DOWN")
 
-	UF.CreateCastBar(frame, 150, 14, frame.Health, "BOTTOMRIGHT", "TOPRIGHT", 0, 15)
+	UF.CreateCastBar(frame, DraeUI.config["castbar"].focus)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

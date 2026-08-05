@@ -64,7 +64,7 @@ local StyleDrae_Target = function(frame)
 		DraeUI.config["frames"].auras.maxTargetDebuff or 6, DraeUI.config["frames"].auras.auraLrg, 8, "LEFT", "UP")
 
 	-- Castbar
-	UF.CreateCastBar(frame, 450, 20, frame.Health, "TOPLEFT", "BOTTOMLEFT", 0, -20)
+	UF.CreateCastBar(frame, DraeUI.config["castbar"].target)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)
