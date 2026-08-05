@@ -144,6 +144,11 @@ local TYPE_OPTIONS = {
     SCENARIO_COMPLETE    = "scenarioComplete",
 }
 
+-- draeUI: hoisted out of IsAnyToastEnabled. blizzard.lua calls that from
+-- ApplyBlizzardSuppression, which runs on every SCENARIO_CRITERIA_UPDATE - so this
+-- constant table was being rebuilt once per mob death in a Mythic+.
+local ANY_TOAST_TYPES = { "ACHIEVEMENT", "ACHIEVEMENT_PROGRESS", "QUEST_ACCEPT", "WORLD_QUEST_ACCEPT", "QUEST_COMPLETE", "WORLD_QUEST", "QUEST_UPDATE", "SCENARIO_START", "SCENARIO_UPDATE", "SCENARIO_COMPLETE" }
+
 local debounceTimers = {}
 
 -- Is a kind of toast switched on? Takes a config.presence.toasts field name.
@@ -231,8 +236,7 @@ end
 -- True if any event-toast type (achievement, quest, scenario) is enabled. Used by Blizzard suppression.
 -- @return boolean
 local function IsAnyToastEnabled()
-    local toastTypes = { "ACHIEVEMENT", "ACHIEVEMENT_PROGRESS", "QUEST_ACCEPT", "WORLD_QUEST_ACCEPT", "QUEST_COMPLETE", "WORLD_QUEST", "QUEST_UPDATE", "SCENARIO_START", "SCENARIO_UPDATE", "SCENARIO_COMPLETE" }
-    for _, t in ipairs(toastTypes) do
+    for _, t in ipairs(ANY_TOAST_TYPES) do -- draeUI: was a table literal built per call
         if IsTypeEnabledForType(t) then return true end
     end
     return false

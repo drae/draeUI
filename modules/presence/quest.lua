@@ -10,6 +10,9 @@ local PRESENCE = DraeUI.config["presence"]
 if not addon then return end
 
 -- Live-debug trace (no-op unless the presence log tag is enabled — avoids string work when off).
+-- draeUI: it already tostring()s every argument, so callers must not do it themselves.
+-- Wrapping at the call site produced identical output but allocated a string per
+-- argument before the early return above could discard it.
 local function DbgWQ(...)
     if not addon.Log.isEnabled("presence") then return end
     local n = select("#", ...)
@@ -93,6 +96,40 @@ do
             questAcceptedKeywords[#questAcceptedKeywords + 1] = clean
         end
     end
+end
+
+--[[
+    draeUI: the set of "this message is just a completion line, ignore it" strings,
+    built once. Quest_OnUIInfoMessage used to derive these six with a gsub each, on
+    every UI_INFO_MESSAGE - i.e. on every kill while on a kill quest - even though
+    they're constant locale globals. Same load-time precompute as the block above.
+]]
+local questCompletionMessages = {}
+do
+    local completionSources = {
+        "OBJECTIVE_COMPLETE",
+        "QUEST_COMPLETE",
+        "QUEST_WATCH_QUEST_READY",
+        "ERR_QUEST_UNKNOWN_COMPLETE",
+        "QUEST_WATCH_QUEST_COMPLETE",
+        "QUEST_WATCH_POPUP_QUEST_COMPLETE",
+    }
+    for _, gName in ipairs(completionSources) do
+        local gs = _G[gName]
+        if gs and type(gs) == "string" then
+            -- Parenthesised: gsub's second return is the count, and this is a key
+            questCompletionMessages[(gs:gsub("[%.%!%?]$", ""))] = true
+        end
+    end
+end
+
+-- draeUI: hoisted out of Quest_OnUIInfoMessage, where it was rebuilt per message.
+-- Reads questAcceptedKeywords, which is already file scope.
+local function IsAcceptMsg(s)
+    for _, kw in ipairs(questAcceptedKeywords) do
+        if s:find(kw, 1, true) then return true end
+    end
+    return false
 end
 
 -- Returns true if the message looks like quest objective progress.
@@ -220,7 +257,7 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
     local oldState = lastQuestObjectivesState[questID]
 
     if lastQuestObjectivesCache[questID] == objKey then
-        DbgWQ("ExecuteQuestUpdate SKIP cache match questID=", questID, "source=", tostring(source), "objKey=", objKey, "isCacheMatchRetry=", tostring(isCacheMatchRetry))
+        DbgWQ("ExecuteQuestUpdate SKIP cache match questID=", questID, "source=", source, "objKey=", objKey, "isCacheMatchRetry=", isCacheMatchRetry)
         if not isCacheMatchRetry and source == "QUEST_WATCH_UPDATE" and not cacheMatchRetryPending[questID] then
             cacheMatchRetryPending[questID] = true
             DbgWQ("ExecuteQuestUpdate scheduling CACHE_MATCH_RETRY in", CACHE_MATCH_RETRY_TIME, "s questID=", questID)
@@ -241,7 +278,7 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
     lastQuestObjectivesState[questID] = state
 
     if isBlindUpdate and isNew then
-        DbgWQ("ExecuteQuestUpdate SKIP blind new quest (no prior cache) questID=", questID, "source=", tostring(source), "objKey=", objKey)
+        DbgWQ("ExecuteQuestUpdate SKIP blind new quest (no prior cache) questID=", questID, "source=", source, "objKey=", objKey)
         return
     end
 
@@ -253,7 +290,7 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
     pendingQuestObjectiveHint[questID] = nil
     local hadHint = hint and hint ~= ""
     if hadHint then
-        DbgWQ("ExecuteQuestUpdate objective hint questID=", questID, "hint=", tostring(hint))
+        DbgWQ("ExecuteQuestUpdate objective hint questID=", questID, "hint=", hint)
         for i = 1, #state do
             local newO = state[i]
             if newO and newO.text ~= "" then
@@ -336,9 +373,13 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
     local stripped = Strip(msg)
     local normalized = NormalizeQuestUpdateText(stripped)
 
-    DbgWQ("ExecuteQuestUpdate trace questID=", questID, "source=", tostring(source), "isRetry=", tostring(isRetry), "isCacheMatchRetry=", tostring(isCacheMatchRetry), "isBlind=", tostring(isBlindUpdate), "isNew=", tostring(isNew))
+    DbgWQ("ExecuteQuestUpdate trace questID=", questID, "source=", source, "isRetry=", isRetry, "isCacheMatchRetry=", isCacheMatchRetry, "isBlind=", isBlindUpdate, "isNew=", isNew)
     DbgWQ("ExecuteQuestUpdate objKey=", objKey)
-    if oldState and type(oldState) == "table" then
+    -- draeUI: both branches below exist only to feed DbgWQ, but they build their
+    -- strings as call *arguments* - so the seven-part concatenations ran per
+    -- objective on every quest update and DbgWQ then discarded every one of them.
+    local dbgOn = addon.Log.isEnabled("presence")
+    if dbgOn and oldState and type(oldState) == "table" then
         local maxCount = math.max(#oldState, #state)
         for i = 1, maxCount do
             local oldO = oldState[i]
@@ -347,7 +388,7 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
             local ns = newO and ("text=" .. tostring(newO.text) .. " fin=" .. tostring(newO.finished) .. " nf=" .. tostring(newO.numFulfilled) .. " nr=" .. tostring(newO.numRequired)) or "(nil)"
             DbgWQ(" ExecuteQuestUpdate obj", i, "old", os, "new", ns)
         end
-    else
+    elseif dbgOn then
         for i = 1, #state do
             local newO = state[i]
             if newO then
@@ -355,7 +396,7 @@ local function ExecuteQuestUpdate(questID, isBlindUpdate, source, isRetry, isCac
             end
         end
     end
-    DbgWQ("ExecuteQuestUpdate pickReason=", pickReason, "pickIdx=", tostring(pickIdx), "rawMsg=", msg, "stripped=", stripped, "normalized=", normalized)
+    DbgWQ("ExecuteQuestUpdate pickReason=", pickReason, "pickIdx=", pickIdx, "rawMsg=", msg, "stripped=", stripped, "normalized=", normalized)
 
     if not isRetry and not isNew and source == "QUEST_WATCH_UPDATE" and normalized and normalized:match("^0/%d+") then
         DbgWQ("ExecuteQuestUpdate ZERO_PROGRESS_RETRY in", ZERO_PROGRESS_RETRY_TIME, "s questID=", questID)
@@ -396,7 +437,7 @@ local function RequestQuestUpdate(questID, isBlindUpdate, source)
     end
     local effectiveBlind = isBlindUpdate and not pendingNonBlind[questID]
 
-    DbgWQ("RequestQuestUpdate questID=", questID, "source=", tostring(source), "isBlindIn=", tostring(isBlindUpdate), "effectiveBlind=", tostring(effectiveBlind), "debounceSec=", UPDATE_BUFFER_TIME)
+    DbgWQ("RequestQuestUpdate questID=", questID, "source=", source, "isBlindIn=", isBlindUpdate, "effectiveBlind=", effectiveBlind, "debounceSec=", UPDATE_BUFFER_TIME)
 
     local function fireQuestUpdate()
         pendingQuestUpdateIDs[questID] = nil
@@ -584,31 +625,12 @@ end
 local function Quest_OnUIInfoMessage(msgType, msg)
     if not msg then return end
 
-    local function IsAcceptMsg(s)
-        for _, kw in ipairs(questAcceptedKeywords) do
-            if s:find(kw, 1, true) then return true end
-        end
-        return false
-    end
-
     if not IsQuestText(msg) or IsAcceptMsg(msg) then return end
 
+    -- draeUI: was six gsubs over constant locale globals, per message. See
+    -- questCompletionMessages at the top of the file.
     local plain = strtrim(msg):gsub("[%.%!%?]$", "")
-    local objComplete  = _G["OBJECTIVE_COMPLETE"] and _G["OBJECTIVE_COMPLETE"]:gsub("[%.%!%?]$", "")
-    local questComplete = _G["QUEST_COMPLETE"]    and _G["QUEST_COMPLETE"]:gsub("[%.%!%?]$", "")
-    local readyTurnIn  = _G["QUEST_WATCH_QUEST_READY"] and _G["QUEST_WATCH_QUEST_READY"]:gsub("[%.%!%?]$", "")
-    local unknownComplete = _G["ERR_QUEST_UNKNOWN_COMPLETE"] and _G["ERR_QUEST_UNKNOWN_COMPLETE"]:gsub("[%.%!%?]$", "")
-    local watchComplete   = _G["QUEST_WATCH_QUEST_COMPLETE"] and _G["QUEST_WATCH_QUEST_COMPLETE"]:gsub("[%.%!%?]$", "")
-    local popupComplete   = _G["QUEST_WATCH_POPUP_QUEST_COMPLETE"] and _G["QUEST_WATCH_POPUP_QUEST_COMPLETE"]:gsub("[%.%!%?]$", "")
-
-    if (objComplete and plain == objComplete)
-        or (questComplete and plain == questComplete)
-        or (readyTurnIn and plain == readyTurnIn)
-        or (unknownComplete and plain == unknownComplete)
-        or (watchComplete and plain == watchComplete)
-        or (popupComplete and plain == popupComplete) then
-        return
-    end
+    if questCompletionMessages[plain] then return end
 
     local stripped = Strip(msg or "")
     local normalized = NormalizeQuestUpdateText(stripped)
