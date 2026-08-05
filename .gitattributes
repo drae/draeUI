@@ -4,13 +4,35 @@
 # Force LF in the working tree on every platform. Without this, core.autocrlf
 # gives CRLF on Windows and LF under WSL2, so editing the same tree from both
 # produces whole-file diffs - and StyLua writes LF (line_endings = "Unix").
+#
+# `text=auto` above is not enough on its own: it normalises what goes *into*
+# the index but still hands Windows CRLF on checkout, which is how CLAUDE.md
+# and README.md ended up CRLF (README.md mixed) in the working tree. Every
+# text type we track needs an explicit eol=lf.
 *.lua text eol=lf
 *.toc text eol=lf
 *.xml text eol=lf
 *.toml text eol=lf
 *.json text eol=lf
-# Extensionless, so `text=auto` above would give it CRLF on Windows
+*.md text eol=lf
+*.txt text eol=lf
+
+# Extensionless or odd-suffixed, so the globs above can't catch them
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.gitmodules text eol=lf
+.styluaignore text eol=lf
 .git-blame-ignore-revs text eol=lf
+LICENSE.HorizonSuite text eol=lf
+
+# Media is binary. `text=auto` detects that correctly today, but say so
+# explicitly so no future text rule can corrupt a font or a .tga.
+*.tga binary
+*.ttf binary
+
+# Vendored code is deliberately absent here: libs/oUF ships its own
+# .gitattributes ("* text=auto"), and a nested file wins for its subtree, so
+# oUF keeps upstream's handling no matter what we set at the root.
 
 # Custom for Visual Studio
 *.cs     diff=csharp
