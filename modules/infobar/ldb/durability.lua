@@ -14,6 +14,7 @@ local LDB =
 local GetInventoryItemDurability, GetInventorySlotInfo, ToggleCharacter =
 	GetInventoryItemDurability, GetInventorySlotInfo, ToggleCharacter
 local pairs, ipairs, format, mmin = pairs, ipairs, string.format, math.min
+local L = DraeUI.L
 
 --
 local SLOTS = {}
@@ -31,16 +32,16 @@ local slots = {
 	"SecondaryHandSlot",
 }
 local slotName = {
-	["SecondaryHandSlot"] = "Offhand",
-	["MainHandSlot"] = "Main Hand",
-	["FeetSlot"] = "Boots",
-	["LegsSlot"] = "Legs",
-	["HandsSlot"] = "Gloves",
-	["WristSlot"] = "Wrist",
-	["WaistSlot"] = "Belt",
-	["ChestSlot"] = "Chest",
-	["ShoulderSlot"] = "Shoulders",
-	["HeadSlot"] = "Helm",
+	["SecondaryHandSlot"] = L["INFOBAR_SLOT_SECONDARYHAND"],
+	["MainHandSlot"] = L["INFOBAR_SLOT_MAINHAND"],
+	["FeetSlot"] = L["INFOBAR_SLOT_FEET"],
+	["LegsSlot"] = L["INFOBAR_SLOT_LEGS"],
+	["HandsSlot"] = L["INFOBAR_SLOT_HANDS"],
+	["WristSlot"] = L["INFOBAR_SLOT_WRIST"],
+	["WaistSlot"] = L["INFOBAR_SLOT_WAIST"],
+	["ChestSlot"] = L["INFOBAR_SLOT_CHEST"],
+	["ShoulderSlot"] = L["INFOBAR_SLOT_SHOULDER"],
+	["HeadSlot"] = L["INFOBAR_SLOT_HEAD"],
 }
 
 --[[
@@ -74,7 +75,7 @@ LDB.OnEnter = function(self)
 
 	GameTooltip:ClearLines()
 
-	GameTooltip:AddLine("Durability", 1, 1, 1)
+	GameTooltip:AddLine(L["INFOBAR_DURABILITY"], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
 	for _, slot in ipairs(slots) do

@@ -12,6 +12,7 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FPS", { type = "data sou
 --
 local GetFramerate, C_Timer = GetFramerate, C_Timer
 local format, mfloor = string.format, math.floor
+local L = DraeUI.L
 
 --
 local minFPS, maxFPS, avgFPS
@@ -25,12 +26,12 @@ local TooltipFPS = function(self)
 
 	GameTooltip:ClearLines()
 
-	GameTooltip:AddLine("FPS", 1, 1, 1)
+	GameTooltip:AddLine(L["INFOBAR_FPS"], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
-	GameTooltip:AddDoubleLine("Minimum", format("%d", minFPS), 1, 1, 1)
-	GameTooltip:AddDoubleLine("Maximum", format("%d", maxFPS), 1, 1, 1)
-	GameTooltip:AddDoubleLine("Average", format("%d", avgFPS), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_MINIMUM"], format("%d", minFPS), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_MAXIMUM"], format("%d", maxFPS), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_AVERAGE"], format("%d", avgFPS), 1, 1, 1)
 
 	GameTooltip:Show()
 end

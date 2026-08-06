@@ -85,6 +85,7 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Experience", {
 })
 
 local mmin, format = math.min, string.format
+local L = DraeUI.L
 
 --[[
 
@@ -162,20 +163,20 @@ do
 		local cur, max = UnitXP("player"), UnitXPMax("player")
 		local rested = GetXPExhaustion()
 
-		GameTooltip:AddLine("Experience")
+		GameTooltip:AddLine(L["INFOBAR_EXPERIENCE"])
 		GameTooltip:AddLine(" ")
 
-		GameTooltip:AddDoubleLine("XP:", format(" %d / %d (%d%%)", cur, max, cur / max * 100), 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["INFOBAR_XP"], format("%d / %d (%d%%)", cur, max, cur / max * 100), 1, 1, 1)
 		GameTooltip:AddDoubleLine(
-			"Remaining:",
-			format(" %d (%d%% - %d " .. "Bars" .. ")", max - cur, (max - cur) / max * 100, 20 * (max - cur) / max),
+			L["INFOBAR_REMAINING"],
+			format(L["INFOBAR_XP_REMAINING"], max - cur, (max - cur) / max * 100, 20 * (max - cur) / max),
 			1,
 			1,
 			1
 		)
 
 		if rested then
-			GameTooltip:AddDoubleLine("Rested:", format("+%d (%d%%)", rested, rested / max * 100), 1, 1, 1)
+			GameTooltip:AddDoubleLine(L["INFOBAR_RESTED"], format("+%d (%d%%)", rested, rested / max * 100), 1, 1, 1)
 		end
 
 		GameTooltip:Show()

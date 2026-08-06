@@ -48,6 +48,7 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
   
 - **buffbar/** (modules/buffbar/): Aura tracking system
 - **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
+- **infobar/** (modules/infobar/): FPS, latency, durability, gold, XP and Rebirth-charge readouts in the strip between the micro menu and the minimap. Built on LibDataBroker: `ldb/*.lua` each register a data object at load, `init.lua` picks them up on enable and `plugin.lua` turns each one into a frame. Restored from `55e4c81^` and brought up to 12.0 — the module had never run under Midnight, so treat anything untested in it with suspicion. **Third-party LDB feeds do not work**: `initOrder` in `init.lua` is a hardcoded list of the six built-ins and anything else is created but never anchored.
 - **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. Those four are StyLua-ignored so they stay diffable against upstream; every deliberate divergence in them carries a `-- draeUI:` comment.
 
 ### Library Dependencies
@@ -58,6 +59,7 @@ Located in `libs/` and loaded via libs.xml:
 - **Ace3**: AceAddon-3.0, AceEvent-3.0
 - **LibStub**: Library management
 - **LibSharedMedia-3.0**: Media (fonts, textures, sounds) management
+- **LibDataBroker-1.1**: Data-source registry. Used only by `modules/infobar/`; it is in `.styluaignore` along with the rest of `libs/`
 
 ## Key Conventions
 
@@ -98,9 +100,19 @@ All files use this pattern to access the shared namespace table. The addon name 
 
 ### Settings — there is no database
 
-draeUI has **no saved variables/database**. Every setting lives in
-`config/config.defaults.lua`, a hand-edited table read directly at the point of use. There is
-no options UI, no accessor function, and no per-call-site defaults.
+**No setting is ever saved.** Every setting lives in `config/config.defaults.lua`, a
+hand-edited table read directly at the point of use. There is no options UI, no accessor
+function, and no per-call-site defaults.
+
+There is exactly one saved variable, and it holds *data*, not settings: `draeUIDB`, wired up
+in `DraeUI:OnInitialize` and exposed as `DraeUI.dbGlobal`. Its only writer and only reader is
+the infobar's Coin plugin, which keeps `gold[realm][character] = copper` so its tooltip can
+total the realm.
+
+Deliberately **not** AceDB — that library was dropped for doing nothing but writing an empty
+file on logout, and is no longer in `libs/`. A plain table is enough because `gold.lua` guards
+every access with `x = x or {}`, so there are no defaults to merge. If you add a second
+consumer, guard your own keys the same way rather than reintroducing a defaults mechanism.
 
 ### Configuration Access
 
@@ -266,7 +278,10 @@ Controlled by draeUI.toc (TOC = Table of Contents):
 3. Core init (init.lua)
 4. Config defaults
 5. Functions
-6. Modules (BuffBar, Skins, Unitframes)
+6. Modules (BuffBar, Skins, Infobar, Presence, Unitframes)
+
+Within Infobar the order is load-bearing: `init.lua` then `plugin.lua` then the `ldb/`
+sources, since each of those registers a data object at load that the bar reads on enable.
 
 Order matters for dependencies - libs before core, config before modules.
 

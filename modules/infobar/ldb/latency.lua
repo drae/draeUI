@@ -13,6 +13,7 @@ local LDB =
 --
 local GetNetStats, C_Timer = GetNetStats, C_Timer
 local format = string.format
+local L = DraeUI.L
 
 --[[
 
@@ -50,15 +51,15 @@ local TooltipLatency = function(self)
 
 	local bandwidthIn, bandwidthOut, latencyHome, latencyWorld = GetNetStats()
 
-	GameTooltip:AddLine("Latency", 1, 1, 1)
+	GameTooltip:AddLine(L["INFOBAR_LATENCY"], 1, 1, 1)
 
 	GameTooltip:AddLine(" ")
 
-	GameTooltip:AddDoubleLine("Latency - Home", format("%d ms", latencyHome), 1, 1, 1)
-	GameTooltip:AddDoubleLine("Latency - World", format("%d ms", latencyWorld), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_LATENCY_HOME"], format("%d ms", latencyHome), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_LATENCY_WORLD"], format("%d ms", latencyWorld), 1, 1, 1)
 
-	GameTooltip:AddDoubleLine("Bandwidth - In", format("%.2f kB/s", bandwidthIn), 1, 1, 1)
-	GameTooltip:AddDoubleLine("Bandwidth - Out", format("%.2f kB/s", bandwidthOut), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_BANDWIDTH_IN"], format("%.2f kB/s", bandwidthIn), 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_BANDWIDTH_OUT"], format("%.2f kB/s", bandwidthOut), 1, 1, 1)
 end
 
 do

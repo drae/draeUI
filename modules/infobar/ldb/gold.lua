@@ -14,6 +14,7 @@ local mfloor, format, pairs, mabs = math.floor, string.format, pairs, math.abs
 local GetMoney, IsShiftKeyDown, ToggleAllBags, C_CurrencyInfo = GetMoney, IsShiftKeyDown, ToggleAllBags, C_CurrencyInfo
 local COPPER_PER_SILVER, SILVER_PER_GOLD = COPPER_PER_SILVER, SILVER_PER_GOLD
 local CURRENCY = CURRENCY
+local L = DraeUI.L
 
 --
 local profit, loss = 0, 0
@@ -72,21 +73,21 @@ LDB.OnEnter = function(self)
 	DraeUI.dbGlobal.gold[DraeUI.playerRealm] = DraeUI.dbGlobal.gold[DraeUI.playerRealm] or {}
 	local db = DraeUI.dbGlobal.gold
 
-	GameTooltip:AddLine("This session:")
+	GameTooltip:AddLine(L["INFOBAR_THIS_SESSION"])
 
-	GameTooltip:AddDoubleLine("Earned:", IntToGold(profit, true), 1, 1, 1, 1, 1, 1)
-	GameTooltip:AddDoubleLine("Spent:", IntToGold(loss, true), 1, 1, 1, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_EARNED"], IntToGold(profit, true), 1, 1, 1, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_SPENT"], IntToGold(loss, true), 1, 1, 1, 1, 1, 1)
 
 	if profit < loss then
-		GameTooltip:AddDoubleLine("Loss:", IntToGold(mabs(profit - loss), true), 1, 0, 0, 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["INFOBAR_LOSS"], IntToGold(mabs(profit - loss), true), 1, 0, 0, 1, 1, 1)
 	elseif (profit - loss) > 0 then
-		GameTooltip:AddDoubleLine("Profit:", IntToGold(profit - loss, true), 0, 1, 0, 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["INFOBAR_PROFIT"], IntToGold(profit - loss, true), 0, 1, 0, 1, 1, 1)
 	end
 
 	GameTooltip:AddLine(" ")
 
 	local totalGold = 0
-	GameTooltip:AddLine("This Realm: ")
+	GameTooltip:AddLine(L["INFOBAR_THIS_REALM"])
 
 	for k, _ in pairs(db[DraeUI.playerRealm]) do
 		if db[DraeUI.playerRealm][k] then
@@ -97,7 +98,7 @@ LDB.OnEnter = function(self)
 	end
 
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddDoubleLine("Total: ", IntToGold(totalGold, true), 1, 1, 1, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["INFOBAR_TOTAL"], IntToGold(totalGold, true), 1, 1, 1, 1, 1, 1)
 
 	local info
 	for i = 1, 6 do
@@ -115,8 +116,8 @@ LDB.OnEnter = function(self)
 	end
 
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine("Hold Shift + Left Button to reset session")
-	GameTooltip:AddLine("Hold Shift + Right Button to reset realm")
+	GameTooltip:AddLine(L["INFOBAR_RESET_SESSION"])
+	GameTooltip:AddLine(L["INFOBAR_RESET_REALM"])
 
 	GameTooltip:Show()
 end
