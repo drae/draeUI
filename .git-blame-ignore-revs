@@ -7,3 +7,7 @@
 
 # Reformatted the addon with StyLua 2.5.2. No behavioural change.
 d0fbb1de700f3c691bf681d4118ac142a6c9b4d4
+
+# Same, for the infobar - it was restored from before d0fbb1d, so it missed
+# that pass and needed its own.
+c9b7e9368f4ac44b9b414ba01139eabd0f565adb
