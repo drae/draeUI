@@ -1,130 +1,112 @@
 --[[
+	The info bar - a strip of readouts between the micro menu and the minimap.
 
+	Plugins register themselves at file load; this builds a frame for each one
+	when the bar comes up. Adding a readout is a file in plugins/ and a line in
+	the .toc, nothing else - registration is the only source of truth for what
+	exists, so there is no list here to forget to update.
 
+	This used to run on LibDataBroker, in the hope of showing third-party data
+	sources. It never did, and the protocol had grown local inventions
+	(ShowPlugin, statusbar__xp_cur) that no other consumer would understand, so
+	the interop was worthless in both directions. What is left is the part that
+	was always ours: the container, the ordering and the frames.
 --]]
 local DraeUI = select(2, ...)
 
 local InfoBar = DraeUI:NewModule("Infobar", "AceEvent-3.0")
-InfoBar.Plugin = {}
 
 -- Localise a bunch of functions
 local _G = _G
-local pairs = pairs
+local ipairs, tsort, tinsert = ipairs, table.sort, table.insert
 
-local LDB = LibStub("LibDataBroker-1.1")
-
---[[
-
-]]
-local Plugin = InfoBar.Plugin
-
-local infoBarPlugins = {}
+--
+local plugins = {}
 
 --[[
-	Plugin handling for the bar
-]]
-do
-	local initOrder = { "FPS", "Latency", "Durability", "Coin", "Experience", "ResCount" }
+	Placement, left to right.
 
-	InfoBar.RepositionPlugins = function()
-		local startLeft = 10
-		local v_prev = nil
+	`order` is spaced in tens so a new readout slots in between two existing
+	ones by picking 35, without renumbering anything. Ties break on name so the
+	result is stable - table.sort isn't.
+--]]
+local ByOrder = function(a, b)
+	if a.order == b.order then
+		return a.name < b.name
+	end
 
-		for _, name in pairs(initOrder) do
-			--		for name, plugin in pairs(infoBarPlugins) do
-			if infoBarPlugins[name] then
-				local plugin = infoBarPlugins[name]
+	return a.order < b.order
+end
 
-				if plugin:IsVisible() then
-					plugin:ClearAllPoints()
+--[[
+	Filtered on the plugin's own `shown` flag rather than IsVisible(), which is
+	false whenever an ancestor is hidden and would drop everything the moment
+	the bar itself were hidden.
+--]]
+InfoBar.Layout = function(self)
+	local gap, previous = 25, nil
 
-					if v_prev then
-						plugin:SetPoint("BOTTOMLEFT", v_prev, "BOTTOMRIGHT", 25, 0)
-						plugin:SetPoint("TOP", plugin.bar, 0, 0)
-						plugin:SetPoint("BOTTOM", plugin.bar, 0, 0)
-					else
-						plugin:SetPoint("BOTTOMLEFT", plugin.bar, startLeft, 0)
-						plugin:SetPoint("TOP", plugin.bar, 0, 0)
-						plugin:SetPoint("BOTTOM", plugin.bar, 0, 0)
-					end
+	tsort(plugins, ByOrder)
 
-					v_prev = plugin
-				end
+	for _, plugin in ipairs(plugins) do
+		local frame = plugin.frame
+
+		if frame and plugin.shown then
+			frame:ClearAllPoints()
+
+			if previous then
+				frame:SetPoint("BOTTOMLEFT", previous, "BOTTOMRIGHT", gap, 0)
+			else
+				frame:SetPoint("BOTTOMLEFT", self.infoBar, 10, 0)
 			end
-		end
-	end
-end
 
-InfoBar.AddPlugin = function(self, plugin, name, noupdate)
-	if not plugin then
-		return
-	end
+			frame:SetPoint("TOP", self.infoBar, 0, 0)
+			frame:SetPoint("BOTTOM", self.infoBar, 0, 0)
 
-	plugin.bar = self.infoBar
-
-	plugin:SetParent(plugin.bar)
-
-	if not noupdate then
-		self:RepositionPlugins()
-	end
-end
-
-InfoBar.UpdatePlugins = function(self, key, val)
-	for name, plugin in pairs(infoBarPlugins) do
-		if plugin and plugin:IsVisible() then
-			plugin:Update(plugin, key, val)
+			previous = frame
 		end
 	end
 end
 
 --[[
-	DataBroker
-]]
-InfoBar.AttributeChanged = function(self, event, name, key, value)
-	local plugin = infoBarPlugins[name]
+	Called at file load, before the bar exists - so this only records the spec
+	and hands back a handle. The handle is also where values live until there
+	is a widget to put them on, which is why SetText and friends are safe to
+	call immediately. Frames get built in OnEnable.
 
-	plugin:Update(plugin, key, value, name)
-end
+	opts carries `order`, an optional `statusbar` spec, and the OnTooltip /
+	OnClick / OnEnter / OnLeave callbacks.
+--]]
+InfoBar.Register = function(self, name, opts)
+	local plugin = self.Plugin:NewHandle(name, opts)
 
-InfoBar.LibDataBroker_DataObjectCreated = function(self, event, name, obj, noupdate)
-	local type = obj.type
+	tinsert(plugins, plugin)
 
-	if type == "data source" then
-		--		if db.objSettings[name].enabled then
-		self:EnableDataObject(name, obj, noupdate)
-		--		end
-	else
-		--		print("UNKNOWN object type > ", type, name)
-	end
-end
-
-InfoBar.EnableDataObject = function(self, name, obj, noupdate)
-	-- Already enabled
-	if infoBarPlugins[name] then
-		return
+	-- A plugin registered after the bar is up still gets a frame
+	if self.infoBar then
+		self.Plugin:Build(plugin, self.infoBar)
+		self:Layout()
 	end
 
-	local settings = {
-		bar = self.infoBar,
-	}
-
-	local plugin = Plugin:New(name, obj, settings) --, settings, db
-	infoBarPlugins[name] = plugin
-
-	self:AddPlugin(plugin, name, noupdate)
-
-	LDB.RegisterCallback(self, "LibDataBroker_AttributeChanged_" .. name, "AttributeChanged")
+	return plugin
 end
 
 --[[
+	Re-measure every plugin's width. Widths come from GetStringWidth, which
+	needs the fonts to have settled, so this runs once the world is up.
+--]]
+InfoBar.Refresh = function(self)
+	for _, plugin in ipairs(plugins) do
+		plugin:Resize()
+	end
 
-	Startup
+	self:Layout()
+end
 
-]]
 InfoBar.PlayerEnteringWorld = function(self)
 	self:UnregisterEvent("PLAYER_ENTERING_WORLD")
 
-	self:UpdatePlugins("resizePlugin")
+	self:Refresh()
 end
 
 InfoBar.OnInitialize = function(self)
@@ -132,45 +114,42 @@ InfoBar.OnInitialize = function(self)
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "PlayerEnteringWorld")
 end
 
-InfoBar.OnEnable = function(self)
-	--[[
-		MicroButtonAndBagsBar is gone - Edit Mode split the micro menu and the
-		bag bar into separate frames, so indexing it errored here. The old code
-		read its width and MicroMenuContainer's x offset and added them to a
-		UIParent-relative TOPLEFT, which was only ever approximating "just right
-		of the micro menu"; anchor to that frame's right edge and say so.
+--[[
+	One end of the bar, from config.infobar.left or .right.
 
-		Both lookups stay guarded: this bar spans two frames Blizzard has moved
-		once already, and a nil here takes the whole module down at login.
-	--]]
-	local microMenu = _G["MicroMenuContainer"] or _G["MicroMenu"]
-	local minimap = _G["MinimapCluster"]
+	Guarded because relTo names a Blizzard frame, and Blizzard moves those -
+	MicroButtonAndBagsBar, which this used to measure, simply stopped existing
+	when Edit Mode split the micro menu and the bag bar apart. A nil here would
+	take the whole module down at login, so fall back to UIParent and still
+	show something.
+--]]
+local Anchor = function(frame, cfg, fallbackPoint, fallbackX)
+	local relTo = cfg and cfg.relTo and _G[cfg.relTo]
+
+	if relTo then
+		frame:SetPoint(cfg.point or fallbackPoint, relTo, cfg.relPoint, cfg.x or 0, cfg.y or 0)
+	else
+		frame:SetPoint(fallbackPoint, UIParent, fallbackPoint, fallbackX, -22)
+	end
+end
+
+InfoBar.OnEnable = function(self)
+	local cfg = DraeUI.config["infobar"]
 
 	-- Parent bar
 	local infoBar = CreateFrame("Frame", nil, UIParent)
 	infoBar:SetFrameStrata("LOW")
 
-	if microMenu then
-		infoBar:SetPoint("TOPLEFT", microMenu, "TOPRIGHT", 60, 0)
-	else
-		infoBar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 300, -22)
-	end
+	Anchor(infoBar, cfg.left, "TOPLEFT", 300)
+	Anchor(infoBar, cfg.right, "TOPRIGHT", -220)
 
-	if minimap then
-		infoBar:SetPoint("TOPRIGHT", minimap, "TOPLEFT", -20, 0)
-	else
-		infoBar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -220, -22)
-	end
-
-	infoBar:SetHeight(30)
+	infoBar:SetHeight(cfg.height or 30)
 
 	self.infoBar = infoBar
 
-	for name, obj in LDB:DataObjectIterator() do
-		self:LibDataBroker_DataObjectCreated(nil, name, obj, true)
+	for _, plugin in ipairs(plugins) do
+		self.Plugin:Build(plugin, infoBar)
 	end
 
-	self:RepositionPlugins()
-
-	LDB.RegisterCallback(self, "LibDataBroker_DataObjectCreated")
+	self:Layout()
 end

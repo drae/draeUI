@@ -176,10 +176,40 @@ DraeUI.config = {
 		},
 	},
 
+	--[[
+		The info bar. Read by modules/infobar/init.lua on enable.
+
+		It stretches between two anchors rather than carrying a width, so by
+		default it fills whatever gap the micro menu and the minimap leave
+		between them and follows either of those moving.
+
+		relTo is a global frame name, resolved at enable and guarded - these are
+		Blizzard's frames and Blizzard has moved them before now
+		(MicroButtonAndBagsBar simply stopped existing). If one can't be found
+		the bar falls back to a UIParent-relative position so the module still
+		loads with something on screen.
+
+		There is deliberately nothing here about which readouts appear or in
+		what order: a plugin exists because it registered, and places itself by
+		the `order` in its own Register call.
+	--]]
 	infobar = {
-		xp = {
-			enable = true,
-			altxp = "reputation",
+		height = 30,
+
+		left = {
+			relTo = "MicroMenuContainer",
+			point = "TOPLEFT",
+			relPoint = "TOPRIGHT",
+			x = 60,
+			y = 0,
+		},
+
+		right = {
+			relTo = "MinimapCluster",
+			point = "TOPRIGHT",
+			relPoint = "TOPLEFT",
+			x = -20,
+			y = 0,
 		},
 	},
 

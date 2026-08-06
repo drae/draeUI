@@ -1,204 +1,233 @@
 --[[
-	Plugins
-]]
+	Plugins - the individual readouts on the bar.
+
+	A plugin is a handle, created by InfoBar:Register at file load, and a frame,
+	built for it once the bar exists. The handle is also the value store: every
+	setter writes its field first and only then touches a widget, so a plugin
+	can push values from its OnInitialize, long before there is anything to draw
+	them on.
+
+	Handles carry, all optional:
+
+		order       placement, low to high; see InfoBar.Layout
+		statusbar   spec table of bars to build under the text, see CreateStatusBar
+		OnTooltip   fn(tooltip) - add lines; owning, anchoring and showing the
+		            tooltip is done here, so plugins don't repeat it
+		OnEnter     fn(frame) - side effects on hover, beyond the tooltip
+		OnLeave     fn(frame)
+		OnClick     fn(frame, button)
+--]]
 local DraeUI = select(2, ...)
 
 local InfoBar = DraeUI:GetModule("Infobar")
 
---local Smoothing = LibStub("LibCutawaySmooth-1.0", true)
+InfoBar.Plugin = {}
 
---[[
+--
+local pairs, type, unpack = pairs, type, unpack
+local CanAccessValue = DraeUI.CanAccessValue
 
-]]
 local Plugin = InfoBar.Plugin
 
 --[[
+	Whichever plugin currently owns GameTooltip, so RefreshTooltip can tell
+	whether it is still the one on screen.
+--]]
+local tooltipOwner
 
+--[[
+	Has a value actually changed?
+
+	Not just `old ~= new`: the res plugin's text can be a secret value, and
+	comparing one - to another secret, or to the nil a field starts as - throws.
+	When either side can't be read, call it changed and let the setter run. The
+	comparison exists only to skip needless work, so a false positive is free.
+--]]
+local Changed = function(old, new)
+	if CanAccessValue(old) and CanAccessValue(new) then
+		return old ~= new
+	end
+
+	return true
+end
+
+local ShowTooltip = function(plugin, frame)
+	GameTooltip:SetOwner(frame, "ANCHOR_NONE")
+	GameTooltip:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10)
+	GameTooltip:ClearLines()
+
+	plugin.OnTooltip(GameTooltip)
+
+	GameTooltip:Show()
+end
+
+--[[
+	Handle methods
 ]]
-local resizePlugin = function(self)
-	--		local settings = self.settings
-	--		local textOffset = settings.textOffset or db.textOffset
-	local width = 0
-	--[[
-	if self.icon and settings.showIcon then
-		width = width + self.icon:GetWidth() + textOffset
+local methods = {}
+
+--[[
+	Width comes from the text alone. Called on every text change, so the
+	Changed() guard above is what stops it running once a second per plugin for
+	an unchanged string.
+--]]
+methods.Resize = function(self)
+	local frame = self.frame
+
+	if not frame then
+		return
 	end
-]]
-	width = width + self.text:GetStringWidth()
 
-	self:SetWidth(width)
+	frame:SetWidth(frame.text:GetStringWidth())
 end
 
-local TextUpdater = function(frame, value)
-	frame.text:SetText(value)
+methods.SetText = function(self, value)
+	if not Changed(self.text, value) then
+		return
+	end
 
-	resizePlugin(frame)
-end
+	self.text = value
 
-local StatusBarMinMax = function(frame, value, name, bar)
-	local _, _, min, max = string.find(value, "(%d+),(%d+)")
-	frame.statusbar[bar]:SetMinMaxValues(min or 0, max or 1)
-end
-
-local StatusBarCur = function(frame, value, name, bar)
-	frame.statusbar[bar]:SetValue(value or 0)
-
-	if frame.statusbar[bar].spark then
-		if value == 0 then
-			frame.statusbar[bar].spark:Hide()
-		else
-			frame.statusbar[bar].spark:Show()
-		end
+	if self.frame then
+		self.frame.text:SetText(value)
+		self:Resize()
 	end
 end
 
-local StatusBarHide = function(frame, value, name, bar)
-	if value then
-		frame.statusbar[bar]:Hide()
-	else
-		frame.statusbar[bar]:Show()
+methods.SetShown = function(self, shown)
+	shown = shown and true or false
+
+	if self.shown == shown then
+		return
+	end
+
+	self.shown = shown
+
+	if self.frame then
+		self.frame:SetShown(shown)
+		InfoBar:Layout()
 	end
 end
 
-local updaters = {
-	text = TextUpdater,
-	label = TextUpdater,
-	statusbar_min_max = StatusBarMinMax,
-	statusbar_cur = StatusBarCur,
-	statusbar_hide = StatusBarHide,
-	resizePlugin = resizePlugin,
+methods.SetBar = function(self, name, cur, min, max)
+	local state = self.bars[name]
 
-	ShowPlugin = function(frame, value, name)
-		if value then
-			frame:Show()
-		else
-			frame:Hide()
-		end
-
-		InfoBar:RepositionPlugins()
-	end,
-
-	OnClick = function(frame, value, name)
-		frame:SetScript("OnClick", value)
-	end,
-}
-
-local Update = function(self, f, key, value, name)
-	local bar
-
-	-- Match for statusbar__x_y
-	local _, _, _bar, _key = string.find(key, "statusbar__(%a+)_([_%a]+)")
-	if _key and _bar then
-		key = "statusbar_" .. _key
-		bar = _bar
+	if not state then
+		return
 	end
 
-	local update = updaters[key]
+	state.cur, state.min, state.max = cur, min or state.min, max or state.max
 
-	if update then
-		update(f, value, name, bar)
+	local bar = self.frame and self.frame.statusbar[name]
+
+	if not bar then
+		return
+	end
+
+	bar:SetMinMaxValues(state.min, state.max)
+	bar:SetValue(cur)
+
+	if bar.spark then
+		bar.spark:SetShown(cur ~= 0)
 	end
 end
 
 --[[
-	OnScript and tooltip handling
-]]
-local GetAnchors = function(frame)
-	local _, y = frame:GetCenter()
+	Tint a bar. Held on the handle like everything else so a plugin can set it
+	before Build; nil clears back to the texture's own colouring.
+--]]
+methods.SetBarColor = function(self, name, r, g, b, a)
+	local state = self.bars[name]
 
-	if y < _G.GetScreenHeight() / 2 then
-		return "BOTTOM", "TOP"
-	else
-		return "TOP", "BOTTOM"
-	end
-end
-
-local PrepareTooltip = function(frame, anchorFrame)
-	if frame and anchorFrame then
-		frame:ClearAllPoints()
-		if frame.SetOwner then
-			frame:SetOwner(anchorFrame, "ANCHOR_NONE")
-		end
-		local a1, a2 = GetAnchors(anchorFrame)
-		frame:SetPoint(a1, anchorFrame, a2)
-	end
-end
-
-local OnEnter = function(self)
-	if InfoBar.dragging then
+	if not state then
 		return
 	end
 
-	local obj = self.obj
-	local bar = self.bar
+	state.color = r and { r, g, b, a or 1 } or nil
 
-	if bar.autohide then
-		bar:ShowAll()
-	end
+	local bar = self.frame and self.frame.statusbar[name]
 
-	if obj.tooltip then
-		PrepareTooltip(obj.tooltip, self)
-
-		if obj.tooltiptext then
-			obj.tooltip:SetText(obj.tooltiptext)
-		end
-
-		obj.tooltip:Show()
-	elseif obj.OnTooltipShow then
-		PrepareTooltip(GameTooltip, self)
-
-		obj.OnTooltipShow(GameTooltip)
-		GameTooltip:Show()
-	elseif obj.tooltiptext then
-		PrepareTooltip(GameTooltip, self)
-
-		GameTooltip:SetText(obj.tooltiptext)
-		GameTooltip:Show()
-	elseif obj.OnEnter then
-		obj.OnEnter(self)
+	if bar and bar.SetStatusBarColor then
+		bar:SetStatusBarColor(r or 1, g or 1, b or 1, a or 1)
 	end
 end
 
-local OnLeave = function(self)
-	local obj = self.obj
+methods.SetBarShown = function(self, name, shown)
+	local state = self.bars[name]
 
-	local bar = self.bar
-	if bar.autohide then
-		bar:HideAll()
+	if not state then
+		return
 	end
 
-	if obj.OnTooltipShow then
+	state.shown = shown and true or false
+
+	local bar = self.frame and self.frame.statusbar[name]
+
+	if bar then
+		bar:SetShown(state.shown)
+	end
+end
+
+-- Re-run OnTooltip, but only while this plugin is the one on screen
+methods.RefreshTooltip = function(self)
+	if tooltipOwner ~= self or not (self.frame and self.OnTooltip) then
+		return
+	end
+
+	ShowTooltip(self, self.frame)
+end
+
+local PluginMeta = { __index = methods }
+
+--[[
+	Frame scripts. Each looks the plugin up off the frame rather than closing
+	over it, so all plugins share one set.
+]]
+local OnEnter = function(frame)
+	local plugin = frame.plugin
+
+	if plugin.OnTooltip then
+		tooltipOwner = plugin
+
+		ShowTooltip(plugin, frame)
+	end
+
+	if plugin.OnEnter then
+		plugin.OnEnter(frame)
+	end
+end
+
+local OnLeave = function(frame)
+	local plugin = frame.plugin
+
+	if tooltipOwner == plugin then
+		tooltipOwner = nil
+
 		GameTooltip:Hide()
 	end
 
-	if obj.OnLeave then
-		obj.OnLeave(self)
-	elseif obj.tooltip then
-		obj.tooltip:Hide()
-	else
-		GameTooltip:Hide()
+	if plugin.OnLeave then
+		plugin.OnLeave(frame)
 	end
 end
 
-local OnClick = function(self, ...)
-	if self.obj.OnClick then
-		self.obj.OnClick(self, ...)
+local OnClick = function(frame, ...)
+	local plugin = frame.plugin
+
+	if plugin.OnClick then
+		plugin.OnClick(frame, ...)
 	end
 end
 
-local OnDragStart = function() end
-
-local OnDragStop = function() end
-
-local CreateStatusBar = function(self, name, settings)
-	local bar = CreateFrame(settings.isStatusBar and "StatusBar" or "Frame", nil, self)
+local CreateStatusBar = function(parent, settings)
+	local bar = CreateFrame(settings.isStatusBar and "StatusBar" or "Frame", nil, parent)
 
 	--[[
 		Texture defaults to the configured statusbar, same as every other bar in
 		the addon; settings.texture is an override for a plugin that wants
-		something else. It has to resolve here rather than in the data object's
-		spec table - those are built at file scope, and DraeUI.media doesn't
-		exist until OnInitialize.
+		something else. It has to resolve here rather than in the plugin's spec
+		table - those are built at file scope, and DraeUI.media doesn't exist
+		until OnInitialize.
 	--]]
 	if settings.isStatusBar then
 		bar:SetStatusBarTexture(settings.texture or DraeUI.media.statusbar)
@@ -211,15 +240,13 @@ local CreateStatusBar = function(self, name, settings)
 	if type(settings.position) == "table" then
 		for _, v in pairs(settings.position) do
 			if v.anchorto then
-				bar:SetPoint(v.anchorat, self, v.anchorto, v.offsetX, v.offsetY)
+				bar:SetPoint(v.anchorat, parent, v.anchorto, v.offsetX, v.offsetY)
 			else
 				bar:SetPoint(v.anchorat, v.offsetX, v.offsetY)
 			end
 		end
 	elseif type(settings.position) == "string" then
-		bar:SetAllPoints(self.statusbar[settings.position])
-	else
-		-- Something
+		bar:SetAllPoints(parent.statusbar[settings.position])
 	end
 
 	if settings.width then
@@ -230,7 +257,7 @@ local CreateStatusBar = function(self, name, settings)
 		bar:SetHeight(settings.height)
 	end
 
-	if settings.isStatusBar and settings.color and type(settings.color) == "table" then
+	if settings.isStatusBar and type(settings.color) == "table" then
 		bar:SetStatusBarColor(unpack(settings.color))
 	end
 
@@ -243,7 +270,7 @@ local CreateStatusBar = function(self, name, settings)
 		local bg = bar:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints()
 
-		if settings.bg.color and type(settings.bg.color) == "table" then
+		if type(settings.bg.color) == "table" then
 			bg:SetColorTexture(unpack(settings.bg.color))
 		else
 			bg:SetTexture(settings.bg.texture)
@@ -275,99 +302,84 @@ local CreateStatusBar = function(self, name, settings)
 		bar.spark = spark
 	end
 
-	if settings.smooth then
-		--		Smoothing:EnableBarAnimation(bar)
-	end
-
 	return bar
 end
 
-Plugin.New = function(self, name, obj, settings)
-	local text = obj.text
-	local statusbar = obj.statusbar
-
-	--[[
-		Parented at creation, not in AddPlugin. RepositionPlugins filters on
-		IsVisible(), which is false for a parentless frame however many times
-		you call Show() on it - so a plugin built without a parent was skipped
-		by the first reposition and only got placed once something later fired
-		a ShowPlugin change.
-	--]]
-	local plugin = CreateFrame("Button", nil, settings.bar)
+--[[
+	The handle. No frame yet - that waits for the bar.
+--]]
+Plugin.NewHandle = function(_, name, opts)
+	local plugin = setmetatable(opts or {}, PluginMeta)
 
 	plugin.name = name
-	plugin.obj = obj
-	plugin.bar = settings.bar
+	plugin.order = plugin.order or 100
+	plugin.shown = plugin.shown ~= false
+	plugin.text = plugin.text or name
 
-	plugin.text = DraeUI.CreateFontObject(plugin, { point = "LEFT" })
+	--[[
+		One state entry per declared bar, so SetBar has somewhere to write
+		before the widgets exist and Build has something to seed them from.
+	--]]
+	plugin.bars = {}
 
-	if statusbar then
-		plugin.statusbar = {}
-
-		for name, _table in pairs(statusbar) do
-			plugin.statusbar[name] = CreateStatusBar(plugin, name, _table)
-
-			if _table.isStatusBar then
-				local _, min, max, cur, hide
-				if obj["statusbar__" .. name .. "_min_max"] then
-					_, _, min, max = string.find(obj["statusbar__" .. name .. "_min_max"], "(%d+),(%d+)")
-				else
-					obj["statusbar__" .. name .. "_min_max"] = "0, 1"
-					min, max, hide = 0, 1, false
-				end
-
-				if obj["statusbar__" .. name .. "_cur"] then
-					cur = obj["statusbar__" .. name .. "_cur"]
-				else
-					obj["statusbar__" .. name .. "_cur"] = 0
-					cur = 0
-				end
-
-				if obj["statusbar__" .. name .. "_hide"] then
-					hide = obj["statusbar__" .. name .. "_hide"]
-				else
-					obj["statusbar__" .. name .. "_hide"] = false
-					hide = false
-				end
-
-				plugin.statusbar[name]:SetMinMaxValues(min, max)
-				plugin.statusbar[name]:SetValue(cur)
-				if hide then
-					plugin.statusbar[name]:Hide()
-				else
-					plugin.statusbar[name]:Show()
-				end
-				if plugin.statusbar[name].spark and cur == 0 then
-					plugin.statusbar[name].spark:Hide()
-				end
-			else
-				plugin.statusbar[name]:Show()
-			end
+	if plugin.statusbar then
+		for barName in pairs(plugin.statusbar) do
+			plugin.bars[barName] = { cur = 0, min = 0, max = 1, shown = true }
 		end
 	end
 
-	if text then
-		plugin.text:SetText(text)
-	else
-		obj.text = name
-		plugin.text:SetText(name)
-	end
-
-	plugin:SetMovable(true)
-	plugin:RegisterForClicks("AnyUp")
-	plugin:SetScript("OnEnter", OnEnter)
-	plugin:SetScript("OnLeave", OnLeave)
-	plugin:SetScript("OnClick", OnClick)
-	plugin:SetScript("OnDragStart", OnDragStart)
-	plugin:SetScript("OnDragStop", OnDragStop)
-
-	plugin.Update = Update
-
-	if obj.ShowPlugin ~= nil and not obj.ShowPlugin then
-		plugin:Hide()
-	else
-		plugin:Show()
-	end
-
 	return plugin
+end
+
+--[[
+	Give a handle its frame, then replay whatever it has accumulated.
+--]]
+Plugin.Build = function(_, plugin, bar)
+	if plugin.frame then
+		return plugin.frame
+	end
+
+	local frame = CreateFrame("Button", nil, bar)
+
+	frame.plugin = plugin
+	plugin.frame = frame
+
+	frame.text = DraeUI.CreateFontObject(frame, { point = "LEFT" })
+
+	if plugin.statusbar then
+		frame.statusbar = {}
+
+		for barName, settings in pairs(plugin.statusbar) do
+			frame.statusbar[barName] = CreateStatusBar(frame, settings)
+		end
+	end
+
+	frame:RegisterForClicks("AnyUp")
+	frame:SetScript("OnEnter", OnEnter)
+	frame:SetScript("OnLeave", OnLeave)
+	frame:SetScript("OnClick", OnClick)
+
+	-- Replay: text first so the width is right before anything measures it
+	frame.text:SetText(plugin.text)
+	plugin:Resize()
+
+	for barName, state in pairs(plugin.bars) do
+		local statusbar = frame.statusbar[barName]
+
+		statusbar:SetMinMaxValues(state.min, state.max)
+		statusbar:SetValue(state.cur)
+		statusbar:SetShown(state.shown)
+
+		if state.color and statusbar.SetStatusBarColor then
+			statusbar:SetStatusBarColor(unpack(state.color))
+		end
+
+		if statusbar.spark then
+			statusbar.spark:SetShown(state.cur ~= 0)
+		end
+	end
+
+	frame:SetShown(plugin.shown)
+
+	return frame
 end

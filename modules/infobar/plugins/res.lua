@@ -18,8 +18,7 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local RES = IB:NewModule("Res", "AceEvent-3.0")
 
-local LDB =
-	LibStub("LibDataBroker-1.1"):NewDataObject("ResCount", { type = "data source", icon = nil, label = "ResCount" })
+local plugin = IB:Register("ResCount", { order = 60 })
 
 --
 local C_Timer, C_Spell, C_StringUtil = C_Timer, C_Spell, C_StringUtil
@@ -173,14 +172,14 @@ local Refresh = function()
 	local ok, info = pcall(C_Spell.GetSpellCharges, REBIRTH)
 
 	if not ok or not info then
-		LDB.text = GREEN .. L["INFOBAR_RES"]
+		plugin:SetText(GREEN .. L["INFOBAR_RES"])
 		return false
 	end
 
 	local tail, counting = Countdown(info)
 	local colour = IsZeroCharges(info.currentCharges) and RED or GREEN
 
-	LDB.text = Compose(ChargeText(info.currentCharges), colour, L["INFOBAR_RES"] .. tail)
+	plugin:SetText(Compose(ChargeText(info.currentCharges), colour, L["INFOBAR_RES"] .. tail))
 
 	return counting
 end
@@ -255,7 +254,7 @@ do
 			StopTimer()
 		end
 
-		LDB.ShowPlugin = show
+		plugin:SetShown(show)
 	end
 end
 

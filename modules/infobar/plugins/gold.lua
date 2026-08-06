@@ -7,7 +7,7 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local COIN = IB:NewModule("Coin", "AceEvent-3.0")
 
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Coin", { type = "data source", icon = nil, label = "Coin" })
+local plugin = IB:Register("Coin", { order = 40 })
 
 --
 local mfloor, format, pairs, mabs = math.floor, string.format, pairs, math.abs
@@ -60,73 +60,64 @@ COIN.UpdateCoin = function()
 
 	db[DraeUI.playerRealm][DraeUI.playerName] = curMoney
 
-	LDB.text = IntToGold(curMoney, false)
+	plugin:SetText(IntToGold(curMoney, false))
+
+	plugin:RefreshTooltip()
 end
 
-LDB.OnEnter = function(self)
-	GameTooltip:SetOwner(self, "ANCHOR_NONE")
-	GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -10)
-
-	GameTooltip:ClearLines()
-
+plugin.OnTooltip = function(tooltip)
 	DraeUI.dbGlobal.gold = DraeUI.dbGlobal.gold or {}
 	DraeUI.dbGlobal.gold[DraeUI.playerRealm] = DraeUI.dbGlobal.gold[DraeUI.playerRealm] or {}
 	local db = DraeUI.dbGlobal.gold
 
-	GameTooltip:AddLine(L["INFOBAR_THIS_SESSION"])
+	tooltip:AddLine(L["INFOBAR_THIS_SESSION"])
 
-	GameTooltip:AddDoubleLine(L["INFOBAR_EARNED"], IntToGold(profit, true), 1, 1, 1, 1, 1, 1)
-	GameTooltip:AddDoubleLine(L["INFOBAR_SPENT"], IntToGold(loss, true), 1, 1, 1, 1, 1, 1)
+	tooltip:AddDoubleLine(L["INFOBAR_EARNED"], IntToGold(profit, true), 1, 1, 1, 1, 1, 1)
+	tooltip:AddDoubleLine(L["INFOBAR_SPENT"], IntToGold(loss, true), 1, 1, 1, 1, 1, 1)
 
 	if profit < loss then
-		GameTooltip:AddDoubleLine(L["INFOBAR_LOSS"], IntToGold(mabs(profit - loss), true), 1, 0, 0, 1, 1, 1)
+		tooltip:AddDoubleLine(L["INFOBAR_LOSS"], IntToGold(mabs(profit - loss), true), 1, 0, 0, 1, 1, 1)
 	elseif (profit - loss) > 0 then
-		GameTooltip:AddDoubleLine(L["INFOBAR_PROFIT"], IntToGold(profit - loss, true), 0, 1, 0, 1, 1, 1)
+		tooltip:AddDoubleLine(L["INFOBAR_PROFIT"], IntToGold(profit - loss, true), 0, 1, 0, 1, 1, 1)
 	end
 
-	GameTooltip:AddLine(" ")
+	tooltip:AddLine(" ")
 
 	local totalGold = 0
-	GameTooltip:AddLine(L["INFOBAR_THIS_REALM"])
+	tooltip:AddLine(L["INFOBAR_THIS_REALM"])
 
 	for k, _ in pairs(db[DraeUI.playerRealm]) do
 		if db[DraeUI.playerRealm][k] then
-			GameTooltip:AddDoubleLine(k, IntToGold(db[DraeUI.playerRealm][k], true), 1, 1, 1, 1, 1, 1)
+			tooltip:AddDoubleLine(k, IntToGold(db[DraeUI.playerRealm][k], true), 1, 1, 1, 1, 1, 1)
 
 			totalGold = totalGold + db[DraeUI.playerRealm][k]
 		end
 	end
 
-	GameTooltip:AddLine(" ")
-	GameTooltip:AddDoubleLine(L["INFOBAR_TOTAL"], IntToGold(totalGold, true), 1, 1, 1, 1, 1, 1)
+	tooltip:AddLine(" ")
+	tooltip:AddDoubleLine(L["INFOBAR_TOTAL"], IntToGold(totalGold, true), 1, 1, 1, 1, 1, 1)
 
 	local info
 	for i = 1, 6 do
 		info = C_CurrencyInfo.GetBackpackCurrencyInfo(i)
 		if info ~= nil and info.name then
 			if i == 1 then
-				GameTooltip:AddLine(" ")
-				GameTooltip:AddLine(CURRENCY)
+				tooltip:AddLine(" ")
+				tooltip:AddLine(CURRENCY)
 			end
 
 			if info.quantity then
-				GameTooltip:AddDoubleLine(info.name, info.quantity, 1, 1, 1)
+				tooltip:AddDoubleLine(info.name, info.quantity, 1, 1, 1)
 			end
 		end
 	end
 
-	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine(L["INFOBAR_RESET_SESSION"])
-	GameTooltip:AddLine(L["INFOBAR_RESET_REALM"])
-
-	GameTooltip:Show()
+	tooltip:AddLine(" ")
+	tooltip:AddLine(L["INFOBAR_RESET_SESSION"])
+	tooltip:AddLine(L["INFOBAR_RESET_REALM"])
 end
 
-LDB.OnLeave = function()
-	GameTooltip:Hide()
-end
-
-LDB.OnClick = function(_, btn)
+plugin.OnClick = function(_, btn)
 	if IsShiftKeyDown() then
 		if btn == "LeftButton" then
 			profit, loss = 0, 0
@@ -134,7 +125,13 @@ LDB.OnClick = function(_, btn)
 			DraeUI.dbGlobal.gold = {}
 		end
 
-		GameTooltip:Hide()
+		--[[
+			Redraw rather than hide. The cursor is still on the plugin, so the
+			old GameTooltip:Hide() left the framework thinking this plugin owned
+			a tooltip that wasn't on screen - and you couldn't see that the
+			reset had taken until you moved away and came back.
+		--]]
+		plugin:RefreshTooltip()
 	else
 		ToggleAllBags()
 	end

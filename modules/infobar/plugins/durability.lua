@@ -7,8 +7,7 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local DUR = IB:NewModule("Durability", "AceEvent-3.0")
 
-local LDB =
-	LibStub("LibDataBroker-1.1"):NewDataObject("Durability", { type = "data source", icon = nil, label = "Durability" })
+local plugin = IB:Register("Durability", { order = 30 })
 
 --
 local GetInventoryItemDurability, GetInventorySlotInfo, ToggleCharacter =
@@ -66,24 +65,21 @@ DUR.UpdateDurability = function()
 
 	local r1, g1, b1 = DraeUI.ColorGradient(minDurability / 100 - 0.001, 1, 0, 0, 1, 1, 0, 0, 1, 0)
 
-	LDB.text = format("|cff%02x%02x%02x%3d|r|cffffffff%%dur|r", r1 * 255, g1 * 255, b1 * 255, minDurability)
+	plugin:SetText(format("|cff%02x%02x%02x%3d|r|cffffffff%%dur|r", r1 * 255, g1 * 255, b1 * 255, minDurability))
+
+	plugin:RefreshTooltip()
 end
 
-LDB.OnEnter = function(self)
-	GameTooltip:SetOwner(self, "ANCHOR_NONE")
-	GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -10)
-
-	GameTooltip:ClearLines()
-
-	GameTooltip:AddLine(L["INFOBAR_DURABILITY"], 1, 1, 1)
-	GameTooltip:AddLine(" ")
+plugin.OnTooltip = function(tooltip)
+	tooltip:AddLine(L["INFOBAR_DURABILITY"], 1, 1, 1)
+	tooltip:AddLine(" ")
 
 	for _, slot in ipairs(slots) do
 		local pctDurability = slotDurability[slot]
 		local name = slotName[slot]
 
 		if pctDurability then
-			GameTooltip:AddDoubleLine(
+			tooltip:AddDoubleLine(
 				name,
 				format("%d%%", pctDurability),
 				1,
@@ -93,15 +89,9 @@ LDB.OnEnter = function(self)
 			)
 		end
 	end
-
-	GameTooltip:Show()
 end
 
-LDB.OnLeave = function()
-	GameTooltip:Hide()
-end
-
-LDB.OnClick = function()
+plugin.OnClick = function()
 	ToggleCharacter("PaperDollFrame")
 end
 

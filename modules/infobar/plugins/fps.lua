@@ -7,7 +7,7 @@ local DraeUI = select(2, ...)
 local InfoBar = DraeUI:GetModule("Infobar")
 local FPS = InfoBar:NewModule("DraeFPS")
 
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FPS", { type = "data source", icon = nil, label = "FPS" })
+local plugin = InfoBar:Register("FPS", { order = 10 })
 
 --
 local GetFramerate, C_Timer = GetFramerate, C_Timer
@@ -20,20 +20,13 @@ local minFPS, maxFPS, avgFPS
 --[[
 
 --]]
-local TooltipFPS = function(self)
-	GameTooltip:SetOwner(self, "ANCHOR_NONE")
-	GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -10)
+plugin.OnTooltip = function(tooltip)
+	tooltip:AddLine(L["INFOBAR_FPS"], 1, 1, 1)
+	tooltip:AddLine(" ")
 
-	GameTooltip:ClearLines()
-
-	GameTooltip:AddLine(L["INFOBAR_FPS"], 1, 1, 1)
-	GameTooltip:AddLine(" ")
-
-	GameTooltip:AddDoubleLine(L["INFOBAR_MINIMUM"], format("%d", minFPS), 1, 1, 1)
-	GameTooltip:AddDoubleLine(L["INFOBAR_MAXIMUM"], format("%d", maxFPS), 1, 1, 1)
-	GameTooltip:AddDoubleLine(L["INFOBAR_AVERAGE"], format("%d", avgFPS), 1, 1, 1)
-
-	GameTooltip:Show()
+	tooltip:AddDoubleLine(L["INFOBAR_MINIMUM"], format("%d", minFPS), 1, 1, 1)
+	tooltip:AddDoubleLine(L["INFOBAR_MAXIMUM"], format("%d", maxFPS), 1, 1, 1)
+	tooltip:AddDoubleLine(L["INFOBAR_AVERAGE"], format("%d", avgFPS), 1, 1, 1)
 end
 
 do
@@ -59,19 +52,17 @@ do
 		end
 
 		local r2, g2, b2 = DraeUI.ColorGradient(framerate / 60 - 0.001, 1, 0, 0, 1, 1, 0, 0, 1, 0)
-		LDB.text =
+
+		plugin:SetText(
 			format("|cff%02x%02x%02x%d|r|cff%02x%02x%02xfps|r", r2 * 255, g2 * 255, b2 * 255, framerate, 255, 255, 255)
+		)
+
+		-- The min/max/average move every tick, so keep an open tooltip current
+		plugin:RefreshTooltip()
 	end
 
-	LDB.OnEnter = function(self)
-		TooltipFPS(self)
-	end
-
-	LDB.OnLeave = function()
-		GameTooltip:Hide()
-	end
-
-	LDB.OnClick = function()
+	-- Click restarts the min/max/average window
+	plugin.OnClick = function()
 		timeFPS = 0
 	end
 
