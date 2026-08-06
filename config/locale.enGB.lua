@@ -47,6 +47,9 @@ L["INFOBAR_MAXIMUM"] = "Maximum"
 L["INFOBAR_MINIMUM"] = "Minimum"
 L["INFOBAR_PROFIT"] = "Profit:"
 L["INFOBAR_REMAINING"] = "Remaining:"
+
+-- Combat resurrections, as in "3res (2:15)". Sits directly after the count
+L["INFOBAR_RES"] = "res"
 L["INFOBAR_RESET_REALM"] = "Hold Shift + Right Button to reset realm"
 L["INFOBAR_RESET_SESSION"] = "Hold Shift + Left Button to reset session"
 L["INFOBAR_RESTED"] = "Rested:"
