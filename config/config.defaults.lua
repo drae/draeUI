@@ -196,6 +196,20 @@ DraeUI.config = {
 	infobar = {
 		height = 30,
 
+		--[[
+			Minimum widths, keyed by the name a plugin passes to InfoBar:Register.
+			Anything not listed sizes to its text and nothing more.
+
+			Experience has one because its progress bars span the plugin frame:
+			left to the text alone the readout collapses to a stub of a bar as
+			soon as the numbers are short - "[80] 4%xp" is barely wider than the
+			word. The text stays left-aligned and the surplus extends right, so
+			the bar gets the room rather than the label.
+		--]]
+		minWidth = {
+			Experience = 100,
+		},
+
 		left = {
 			relTo = "MicroMenuContainer",
 			point = "TOPLEFT",

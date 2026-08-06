@@ -24,7 +24,7 @@ local InfoBar = DraeUI:GetModule("Infobar")
 InfoBar.Plugin = {}
 
 --
-local pairs, type, unpack = pairs, type, unpack
+local pairs, type, unpack, mmax = pairs, type, unpack, math.max
 local CanAccessValue = DraeUI.CanAccessValue
 
 local Plugin = InfoBar.Plugin
@@ -78,7 +78,7 @@ methods.Resize = function(self)
 		return
 	end
 
-	frame:SetWidth(frame.text:GetStringWidth())
+	frame:SetWidth(mmax(frame.text:GetStringWidth(), self.minWidth))
 end
 
 methods.SetText = function(self, value)
@@ -319,6 +319,17 @@ Plugin.NewHandle = function(_, name, opts)
 	plugin.order = plugin.order or 100
 	plugin.shown = plugin.shown ~= false
 	plugin.text = plugin.text or name
+
+	--[[
+		Floor on the frame width, for plugins whose statusbars would otherwise
+		collapse with the text. Config rather than the registration so it can be
+		tuned without editing a plugin; safe to read here because the .toc loads
+		config before any module.
+	--]]
+	local cfg = DraeUI.config["infobar"]
+	local minWidths = cfg and cfg.minWidth
+
+	plugin.minWidth = minWidths and minWidths[name] or 0
 
 	--[[
 		One state entry per declared bar, so SetBar has somewhere to write
