@@ -14,7 +14,6 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Experience", {
 		xp = {
 			isStatusBar = true,
 			level = 3,
-			texture = "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
 			position = {
 				{
 					anchorat = "TOPLEFT",
@@ -36,7 +35,6 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Experience", {
 		rested = {
 			isStatusBar = true,
 			level = 2,
-			texture = "Interface\\AddOns\\draeUI\\media\\statusbars\\striped",
 			position = {
 				{
 					anchorat = "TOPLEFT",

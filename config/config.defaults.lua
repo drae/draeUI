@@ -9,7 +9,15 @@ local DraeUI = select(2, ...)
 --]]
 DraeUI.config = {
 	general = {
-		-- Textures
+		--[[
+			Textures. LSM keys, resolved by FetchMedia in init.lua.
+
+			The key doesn't have to be one draeUI ships - LSM is a shared
+			registry, so anything any installed addon has registered resolves
+			here. "Striped" is one of those: draeUI's own copy was retired in
+			0a3c414 and media/sharedmedia.lua doesn't list it, but another addon
+			provides it. Don't read an absence there as a broken key.
+		--]]
 		statusbar = "Striped",
 		statusbar_power = "Striped",
 		statusbar_absorb = "DF Stripes Soft",
