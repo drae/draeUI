@@ -112,7 +112,8 @@ end
 methods.SetBar = function(self, name, cur, min, max)
 	local state = self.bars[name]
 
-	if not state then
+	-- Nothing to set a value on if the spec asked for a plain Frame
+	if not (state and state.isStatusBar) then
 		return
 	end
 
@@ -139,7 +140,7 @@ end
 methods.SetBarColor = function(self, name, r, g, b, a)
 	local state = self.bars[name]
 
-	if not state then
+	if not (state and state.isStatusBar) then
 		return
 	end
 
@@ -147,7 +148,7 @@ methods.SetBarColor = function(self, name, r, g, b, a)
 
 	local bar = self.frame and self.frame.statusbar[name]
 
-	if bar and bar.SetStatusBarColor then
+	if bar then
 		bar:SetStatusBarColor(r or 1, g or 1, b or 1, a or 1)
 	end
 end
@@ -291,8 +292,11 @@ local CreateStatusBar = function(parent, settings)
 
 		`spark = true` takes the default; a plugin wanting different art can pass
 		the atlas name as the value instead.
+
+		isStatusBar as well as spark: the anchors need GetStatusBarTexture, so a
+		spark on a plain Frame would error here.
 	--]]
-	if settings.spark then
+	if settings.spark and settings.isStatusBar then
 		local spark = bar:CreateTexture(nil, "OVERLAY", nil, 5)
 		spark:SetAtlas(type(settings.spark) == "string" and settings.spark or "ui-castingbar-pip")
 		spark:SetPoint("BOTTOMRIGHT", bar:GetStatusBarTexture(), "BOTTOMRIGHT")
@@ -319,12 +323,23 @@ Plugin.NewHandle = function(_, name, opts)
 	--[[
 		One state entry per declared bar, so SetBar has somewhere to write
 		before the widgets exist and Build has something to seed them from.
+
+		isStatusBar is carried across because a spec entry can ask for a plain
+		Frame instead - the xp plugin's `bg` does, it only exists to put a black
+		backing behind the other two. Those have no SetMinMaxValues or SetValue,
+		so everything touching a value has to check first.
 	--]]
 	plugin.bars = {}
 
 	if plugin.statusbar then
-		for barName in pairs(plugin.statusbar) do
-			plugin.bars[barName] = { cur = 0, min = 0, max = 1, shown = true }
+		for barName, settings in pairs(plugin.statusbar) do
+			plugin.bars[barName] = {
+				cur = 0,
+				min = 0,
+				max = 1,
+				shown = true,
+				isStatusBar = settings.isStatusBar and true or false,
+			}
 		end
 	end
 
@@ -366,12 +381,15 @@ Plugin.Build = function(_, plugin, bar)
 	for barName, state in pairs(plugin.bars) do
 		local statusbar = frame.statusbar[barName]
 
-		statusbar:SetMinMaxValues(state.min, state.max)
-		statusbar:SetValue(state.cur)
 		statusbar:SetShown(state.shown)
 
-		if state.color and statusbar.SetStatusBarColor then
-			statusbar:SetStatusBarColor(unpack(state.color))
+		if state.isStatusBar then
+			statusbar:SetMinMaxValues(state.min, state.max)
+			statusbar:SetValue(state.cur)
+
+			if state.color then
+				statusbar:SetStatusBarColor(unpack(state.color))
+			end
 		end
 
 		if statusbar.spark then
