@@ -16,6 +16,13 @@ local format = string.format
 local L = DraeUI.L
 
 --[[
+	The client refreshes its net stats on its own slow cadence, so polling any
+	faster than this just re-reads the same numbers. Used for the bar and for
+	the tooltip both, so the two can't disagree.
+--]]
+local UPDATE_INTERVAL = 5
+
+--[[
 
 --]]
 local UpdateLatency = function()
@@ -109,7 +116,7 @@ do
 
 		TooltipLatency(self)
 
-		tooltipUpdate = C_Timer.NewTicker(1, Tick)
+		tooltipUpdate = C_Timer.NewTicker(UPDATE_INTERVAL, Tick)
 	end
 
 	LDB.OnLeave = function()
@@ -122,5 +129,9 @@ do
 end
 
 PING.OnInitialize = function()
-	C_Timer.NewTicker(1, UpdateLatency)
+	-- NewTicker doesn't fire until the interval is up, and five seconds of the
+	-- plugin showing its own name is long enough to read as broken
+	UpdateLatency()
+
+	C_Timer.NewTicker(UPDATE_INTERVAL, UpdateLatency)
 end
