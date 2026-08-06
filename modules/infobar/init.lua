@@ -10,11 +10,11 @@ InfoBar.Plugin = {}
 -- Localise a bunch of functions
 local _G = _G
 local IsEncounterInProgress = IsEncounterInProgress
-local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack = pairs, ipairs, string.format,
-	string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
+local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack =
+	pairs, ipairs, string.format, string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
 local tinsert = table.insert
 
-local LDB = LibStub('LibDataBroker-1.1')
+local LDB = LibStub("LibDataBroker-1.1")
 
 --[[
 
@@ -35,13 +35,13 @@ do
 
 		for _, name in pairs(initOrder) do
 			--		for name, plugin in pairs(infoBarPlugins) do
-			if (infoBarPlugins[name]) then
+			if infoBarPlugins[name] then
 				local plugin = infoBarPlugins[name]
 
-				if (plugin:IsVisible()) then
+				if plugin:IsVisible() then
 					plugin:ClearAllPoints()
 
-					if (v_prev) then
+					if v_prev then
 						plugin:SetPoint("BOTTOMLEFT", v_prev, "BOTTOMRIGHT", 25, 0)
 						plugin:SetPoint("TOP", plugin.bar, 0, 0)
 						plugin:SetPoint("BOTTOM", plugin.bar, 0, 0)
@@ -59,7 +59,9 @@ do
 end
 
 InfoBar.AddPlugin = function(self, plugin, name, noupdate)
-	if (not plugin) then return end
+	if not plugin then
+		return
+	end
 
 	plugin.bar = self.infoBar
 
@@ -72,7 +74,7 @@ end
 
 InfoBar.UpdatePlugins = function(self, key, val)
 	for name, plugin in pairs(infoBarPlugins) do
-		if (plugin and plugin:IsVisible()) then
+		if plugin and plugin:IsVisible() then
 			plugin:Update(plugin, key, val)
 		end
 	end
@@ -90,7 +92,7 @@ end
 InfoBar.LibDataBroker_DataObjectCreated = function(self, event, name, obj, noupdate)
 	local type = obj.type
 
-	if (type == "data source") then
+	if type == "data source" then
 		--		if db.objSettings[name].enabled then
 		self:EnableDataObject(name, obj, noupdate)
 		--		end
@@ -101,12 +103,12 @@ end
 
 InfoBar.EnableDataObject = function(self, name, obj, noupdate)
 	-- Already enabled
-	if (infoBarPlugins[name]) then
+	if infoBarPlugins[name] then
 		return
 	end
 
 	local settings = {
-		bar = self.infoBar
+		bar = self.infoBar,
 	}
 
 	local plugin = Plugin:New(name, obj, settings) --, settings, db

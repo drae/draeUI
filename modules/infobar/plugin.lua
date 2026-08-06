@@ -16,10 +16,10 @@ local Plugin = InfoBar.Plugin
 
 ]]
 local resizePlugin = function(self)
---		local settings = self.settings
---		local textOffset = settings.textOffset or db.textOffset
-		local width = 0
---[[
+	--		local settings = self.settings
+	--		local textOffset = settings.textOffset or db.textOffset
+	local width = 0
+	--[[
 	if self.icon and settings.showIcon then
 		width = width + self.icon:GetWidth() + textOffset
 	end
@@ -37,14 +37,14 @@ end
 
 local StatusBarMinMax = function(frame, value, name, bar)
 	local _, _, min, max = string.find(value, "(%d+),(%d+)")
-	frame.statusbar[bar]:SetMinMaxValues(min or 0 , max or 1)
+	frame.statusbar[bar]:SetMinMaxValues(min or 0, max or 1)
 end
 
 local StatusBarCur = function(frame, value, name, bar)
 	frame.statusbar[bar]:SetValue(value or 0)
 
-	if (frame.statusbar[bar].spark) then
-		if (value == 0) then
+	if frame.statusbar[bar].spark then
+		if value == 0 then
 			frame.statusbar[bar].spark:Hide()
 		else
 			frame.statusbar[bar].spark:Show()
@@ -53,7 +53,7 @@ local StatusBarCur = function(frame, value, name, bar)
 end
 
 local StatusBarHide = function(frame, value, name, bar)
-	if (value) then
+	if value then
 		frame.statusbar[bar]:Hide()
 	else
 		frame.statusbar[bar]:Show()
@@ -70,7 +70,7 @@ local updaters = {
 	updateSettings = SettingsUpdater,
 
 	ShowPlugin = function(frame, value, name)
-		if (value) then
+		if value then
 			frame:Show()
 		else
 			frame:Hide()
@@ -81,7 +81,7 @@ local updaters = {
 
 	OnClick = function(frame, value, name)
 		frame:SetScript("OnClick", value)
-	end
+	end,
 }
 
 local Update = function(self, f, key, value, name)
@@ -89,7 +89,7 @@ local Update = function(self, f, key, value, name)
 
 	-- Match for statusbar__x_y
 	local _, _, _bar, _key = string.find(key, "statusbar__(%a+)_([_%a]+)")
-	if (_key and _bar) then
+	if _key and _bar then
 		key = "statusbar_" .. _key
 		bar = _bar
 	end
@@ -133,9 +133,11 @@ local PrepareTooltip = function(frame, anchorFrame)
 end
 
 local OnEnter = function(self)
-	if  InfoBar.dragging then return end
+	if InfoBar.dragging then
+		return
+	end
 
-	local obj  = self.obj
+	local obj = self.obj
 	local name = self.name
 	local bar = self.bar
 
@@ -167,7 +169,7 @@ local OnEnter = function(self)
 end
 
 local OnLeave = function(self)
-	local obj  = self.obj
+	local obj = self.obj
 	local name = self.name
 
 	local bar = self.bar
@@ -194,60 +196,63 @@ local OnClick = function(self, ...)
 	end
 end
 
-local OnDragStart = function()
-end
+local OnDragStart = function() end
 
-local OnDragStop = function()
-end
+local OnDragStop = function() end
 
 local CreateStatusBar = function(self, name, settings)
-	local bar = CreateFrame((settings.isStatusBar) and "StatusBar" or "Frame", nil, self, BackdropTemplateMixin and "BackdropTemplate")
+	local bar = CreateFrame(
+		settings.isStatusBar and "StatusBar" or "Frame",
+		nil,
+		self,
+		BackdropTemplateMixin and "BackdropTemplate"
+	)
 
-	if (settings.isStatusBar) then
+	if settings.isStatusBar then
 		bar:SetStatusBarTexture(settings.texture)
 	end
 
-	if (settings.level) then
+	if settings.level then
 		bar:SetFrameLevel(settings.level)
 	end
 
-	if (type(settings.position) == "table") then
+	if type(settings.position) == "table" then
 		for _, v in pairs(settings.position) do
-			if (v.anchorto) then
+			if v.anchorto then
 				bar:SetPoint(v.anchorat, self, v.anchorto, v.offsetX, v.offsetY)
 			else
 				bar:SetPoint(v.anchorat, v.offsetX, v.offsetY)
 			end
 		end
-	elseif (type(settings.position) == "string") then
+	elseif type(settings.position) == "string" then
 		bar:SetAllPoints(self.statusbar[settings.position])
 	else
 		-- Something
 	end
 
-	if (settings.width) then
+	if settings.width then
 		bar:SetWidth(settings.width)
 	end
 
-	if (settings.height) then
+	if settings.height then
 		bar:SetHeight(settings.height)
 	end
 
-	if (settings.isStatusBar and settings.color and type(settings.color) == "table") then
+	if settings.isStatusBar and settings.color and type(settings.color) == "table" then
 		bar:SetStatusBarColor(unpack(settings.color))
 	end
 
-	if (settings.bg) then
-		bar:SetBackdrop {
-			bgFile = settings.bg.texture
-		}
+	if settings.bg then
+		bar:SetBackdrop({
+			bgFile = settings.bg.texture,
+		})
 
-		if (settings.bg.color and type(settings.bg.color) == "table") then
+		if settings.bg.color and type(settings.bg.color) == "table" then
 			bar:SetBackdropColor(unpack(settings.bg.color))
 		end
 	end
 
-	if (settings.spark) then
+	if settings.spark then
 		local spark = bar:CreateTexture(nil, "OVERLAY", nil, 5)
 		spark:SetTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\statusbar-spark-white")
 		spark:SetPoint("BOTTOMRIGHT", bar:GetStatusBarTexture(), "BOTTOMRIGHT")
@@ -257,8 +262,8 @@ local CreateStatusBar = function(self, name, settings)
 		bar.spark = spark
 	end
 
-	if (settings.smooth) then
---		Smoothing:EnableBarAnimation(bar)
+	if settings.smooth then
+		--		Smoothing:EnableBarAnimation(bar)
 	end
 
 	return bar
@@ -276,29 +281,29 @@ Plugin.New = function(self, name, obj, settings)
 
 	plugin.text = DraeUI.CreateFontObject(plugin, DraeUI.config["general"].fontsize1, DraeUI.media.font, "LEFT", 0, 0) --
 
-	if (statusbar) then
+	if statusbar then
 		plugin.statusbar = {}
 
 		for name, _table in pairs(statusbar) do
 			plugin.statusbar[name] = CreateStatusBar(plugin, name, _table)
 
-			if (_table.isStatusBar) then
+			if _table.isStatusBar then
 				local _, min, max, cur, hide
-				if (obj["statusbar__" .. name .. "_min_max"]) then
+				if obj["statusbar__" .. name .. "_min_max"] then
 					_, _, min, max = string.find(obj["statusbar__" .. name .. "_min_max"], "(%d+),(%d+)")
 				else
 					obj["statusbar__" .. name .. "_min_max"] = "0, 1"
 					min, max, hide = 0, 1, false
 				end
 
-				if (obj["statusbar__" .. name .. "_cur"]) then
+				if obj["statusbar__" .. name .. "_cur"] then
 					cur = obj["statusbar__" .. name .. "_cur"]
 				else
 					obj["statusbar__" .. name .. "_cur"] = 0
 					cur = 0
 				end
 
-				if (obj["statusbar__" .. name .. "_hide"]) then
+				if obj["statusbar__" .. name .. "_hide"] then
 					hide = obj["statusbar__" .. name .. "_hide"]
 				else
 					obj["statusbar__" .. name .. "_hide"] = false
@@ -307,12 +312,12 @@ Plugin.New = function(self, name, obj, settings)
 
 				plugin.statusbar[name]:SetMinMaxValues(min, max)
 				plugin.statusbar[name]:SetValue(cur)
-				if (hide) then
+				if hide then
 					plugin.statusbar[name]:Hide()
 				else
 					plugin.statusbar[name]:Show()
 				end
-				if (plugin.statusbar[name].spark and cur == 0) then
+				if plugin.statusbar[name].spark and cur == 0 then
 					plugin.statusbar[name].spark:Hide()
 				end
 			else
@@ -321,7 +326,7 @@ Plugin.New = function(self, name, obj, settings)
 		end
 	end
 
-	if (icon) then
+	if icon then
 	end
 
 	--
@@ -342,7 +347,7 @@ Plugin.New = function(self, name, obj, settings)
 
 	plugin.Update = Update
 
-	if (obj.ShowPlugin ~= nil and not obj.ShowPlugin) then
+	if obj.ShowPlugin ~= nil and not obj.ShowPlugin then
 		plugin:Hide()
 	else
 		plugin:Show()

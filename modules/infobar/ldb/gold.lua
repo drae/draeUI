@@ -7,8 +7,7 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local COIN = IB:NewModule("Coin", "AceEvent-3.0")
 
-local LDB =
-	LibStub("LibDataBroker-1.1"):NewDataObject("Coin", { type = "data source", icon = nil, label = "Coin" })
+local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Coin", { type = "data source", icon = nil, label = "Coin" })
 
 --
 local mfloor, format, pairs, mabs = math.floor, string.format, pairs, math.abs
@@ -54,7 +53,7 @@ COIN.UpdateCoin = function()
 
 	if oldMoney > curMoney then -- Lost Money
 		loss = loss - diffMoney
-	else                     -- Gained Moeny
+	else -- Gained Moeny
 		profit = profit + diffMoney
 	end
 

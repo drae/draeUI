@@ -171,8 +171,8 @@ DraeUI.config = {
 	infobar = {
 		xp = {
 			enable = true,
-			altxp = "reputation"
-		}
+			altxp = "reputation",
+		},
 	},
 
 	--[[

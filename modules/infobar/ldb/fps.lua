@@ -7,8 +7,7 @@ local DraeUI = select(2, ...)
 local InfoBar = DraeUI:GetModule("Infobar")
 local FPS = InfoBar:NewModule("DraeFPS")
 
-local LDB =
-	LibStub("LibDataBroker-1.1"):NewDataObject("FPS", { type = "data source", icon = nil, label = "FPS" })
+local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("FPS", { type = "data source", icon = nil, label = "FPS" })
 
 --
 local GetFramerate, C_Timer = GetFramerate, C_Timer

@@ -128,7 +128,7 @@ XP.UpdateExperience = function(self)
 
 	LDB.text = format(
 		(IsResting() and (restingIcon .. " ") or "")
-		.. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp (%d/%d)%s",
+			.. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp (%d/%d)%s",
 		level,
 		r1 * 255,
 		g1 * 255,
@@ -138,16 +138,16 @@ XP.UpdateExperience = function(self)
 		max,
 		(
 			rested
-			and format(
-				" |cff%02x%02x%02x%d|r|cff%02x%02x%02x%%rested|r",
-				0,
-				255,
-				0,
-				rested / max * 100,
-				255,
-				255,
-				255
-			)
+				and format(
+					" |cff%02x%02x%02x%d|r|cff%02x%02x%02x%%rested|r",
+					0,
+					255,
+					0,
+					rested / max * 100,
+					255,
+					255,
+					255
+				)
 			or ""
 		)
 	)
