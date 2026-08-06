@@ -60,22 +60,63 @@ local TooltipLatency = function(self)
 
 	GameTooltip:AddDoubleLine(L["INFOBAR_BANDWIDTH_IN"], format("%.2f kB/s", bandwidthIn), 1, 1, 1)
 	GameTooltip:AddDoubleLine(L["INFOBAR_BANDWIDTH_OUT"], format("%.2f kB/s", bandwidthOut), 1, 1, 1)
+
+	-- Show, not just the AddLines: the tooltip has to be told to resize around
+	-- its new contents on every rebuild. Same shape as fps.lua's TooltipFPS.
+	GameTooltip:Show()
 end
 
+--[[
+	The tooltip re-reads GetNetStats once a second while the cursor is on the
+	plugin, so the numbers move rather than freezing at whatever they were on
+	hover.
+--]]
 do
-	local tooltipUpdate
+	local tooltipUpdate, owner
+
+	--[[
+		Hoisted rather than a closure built per OnEnter - the owner goes in an
+		upvalue instead, so hovering repeatedly doesn't allocate.
+	--]]
+	local Tick = function()
+		if owner then
+			TooltipLatency(owner)
+		end
+	end
+
+	--[[
+		Guarded, and it nils the handle.
+
+		Unguarded this errored on any OnLeave with no OnEnter behind it. The
+		worse half was the other end: OnEnter overwrote a live ticker without
+		cancelling, and an orphaned one goes on calling TooltipLatency every
+		second forever - SetOwner, ClearLines and all - stamping on whatever
+		tooltip you happen to be reading. Cancelling on the way in fixes that.
+	--]]
+	local StopTooltipUpdate = function()
+		if not tooltipUpdate then
+			return
+		end
+
+		tooltipUpdate:Cancel()
+		tooltipUpdate = nil
+	end
 
 	LDB.OnEnter = function(self)
-		TooltipLatency(self)
-		GameTooltip:Show()
+		StopTooltipUpdate()
 
-		tooltipUpdate = C_Timer.NewTicker(1, function()
-			TooltipLatency(self)
-		end)
+		owner = self
+
+		TooltipLatency(self)
+
+		tooltipUpdate = C_Timer.NewTicker(1, Tick)
 	end
 
 	LDB.OnLeave = function()
-		tooltipUpdate:Cancel()
+		StopTooltipUpdate()
+
+		owner = nil
+
 		GameTooltip:Hide()
 	end
 end
