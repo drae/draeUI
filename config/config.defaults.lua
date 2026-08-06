@@ -168,6 +168,13 @@ DraeUI.config = {
 		},
 	},
 
+	infobar = {
+		xp = {
+			enable = true,
+			altxp = "reputation"
+		}
+	},
+
 	--[[
 		Cast bars - replicas of Blizzard's player cast bar, on the target and
 		focus frames. Read by UF.CreateCastBar.

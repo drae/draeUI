@@ -37,6 +37,16 @@ modules\presence\zone.lua
 modules\presence\errors.lua
 modules\presence\events.lua
 
+# Infobar
+#modules\infobar\init.lua
+#modules\infobar\plugin.lua
+#modules\infobar\ldb\fps.lua
+#modules\infobar\ldb\xp.lua
+#modules\infobar\ldb\latency.lua
+#modules\infobar\ldb\gold.lua
+#modules\infobar\ldb\durability.lua
+#modules\infobar\ldb\res.lua
+
 # Unitframes
 modules\unitframes\auras.xml
 modules\unitframes\init.lua
