@@ -22,12 +22,24 @@ _G.DraeUI = DraeUI
 		OnInitialize fires after ADDON_LOADED
 		OnEnabled fires after PLAYER_LOGIN
 
-		No saved variables: every setting lives in config/config.defaults.lua and
-		is hand-edited. AceDB used to be set up here, but nothing ever read or
-		wrote the table it created, so it only served to write an empty file on
-		logout.
+		No saved *settings*: every setting lives in config/config.defaults.lua
+		and is hand-edited.
+
+		draeUIDB is the one exception, and it holds data rather than settings -
+		the infobar's Coin plugin keeps a per-realm, per-character gold total so
+		its tooltip can total the realm. That's the only writer and the only
+		reader; nothing else in the addon persists anything.
+
+		Deliberately not AceDB. That library was dropped when it turned out to
+		be doing nothing but writing an empty file on logout, and a plain table
+		covers this - gold.lua guards every access with `x = x or {}`, so there
+		are no defaults to merge. Reading it here is safe because OnInitialize
+		runs after ADDON_LOADED, which is when the saved table is populated.
 --]]
 DraeUI.OnInitialize = function(self)
+	_G.draeUIDB = _G.draeUIDB or {}
+	self.dbGlobal = _G.draeUIDB
+
 	self.playerClass = select(2, UnitClass("player"))
 	self.playerName = UnitName("player")
 	self.playerRealm = GetRealmName()
