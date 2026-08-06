@@ -11,7 +11,7 @@ local LDB =
 	LibStub("LibDataBroker-1.1"):NewDataObject("Latency", { type = "data source", icon = nil, label = "Latency" })
 
 --
-local GetNetStats = GetNetStats
+local GetNetStats, C_Timer = GetNetStats, C_Timer
 local format = string.format
 
 --[[

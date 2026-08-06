@@ -84,7 +84,6 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Experience", {
 	label = "Experience",
 })
 
-local C_Timer, C_Spell = C_Timer, C_Spell
 local mmin, format = math.min, string.format
 
 --[[
@@ -239,7 +238,9 @@ XP.PlayerEnteringWorld = function(self)
 
 	self:EnableExperience("PLAYER_ENTERING_WORLD")
 
-	_G.StatusTrackingBarManager:Kill()
+	-- Suppress rather than Kill: reversible, so /reload without the infobar
+	-- gives Blizzard's bar back instead of leaving it reparented into limbo.
+	_G.StatusTrackingBarManager:Suppress()
 end
 
 XP.OnInitialize = function(self)

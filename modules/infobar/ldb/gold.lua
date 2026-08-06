@@ -12,7 +12,7 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Coin", { type = "data so
 --
 local mfloor, format, pairs, mabs = math.floor, string.format, pairs, math.abs
 local GetMoney, IsShiftKeyDown, ToggleAllBags, C_CurrencyInfo = GetMoney, IsShiftKeyDown, ToggleAllBags, C_CurrencyInfo
-local COPPER_PER_SILVER, SILVER_PER_GOLD, MAX_WATCHED_TOKENS = COPPER_PER_SILVER, SILVER_PER_GOLD, MAX_WATCHED_TOKENS
+local COPPER_PER_SILVER, SILVER_PER_GOLD = COPPER_PER_SILVER, SILVER_PER_GOLD
 local CURRENCY = CURRENCY
 
 --

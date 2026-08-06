@@ -9,10 +9,7 @@ InfoBar.Plugin = {}
 
 -- Localise a bunch of functions
 local _G = _G
-local IsEncounterInProgress = IsEncounterInProgress
-local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack =
-	pairs, ipairs, string.format, string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
-local tinsert = table.insert
+local pairs = pairs
 
 local LDB = LibStub("LibDataBroker-1.1")
 
@@ -136,14 +133,35 @@ InfoBar.OnInitialize = function(self)
 end
 
 InfoBar.OnEnable = function(self)
-	local microBarButtonWidth = _G["MicroButtonAndBagsBar"]:GetWidth()
-	local microBarPosition = select(4, _G["MicroMenuContainer"]:GetPoint())
+	--[[
+		MicroButtonAndBagsBar is gone - Edit Mode split the micro menu and the
+		bag bar into separate frames, so indexing it errored here. The old code
+		read its width and MicroMenuContainer's x offset and added them to a
+		UIParent-relative TOPLEFT, which was only ever approximating "just right
+		of the micro menu"; anchor to that frame's right edge and say so.
+
+		Both lookups stay guarded: this bar spans two frames Blizzard has moved
+		once already, and a nil here takes the whole module down at login.
+	--]]
+	local microMenu = _G["MicroMenuContainer"] or _G["MicroMenu"]
+	local minimap = _G["MinimapCluster"]
 
 	-- Parent bar
 	local infoBar = CreateFrame("Frame", nil, UIParent)
 	infoBar:SetFrameStrata("LOW")
-	infoBar:SetPoint("TOPLEFT", microBarPosition + microBarButtonWidth + 60, -22)
-	infoBar:SetPoint("TOPRIGHT", _G["MinimapCluster"], "TOPLEFT", -20, 0)
+
+	if microMenu then
+		infoBar:SetPoint("TOPLEFT", microMenu, "TOPRIGHT", 60, 0)
+	else
+		infoBar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 300, -22)
+	end
+
+	if minimap then
+		infoBar:SetPoint("TOPRIGHT", minimap, "TOPLEFT", -20, 0)
+	else
+		infoBar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -220, -22)
+	end
+
 	infoBar:SetHeight(30)
 
 	self.infoBar = infoBar

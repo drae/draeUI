@@ -38,6 +38,7 @@
         "ArenaPrepFrames",
         "ArenaEnemyFrames",
         "CharacterMicroButton",
+        "StatusTrackingBarManager",
         "AlertFrame",
         "UIErrorsFrame",
         "ZoneTextFrame",

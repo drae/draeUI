@@ -13,9 +13,7 @@ local LDB =
 --
 local GetInventoryItemDurability, GetInventorySlotInfo, ToggleCharacter =
 	GetInventoryItemDurability, GetInventorySlotInfo, ToggleCharacter
-local pairs, ipairs, format, gupper, gsub, floor, ceil, abs, mmin, type, unpack =
-	pairs, ipairs, string.format, string.upper, string.gsub, math.floor, math.ceil, math.abs, math.min, type, unpack
-local tinsert = table.insert
+local pairs, ipairs, format, mmin = pairs, ipairs, string.format, math.min
 
 --
 local SLOTS = {}

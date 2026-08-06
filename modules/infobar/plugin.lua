@@ -67,7 +67,6 @@ local updaters = {
 	statusbar_cur = StatusBarCur,
 	statusbar_hide = StatusBarHide,
 	resizePlugin = resizePlugin,
-	updateSettings = SettingsUpdater,
 
 	ShowPlugin = function(frame, value, name)
 		if value then
@@ -105,14 +104,7 @@ end
 	OnScript and tooltip handling
 ]]
 local GetAnchors = function(frame)
-	local x, y = frame:GetCenter()
-	local leftRight
-
-	if x < _G.GetScreenWidth() / 2 then
-		leftRight = "LEFT"
-	else
-		leftRight = "RIGHT"
-	end
+	local _, y = frame:GetCenter()
 
 	if y < _G.GetScreenHeight() / 2 then
 		return "BOTTOM", "TOP"
@@ -138,7 +130,6 @@ local OnEnter = function(self)
 	end
 
 	local obj = self.obj
-	local name = self.name
 	local bar = self.bar
 
 	if bar.autohide then
@@ -170,7 +161,6 @@ end
 
 local OnLeave = function(self)
 	local obj = self.obj
-	local name = self.name
 
 	local bar = self.bar
 	if bar.autohide then
@@ -201,12 +191,7 @@ local OnDragStart = function() end
 local OnDragStop = function() end
 
 local CreateStatusBar = function(self, name, settings)
-	local bar = CreateFrame(
-		settings.isStatusBar and "StatusBar" or "Frame",
-		nil,
-		self,
-		BackdropTemplateMixin and "BackdropTemplate"
-	)
+	local bar = CreateFrame(settings.isStatusBar and "StatusBar" or "Frame", nil, self)
 
 	if settings.isStatusBar then
 		bar:SetStatusBarTexture(settings.texture)
@@ -242,14 +227,22 @@ local CreateStatusBar = function(self, name, settings)
 		bar:SetStatusBarColor(unpack(settings.color))
 	end
 
+	--[[
+		A backing texture rather than a backdrop. The only bg any plugin asks
+		for is a flat colour, and SetColorTexture does that without dragging
+		BackdropTemplate in - backdrops are hand-rolled at each call site here.
+	--]]
 	if settings.bg then
-		bar:SetBackdrop({
-			bgFile = settings.bg.texture,
-		})
+		local bg = bar:CreateTexture(nil, "BACKGROUND")
+		bg:SetAllPoints()
 
 		if settings.bg.color and type(settings.bg.color) == "table" then
-			bar:SetBackdropColor(unpack(settings.bg.color))
+			bg:SetColorTexture(unpack(settings.bg.color))
+		else
+			bg:SetTexture(settings.bg.texture)
 		end
+
+		bar.bg = bg
 	end
 
 	if settings.spark then
@@ -271,15 +264,22 @@ end
 
 Plugin.New = function(self, name, obj, settings)
 	local text = obj.text
-	local icon = obj.icon
 	local statusbar = obj.statusbar
 
-	local plugin = CreateFrame("Button", nil)
+	--[[
+		Parented at creation, not in AddPlugin. RepositionPlugins filters on
+		IsVisible(), which is false for a parentless frame however many times
+		you call Show() on it - so a plugin built without a parent was skipped
+		by the first reposition and only got placed once something later fired
+		a ShowPlugin change.
+	--]]
+	local plugin = CreateFrame("Button", nil, settings.bar)
 
 	plugin.name = name
 	plugin.obj = obj
+	plugin.bar = settings.bar
 
-	plugin.text = DraeUI.CreateFontObject(plugin, DraeUI.config["general"].fontsize1, DraeUI.media.font, "LEFT", 0, 0) --
+	plugin.text = DraeUI.CreateFontObject(plugin, { point = "LEFT" })
 
 	if statusbar then
 		plugin.statusbar = {}
@@ -326,10 +326,6 @@ Plugin.New = function(self, name, obj, settings)
 		end
 	end
 
-	if icon then
-	end
-
-	--
 	if text then
 		plugin.text:SetText(text)
 	else

@@ -11,29 +11,37 @@ local LDB =
 	LibStub("LibDataBroker-1.1"):NewDataObject("ResCount", { type = "data source", icon = nil, label = "ResCount" })
 
 --
-local C_Timer, C_Spell, GetSpellInfo, GetInstanceInfo, GetDifficultyInfo, GetTime =
-	C_Timer, C_Spell, GetSpellInfo, GetInstanceInfo, GetDifficultyInfo, GetTime
+local C_Timer, C_Spell, GetInstanceInfo, GetDifficultyInfo, GetTime =
+	C_Timer, C_Spell, GetInstanceInfo, GetDifficultyInfo, GetTime
 local mfloor, mmod, format = math.floor, math.fmod, string.format
 
 --[[
 
 --]]
 local UpdateTimer = function()
-	local info = C_Spell.GetSpellCharges(20484) -- Rebirth)
+	--[[
+		SpellChargeInfo, not the old GetSpellCharges tuple: the fields are
+		currentCharges/cooldownStartTime/cooldownDuration. cooldownStartTime is
+		0 rather than nil when nothing is recharging, and 0 is truthy in Lua, so
+		it has to be compared rather than just tested.
+	--]]
+	local info = C_Spell.GetSpellCharges(20484) -- Rebirth
 
-	if info and info.started then
-		local time = info.duration - (GetTime() - info.started)
+	if info and info.cooldownStartTime and info.cooldownStartTime > 0 then
+		local time = info.cooldownDuration - (GetTime() - info.cooldownStartTime)
 		local min = mfloor(time / 60)
 		local sec = mmod(time, 60)
 
 		LDB.text = format(
-			info.charges == 0 and "|cffff0000%d|rres (%d:%02d)" or "|cff00ff00%d|rres (%d:%02d)",
-			info.charges,
+			info.currentCharges == 0 and "|cffff0000%d|rres (%d:%02d)" or "|cff00ff00%d|rres (%d:%02d)",
+			info.currentCharges,
 			min,
 			sec
 		)
+	elseif info then
+		LDB.text = format("|cff00ff00%d|rres (0:00)", info.currentCharges or 0)
 	else
-		LDB.text = format("|cff00ff000|rres (0:00)")
+		LDB.text = "|cff00ff000|rres (0:00)"
 	end
 end
 

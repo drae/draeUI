@@ -37,15 +37,17 @@ modules\presence\zone.lua
 modules\presence\errors.lua
 modules\presence\events.lua
 
-# Infobar
-#modules\infobar\init.lua
-#modules\infobar\plugin.lua
-#modules\infobar\ldb\fps.lua
-#modules\infobar\ldb\xp.lua
-#modules\infobar\ldb\latency.lua
-#modules\infobar\ldb\gold.lua
-#modules\infobar\ldb\durability.lua
-#modules\infobar\ldb\res.lua
+# Infobar - LDB display bar between the micro menu and the minimap.
+# init.lua must precede plugin.lua, and both must precede the ldb/ sources:
+# each of those registers a data object at load that the bar picks up on enable.
+modules\infobar\init.lua
+modules\infobar\plugin.lua
+modules\infobar\ldb\fps.lua
+modules\infobar\ldb\xp.lua
+modules\infobar\ldb\latency.lua
+modules\infobar\ldb\gold.lua
+modules\infobar\ldb\durability.lua
+modules\infobar\ldb\res.lua
 
 # Unitframes
 modules\unitframes\auras.xml
