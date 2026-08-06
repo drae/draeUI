@@ -12,10 +12,43 @@ local DraeUI = select(2, ...)
 local IB = DraeUI:GetModule("Infobar")
 local XP = IB:NewModule("XP", "AceEvent-3.0")
 
+--[[
+	Four layers, stacked so each shows through past the one in front:
+
+		bg      1  black backing, a plain Frame
+		rested  2  current + pending turn-ins + rested
+		quest   3  current + xp waiting in quests ready to hand in
+		xp      4  current
+
+	Each bar is filled to a cumulative total rather than its own share, so the
+	visible band of each colour is that layer's contribution. Same arrangement
+	the Luxthos experience bar uses for its additionalProgress overlays.
+--]]
 local plugin = IB:Register("Experience", {
 	order = 50,
 	statusbar = {
 		xp = {
+			isStatusBar = true,
+			level = 4,
+			position = {
+				{
+					anchorat = "TOPLEFT",
+					anchorto = "BOTTOMLEFT",
+					offsetX = 0,
+					offsetY = 2,
+				},
+				{
+					anchorat = "TOPRIGHT",
+					anchorto = "BOTTOMRIGHT",
+					offsetX = 0,
+					offsetY = 2,
+				},
+			},
+			height = 5,
+			spark = true,
+			smooth = true,
+		},
+		quest = {
 			isStatusBar = true,
 			level = 3,
 			position = {
@@ -33,7 +66,9 @@ local plugin = IB:Register("Experience", {
 				},
 			},
 			height = 5,
-			spark = true,
+			-- Blizzard's quest-orange, same tone the source WeakAura uses
+			color = { 1, 0.59, 0, 1 },
+			spark = false,
 			smooth = true,
 		},
 		rested = {
@@ -85,8 +120,126 @@ local plugin = IB:Register("Experience", {
 	},
 })
 
-local mmin, format = math.min, string.format
+local mmin, mceil, format, time = math.min, math.ceil, string.format, time
 local L = DraeUI.L
+
+--[[
+	XP waiting in the quest log.
+
+	questXP is everything with an experience reward; readyXP is the part on
+	quests you could hand in right now, which is what the orange band on the
+	bar represents. Rescanned on quest log changes rather than polled.
+
+	Quest reward data arrives asynchronously, so a quest can report 0 until the
+	client has it - QUEST_LOG_UPDATE fires repeatedly and corrects itself.
+--]]
+local questXP, readyXP, readyCount = 0, 0, 0
+
+local UpdateQuestXP = function()
+	questXP, readyXP, readyCount = 0, 0, 0
+
+	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and GetQuestLogRewardXP) then
+		return
+	end
+
+	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+		-- Headers report 0; only real quests have an id
+		local questID = C_QuestLog.GetQuestIDForLogIndex(i)
+
+		if questID and questID > 0 then
+			local reward = GetQuestLogRewardXP(questID) or 0
+
+			if reward > 0 then
+				questXP = questXP + reward
+
+				if C_QuestLog.IsComplete(questID) or C_QuestLog.ReadyForTurnIn(questID) then
+					readyXP = readyXP + reward
+					readyCount = readyCount + 1
+				end
+			end
+		end
+	end
+end
+
+--[[
+	Session rate.
+
+	Kept in draeUIDB so a /reload doesn't throw the average away - only a fresh
+	login starts a new session, which PLAYER_ENTERING_WORLD distinguishes for
+	us. Levelling makes currentXP jump backwards, so a negative delta means the
+	bar wrapped and the gain is the remainder of the old level plus the new.
+--]]
+local Session = function()
+	local db = DraeUI.dbGlobal
+
+	db.xp = db.xp or {}
+
+	local s = db.xp
+
+	s.gained = s.gained or 0
+	s.lastXP = s.lastXP or UnitXP("player")
+	s.lastMax = s.lastMax or UnitXPMax("player")
+	s.startTime = s.startTime or time()
+
+	return s
+end
+
+local ResetSession = function()
+	local s = Session()
+
+	s.gained = 0
+	s.lastXP = UnitXP("player")
+	s.lastMax = UnitXPMax("player")
+	s.startTime = time()
+end
+
+local AccrueSession = function()
+	local s = Session()
+	local cur, max = UnitXP("player"), UnitXPMax("player")
+	local gained = cur - s.lastXP
+
+	if gained < 0 then
+		gained = s.lastMax - s.lastXP + cur
+	end
+
+	s.gained = s.gained + gained
+	s.lastXP = cur
+	s.lastMax = max
+end
+
+--[[
+	Time played.
+
+	RequestTimePlayed is the only source, and it answers once per request, so
+	the reply is cached and extrapolated forward from when it arrived rather
+	than re-requested. Blizzard prints the reply to chat; swapping
+	ChatFrame_DisplayTimePlayed for the one message we asked for keeps the
+	login quiet without touching a /played the player typed themselves.
+--]]
+local totalPlayed, levelPlayed, playedAt = 0, 0, 0
+local RequestQuietTimePlayed
+
+do
+	local pending = false
+	local original = _G.ChatFrame_DisplayTimePlayed
+
+	if original then
+		_G.ChatFrame_DisplayTimePlayed = function(...)
+			if pending then
+				pending = false
+				return
+			end
+
+			return original(...)
+		end
+	end
+
+	RequestQuietTimePlayed = function()
+		pending = true
+
+		RequestTimePlayed()
+	end
+end
 
 --[[
 
@@ -218,18 +371,30 @@ end
 local ShowExperience = function()
 	local level = UnitLevel("player")
 	local cur, max = UnitXP("player"), UnitXPMax("player")
-	local rested = GetXPExhaustion()
+	local rested = GetXPExhaustion() or 0
 
 	local pct = 0
 	if max and max ~= 0 then
 		pct = (cur / max) * 100
 	end
 
+	--[[
+		Cumulative fills, so each band shows the layer in front of it: xp is
+		where you are, quest adds what's waiting to be handed in, rested adds
+		on top of that. Capped at max - the overflow just isn't drawable.
+	--]]
 	plugin:SetBar("xp", cur - 1 >= 0 and cur - 1 or 0, 0, max)
 	plugin:SetBarColor("xp", nil)
 
-	if rested and rested > 0 then
-		plugin:SetBar("rested", mmin(cur + rested, max), 0, max)
+	if readyXP > 0 then
+		plugin:SetBar("quest", mmin(cur + readyXP, max), 0, max)
+		plugin:SetBarShown("quest", true)
+	else
+		plugin:SetBarShown("quest", false)
+	end
+
+	if rested > 0 then
+		plugin:SetBar("rested", mmin(cur + readyXP + rested, max), 0, max)
 		plugin:SetBarShown("rested", true)
 	else
 		plugin:SetBarShown("rested", false)
@@ -237,31 +402,35 @@ local ShowExperience = function()
 
 	local r1, g1, b1 = DraeUI.ColorGradient(pct / 100 - 0.001, 1, 0, 0, 1, 1, 0, 0, 1, 0)
 
+	--[[
+		The raw cur/max pair moved to the tooltip: this sits in a strip beside
+		five other readouts, and the percentages are what you actually read at
+		a glance. The bracketed second percentage is where you'd be after
+		handing in everything that's ready, and only appears when there is
+		something to hand in.
+	--]]
+	local turnIn = ""
+
+	if readyXP > 0 and max ~= 0 then
+		turnIn = format(" |cffff9700(%d%%)|r", mmin(cur + readyXP, max) / max * 100)
+	end
+
+	local restedText = ""
+
+	if rested > 0 and max ~= 0 then
+		restedText = format(" |cff00ff00%d|r|cffffffff%%rested|r", rested / max * 100)
+	end
+
 	plugin:SetText(
 		format(
-			(IsResting() and (restingIcon .. " ") or "")
-				.. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp (%d/%d)%s",
+			(IsResting() and (restingIcon .. " ") or "") .. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp%s%s",
 			level,
 			r1 * 255,
 			g1 * 255,
 			b1 * 255,
 			pct,
-			cur,
-			max,
-			(
-				rested
-					and format(
-						" |cff%02x%02x%02x%d|r|cff%02x%02x%02x%%rested|r",
-						0,
-						255,
-						0,
-						rested / max * 100,
-						255,
-						255,
-						255
-					)
-				or ""
-			)
+			turnIn,
+			restedText
 		)
 	)
 end
@@ -293,6 +462,7 @@ local ShowReputation = function(data)
 	plugin:SetBar("xp", cur, 0, max)
 	plugin:SetBarColor("xp", colour.r, colour.g, colour.b)
 	plugin:SetBarShown("rested", false)
+	plugin:SetBarShown("quest", false)
 
 	local r, g, b = colour.r * 255, colour.g * 255, colour.b * 255
 
@@ -315,26 +485,99 @@ local ShowReputation = function(data)
 	)
 end
 
+--[[
+	Everything the bar hasn't room for. The source WeakAura spreads this across
+	seven text regions around a 600px bar; here it's one tooltip.
+--]]
+local ExperienceTooltip = function(tooltip)
+	local cur, max = UnitXP("player"), UnitXPMax("player")
+	local rested = GetXPExhaustion() or 0
+	local remaining = max - cur
+
+	tooltip:AddLine(L["INFOBAR_EXPERIENCE"])
+	tooltip:AddLine(" ")
+
+	tooltip:AddDoubleLine(L["INFOBAR_XP"], format("%d / %d (%d%%)", cur, max, cur / max * 100), 1, 1, 1)
+	tooltip:AddDoubleLine(
+		L["INFOBAR_REMAINING"],
+		format(L["INFOBAR_XP_REMAINING"], remaining, remaining / max * 100, 20 * remaining / max),
+		1,
+		1,
+		1
+	)
+
+	if rested > 0 then
+		tooltip:AddDoubleLine(L["INFOBAR_RESTED"], format("+%d (%d%%)", rested, rested / max * 100), 1, 1, 1)
+	end
+
+	-- What's sitting in the quest log, and where handing it in would leave you
+	if questXP > 0 then
+		tooltip:AddLine(" ")
+		tooltip:AddLine(L["INFOBAR_QUESTS"])
+
+		if readyXP > 0 then
+			tooltip:AddDoubleLine(
+				format(L["INFOBAR_QUESTS_READY"], readyCount),
+				format("+%d (%d%%)", readyXP, mmin(cur + readyXP, max) / max * 100),
+				1,
+				1,
+				1,
+				1,
+				0.59,
+				0
+			)
+		end
+
+		tooltip:AddDoubleLine(L["INFOBAR_QUESTS_TOTAL"], format("+%d", questXP), 1, 1, 1)
+	end
+
+	--[[
+		Rate over the whole session rather than a rolling window, so it settles
+		rather than swinging every time you stop to sell. Which also means a
+		long afk drags it down; the session resets on a fresh login.
+	--]]
+	local s = Session()
+	local elapsed = time() - s.startTime
+
+	tooltip:AddLine(" ")
+	tooltip:AddLine(L["INFOBAR_THIS_SESSION"])
+
+	tooltip:AddDoubleLine(L["INFOBAR_XP_GAINED"], format("%d", s.gained), 1, 1, 1)
+
+	if elapsed > 0 and s.gained > 0 then
+		local hourly = mceil(s.gained / (elapsed / 3600))
+
+		tooltip:AddDoubleLine(L["INFOBAR_XP_HOUR"], format("%d", hourly), 1, 1, 1)
+
+		if hourly > 0 then
+			tooltip:AddDoubleLine(
+				L["INFOBAR_TIME_TO_LEVEL"],
+				SecondsToTime(mceil(remaining / hourly * 3600), true, false, 2),
+				1,
+				1,
+				1
+			)
+		end
+	end
+
+	tooltip:AddDoubleLine(L["INFOBAR_SESSION_LENGTH"], SecondsToTime(elapsed, true, false, 2), 1, 1, 1)
+
+	--[[
+		Extrapolated from the cached RequestTimePlayed reply - the game answers
+		once per request, so this counts forward from when it arrived.
+	--]]
+	if playedAt > 0 then
+		local since = time() - playedAt
+
+		tooltip:AddLine(" ")
+		tooltip:AddDoubleLine(L["INFOBAR_TIME_THIS_LEVEL"], SecondsToTime(levelPlayed + since, true, false, 2), 1, 1, 1)
+		tooltip:AddDoubleLine(L["INFOBAR_TIME_PLAYED"], SecondsToTime(totalPlayed + since, true, false, 2), 1, 1, 1)
+	end
+end
+
 local OnTooltip = function(tooltip)
 	if HasExperience() then
-		local cur, max = UnitXP("player"), UnitXPMax("player")
-		local rested = GetXPExhaustion()
-
-		tooltip:AddLine(L["INFOBAR_EXPERIENCE"])
-		tooltip:AddLine(" ")
-
-		tooltip:AddDoubleLine(L["INFOBAR_XP"], format("%d / %d (%d%%)", cur, max, cur / max * 100), 1, 1, 1)
-		tooltip:AddDoubleLine(
-			L["INFOBAR_REMAINING"],
-			format(L["INFOBAR_XP_REMAINING"], max - cur, (max - cur) / max * 100, 20 * (max - cur) / max),
-			1,
-			1,
-			1
-		)
-
-		if rested then
-			tooltip:AddDoubleLine(L["INFOBAR_RESTED"], format("+%d (%d%%)", rested, rested / max * 100), 1, 1, 1)
-		end
+		ExperienceTooltip(tooltip)
 
 		return
 	end
@@ -400,8 +643,55 @@ XP.Update = function()
 	plugin:SetShown(false)
 end
 
-XP.PlayerEnteringWorld = function(self)
+--[[
+	XP gain has to be banked before the readout redraws, or the rate lags a
+	level behind.
+--]]
+XP.ExperienceGained = function(self)
+	AccrueSession()
+
+	self:Update()
+end
+
+XP.QuestLogChanged = function(self)
+	UpdateQuestXP()
+
+	self:Update()
+end
+
+--[[
+	Levelling restarts the per-level clock, and the only way to learn the new
+	figure is to ask again.
+--]]
+XP.LevelUp = function(self)
+	AccrueSession()
+	RequestQuietTimePlayed()
+
+	self:Update()
+end
+
+XP.TimePlayed = function(_, _, total, level)
+	totalPlayed = total or 0
+	levelPlayed = level or 0
+	playedAt = time()
+end
+
+--[[
+	isInitialLogin distinguishes a fresh login from a /reload, which is what
+	decides whether the session average starts over. Keeping it across reloads
+	is the whole reason it lives in draeUIDB.
+--]]
+XP.PlayerEnteringWorld = function(self, _, isInitialLogin)
 	self:UnregisterEvent("PLAYER_ENTERING_WORLD", "PlayerEnteringWorld")
+
+	if isInitialLogin then
+		ResetSession()
+	else
+		Session()
+	end
+
+	UpdateQuestXP()
+	RequestQuietTimePlayed()
 
 	self:Update()
 
@@ -411,10 +701,11 @@ XP.PlayerEnteringWorld = function(self)
 end
 
 XP.OnInitialize = function(self)
-	self:RegisterEvent("PLAYER_XP_UPDATE", "Update")
+	self:RegisterEvent("PLAYER_XP_UPDATE", "ExperienceGained")
+	self:RegisterEvent("PLAYER_LEVEL_UP", "LevelUp")
+
 	self:RegisterEvent("UPDATE_EXHAUSTION", "Update")
 	self:RegisterEvent("PLAYER_UPDATE_RESTING", "Update")
-	self:RegisterEvent("PLAYER_LEVEL_UP", "Update")
 	self:RegisterEvent("DISABLE_XP_GAIN", "Update")
 	self:RegisterEvent("ENABLE_XP_GAIN", "Update")
 	self:RegisterEvent("UPDATE_EXPANSION_LEVEL", "Update")
@@ -422,6 +713,12 @@ XP.OnInitialize = function(self)
 
 	-- Fires when reputation changes and when the watched faction is switched
 	self:RegisterEvent("UPDATE_FACTION", "Update")
+
+	-- Quest log churn, for the turn-in overlay
+	self:RegisterEvent("QUEST_LOG_UPDATE", "QuestLogChanged")
+	self:RegisterEvent("UNIT_QUEST_LOG_CHANGED", "QuestLogChanged")
+
+	self:RegisterEvent("TIME_PLAYED_MSG", "TimePlayed")
 
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "PlayerEnteringWorld")
 end

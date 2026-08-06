@@ -45,6 +45,8 @@
         "C_MajorFactions",
         "GameFontNormal",
         "RENOWN_LEVEL_LABEL",
+        "SecondsToTime",
+        "ChatFrame_DisplayTimePlayed",
         "MAX_REPUTATION_REACTION",
         "BLUE_FONT_COLOR",
         "GetText",
