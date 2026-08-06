@@ -48,7 +48,7 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
   
 - **buffbar/** (modules/buffbar/): Aura tracking system
 - **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
-- **infobar/** (modules/infobar/): FPS, latency, durability, gold, XP and Rebirth-charge readouts in the strip between the micro menu and the minimap. Built on LibDataBroker: `ldb/*.lua` each register a data object at load, `init.lua` picks them up on enable and `plugin.lua` turns each one into a frame. Restored from `55e4c81^` and brought up to 12.0 — the module had never run under Midnight, so treat anything untested in it with suspicion. **Third-party LDB feeds do not work**: `initOrder` in `init.lua` is a hardcoded list of the six built-ins and anything else is created but never anchored.
+- **infobar/** (modules/infobar/): FPS, latency, durability, gold, XP/reputation and Rebirth-charge readouts in the strip between the micro menu and the minimap. See the registration contract below. Restored from `55e4c81^` and brought up to 12.0 — fps, latency, durability and gold are confirmed working; the res plugin has never been exercised in a raid or M+, so treat it with suspicion.
 - **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. Those four are StyLua-ignored so they stay diffable against upstream; every deliberate divergence in them carries a `-- draeUI:` comment.
 
 ### Library Dependencies
@@ -59,7 +59,10 @@ Located in `libs/` and loaded via libs.xml:
 - **Ace3**: AceAddon-3.0, AceEvent-3.0
 - **LibStub**: Library management
 - **LibSharedMedia-3.0**: Media (fonts, textures, sounds) management
-- **LibDataBroker-1.1**: Data-source registry. Used only by `modules/infobar/`; it is in `.styluaignore` along with the rest of `libs/`
+
+LibDataBroker-1.1 used to be here for the infobar and is **gone** — see the infobar
+section. Don't reintroduce it: the bar has its own registry, and LDB's conventions
+never fitted what the plugins actually emit.
 
 ## Key Conventions
 
@@ -122,6 +125,45 @@ Access config via `DraeUI.config["section"].property`:
 DraeUI.config["frames"].playerXoffset
 DraeUI.config["general"].font
 ```
+
+### Infobar plugins — registration is the contract
+
+**To add a readout: drop a file in `modules/infobar/plugins/` and add one `.toc` line.
+That is the whole list.** There is no manifest to update, and nothing to remember when
+retiring one — deleting the file and its `.toc` line leaves nothing behind. That's the
+point of the design: expansion-specific readouts (azerite power, artifact weapons) come
+and go, and the previous `initOrder` list meant a plugin missing from it was created,
+parented and then *silently never positioned*, sitting at the frame origin.
+
+```lua
+local plugin = InfoBar:Register("FPS", { order = 10 })
+
+plugin.OnTooltip = function(tooltip) tooltip:AddLine("…") end
+plugin.OnClick = function(frame, button) end
+
+plugin:SetText("30fps")
+```
+
+`Register` runs at file load, long before the bar exists, so it returns a *handle*
+rather than a frame — and the handle is also the value store. Every setter writes its
+field first and touches a widget only if one exists, which is why a plugin can push
+values from its `OnInitialize`. Frames are built in `InfoBar:OnEnable`.
+
+Handle methods: `SetText`, `SetShown`, `SetBar(name, cur, min, max)`, `SetBarColor`,
+`SetBarShown`, `RefreshTooltip`, `Resize`. Callbacks: `OnTooltip(tooltip)`, `OnEnter`,
+`OnLeave`, `OnClick`.
+
+- **`order` is spaced in tens.** Slot a new readout between two existing ones by picking
+  35, rather than renumbering. Ties break on name, since `table.sort` isn't stable.
+- **Tooltips are framework-owned.** Provide `OnTooltip` and add lines; owning, anchoring
+  and showing is done for you. `GameTooltip` should not appear in a plugin file.
+  `RefreshTooltip()` is a no-op unless that plugin currently owns the tooltip, so a
+  plugin's existing update tick can drive a live tooltip with no extra timer.
+- **Register unconditionally and self-hide** with `SetShown(false)` when there's nothing
+  to say — what `xp.lua` does at max level and `res.lua` does outside instanced content.
+  Retiring such a plugin is then just deleting the file.
+- Setters skip unchanged values, and that guard is **secret-safe** via
+  `DraeUI.CanAccessValue` — `res.lua` can set a secret string as its text.
 
 ### Media Access
 
@@ -280,8 +322,9 @@ Controlled by draeUI.toc (TOC = Table of Contents):
 5. Functions
 6. Modules (BuffBar, Skins, Infobar, Presence, Unitframes)
 
-Within Infobar the order is load-bearing: `init.lua` then `plugin.lua` then the `ldb/`
-sources, since each of those registers a data object at load that the bar reads on enable.
+Within Infobar the order is load-bearing: `init.lua` then `plugin.lua` then the
+`plugins/` sources, since each of those calls `InfoBar:Register` at load. The plugins
+themselves may be listed in any order - placement comes from `order`, not the .toc.
 
 Order matters for dependencies - libs before core, config before modules.
 
