@@ -267,10 +267,19 @@ local ShowExperience = function()
 end
 
 --[[
-	Same layout as the experience readout - standing in the brackets where the
-	level goes - so the bar reads the same way whichever it happens to be
-	showing. The fill takes the faction's own colour, which is the only thing
-	distinguishing the two at a glance.
+	Faction name, then the same layout as the experience readout - standing in
+	the brackets where the level goes - so the bar reads the same way whichever
+	it happens to be showing. Experience needs no name, there being only one of
+	it; a reputation does, since which faction you're watching is the whole
+	question.
+
+	Both the name and the standing take the faction's own colour, which is what
+	distinguishes this from the xp readout at a glance.
+
+	Faction names run long ("The Assembly of the Deeps"), and this plugin sits
+	second from the right. If it ever pushes the bar past the minimap,
+	DraeUI.UTF8(name, n, true) in functions/functions.lua truncates with an
+	ellipsis and is the one-line fix.
 --]]
 local ShowReputation = function(data)
 	local cur, max, label = GetReputationProgress(data)
@@ -285,13 +294,19 @@ local ShowReputation = function(data)
 	plugin:SetBarColor("xp", colour.r, colour.g, colour.b)
 	plugin:SetBarShown("rested", false)
 
+	local r, g, b = colour.r * 255, colour.g * 255, colour.b * 255
+
 	plugin:SetText(
 		format(
-			"[|cff%02x%02x%02x%s|r] |cffffffff%d%%|r%s (%d/%d)",
-			colour.r * 255,
-			colour.g * 255,
-			colour.b * 255,
-			label or data.name,
+			"|cff%02x%02x%02x%s|r [|cff%02x%02x%02x%s|r] |cffffffff%d%%|r%s (%d/%d)",
+			r,
+			g,
+			b,
+			data.name,
+			r,
+			g,
+			b,
+			label or "",
 			pct,
 			L["INFOBAR_REP"],
 			cur,
