@@ -207,23 +207,23 @@ DraeUI.config = {
 			the bar gets the room rather than the label.
 		--]]
 		minWidth = {
-			Experience = 100,
+			Experience = 250,
 		},
 
 		left = {
 			relTo = "MicroMenuContainer",
 			point = "TOPLEFT",
 			relPoint = "TOPRIGHT",
-			x = 60,
-			y = 0,
+			x = 15,
+			y = -15,
 		},
 
 		right = {
 			relTo = "MinimapCluster",
 			point = "TOPRIGHT",
 			relPoint = "TOPLEFT",
-			x = -20,
-			y = 0,
+			x = -100,
+			y = -15,
 		},
 	},
 
