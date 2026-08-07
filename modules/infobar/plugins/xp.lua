@@ -89,7 +89,7 @@ local plugin = IB:Register("Experience", {
 				},
 			},
 			height = 10,
-			color = { 0.5, 0.5, 0.5, 0.75 },
+			color = { 0.75, 0.75, 0.75, 0.75 },
 			spark = false,
 			smooth = true,
 		},
