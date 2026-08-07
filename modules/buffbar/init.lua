@@ -79,7 +79,7 @@ local InitAuraButton = function(button)
 			and colour belong to Blizzard.
 	--]]
 	local duration = button:CreateFontString(nil)
-	duration:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
+	duration:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize2, "OUTLINE")
 	duration:SetPoint("CENTER", button, "CENTER", 0, 0)
 	button:SetDurationText(duration, {})
 
