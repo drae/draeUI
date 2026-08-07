@@ -11,7 +11,11 @@ local CreateFrame = CreateFrame
 local UnitFrame_OnEnter, UnitFrame_OnLeave = UnitFrame_OnEnter, UnitFrame_OnLeave
 local UnitIsConnected, UnitIsGhost = UnitIsConnected, UnitIsGhost
 local UnitIsDead, AbbreviateNumbers = UnitIsDead, AbbreviateNumbers
-local unpack = unpack
+local UnitGroupRolesAssigned = UnitGroupRolesAssigned
+local UnitIsGroupLeader, UnitLeadsAnyGroup = UnitIsGroupLeader, UnitLeadsAnyGroup
+local UnitInRaid, UnitIsGroupAssistant = UnitInRaid, UnitIsGroupAssistant
+local HasLFGRestrictions, IsInInstance = HasLFGRestrictions, IsInInstance
+local pcall, unpack = pcall, unpack
 -- Blizzard's own localised globals. The literal fallbacks are insurance only:
 -- these are read at file scope and land in a health update, so a client that
 -- ever dropped one would error every frame in combat rather than look wrong
@@ -293,6 +297,113 @@ do
 	end
 end
 
+--[[
+		UnitGroupRolesAssigned returns a secret string in 12.1, and oUF's own
+		element compares it against 'TANK' on the very next line - which is the
+		error, not the display.
+
+		There is no way to keep the icon for a secret role. SetAlphaFromBoolean
+		and SetVertexColorFromBoolean are the only setters that take a secret,
+		and the boolean they'd need can only come from the comparison that
+		errors. UnitGroupRolesAssignedEnum is the same data as a number, and
+		UnitGetAvailableRoles answers a different question. So the icon is
+		hidden for units whose role the client won't disclose.
+
+		Hoisted rather than built per frame: the element arrives as self, so
+		there is nothing to capture.
+--]]
+local RoleOverride = function(self)
+	local element = self.GroupRoleIndicator
+
+	-- pcall takes the function and its args, same as tags.lua's drae:afk
+	local ok, role = pcall(UnitGroupRolesAssigned, self.unit)
+
+	-- CanAccessValue is false for nil too, so an absent role hides as well
+	if not ok or not DraeUI.CanAccessValue(role) then
+		element:Hide()
+
+		return
+	end
+
+	if role == "TANK" then
+		element:SetAtlas("UI-LFG-RoleIcon-Tank-Micro-Raid", element.useAtlasSize)
+		element:Show()
+	elseif role == "HEALER" then
+		element:SetAtlas("UI-LFG-RoleIcon-Healer-Micro-Raid", element.useAtlasSize)
+		element:Show()
+	elseif role == "DAMAGER" then
+		element:SetAtlas("UI-LFG-RoleIcon-DPS-Micro-Raid", element.useAtlasSize)
+		element:Show()
+	else
+		element:Hide()
+	end
+end
+
+--[[
+		UnitIsGroupLeader and UnitLeadsAnyGroup return a secret boolean in 12.1,
+		and oUF's element puts it straight into an `if`.
+
+		Unlike the role, this one survives: a boolean is exactly what
+		SetAlphaFromBoolean takes. The atlas is chosen from HasLFGRestrictions,
+		which is group-wide state with no unit argument and stays plain, so it
+		can be set before the visibility is known. Shown can't carry a secret,
+		so the texture stays up permanently and alpha is what hides it.
+--]]
+local LeaderOverride = function(self)
+	local element = self.LeaderIndicator
+	local unit = self.unit
+	local isLeader
+
+	if IsInInstance() then
+		isLeader = UnitIsGroupLeader(unit)
+	else
+		isLeader = UnitLeadsAnyGroup(unit)
+	end
+
+	element:SetAtlas(
+		HasLFGRestrictions() and "UI-HUD-UnitFrame-Player-Group-GuideIcon" or "UI-HUD-UnitFrame-Player-Group-LeaderIcon",
+		element.useAtlasSize
+	)
+	element:Show()
+	element:SetAlphaFromBoolean(isLeader, 1, 0)
+end
+
+--[[
+		Same failure as the leader - upstream's `UnitInRaid(unit) and
+		UnitIsGroupAssistant(unit) and not UnitIsGroupLeader(unit)` is three
+		boolean tests, any of which can be handed a secret.
+
+		Alpha carries exactly one boolean, so two secrets can't be combined:
+		when both are secret the leader term is dropped and the icon follows
+		the assistant flag alone. That only shows an extra icon on a leader who
+		is also flagged assistant, and the two sit in different corners here.
+		When the values are readable it takes the exact upstream path.
+--]]
+local AssistantOverride = function(self)
+	local element = self.AssistantIndicator
+	local unit = self.unit
+	local inRaid = UnitInRaid(unit)
+
+	-- A raid index, not a flag, so there is no alpha channel to fall back on
+	if not DraeUI.CanAccessValue(inRaid) or not inRaid then
+		element:Hide()
+
+		return
+	end
+
+	local isAssistant = UnitIsGroupAssistant(unit)
+	local isLeader = UnitIsGroupLeader(unit)
+
+	if DraeUI.CanAccessValue(isAssistant) and DraeUI.CanAccessValue(isLeader) then
+		-- Reset the alpha the secret path may have left at 0
+		element:SetAlpha(1)
+		element:SetShown(isAssistant and not isLeader)
+	else
+		element:Show()
+		element:SetAlphaFromBoolean(isAssistant, 1, 0)
+	end
+end
+
 -- Leader, PvP, Role, etc.
 UF.FlagIcons = function(frame, reverse)
 	-- pvp icon
@@ -305,18 +416,21 @@ UF.FlagIcons = function(frame, reverse)
 	local leader = frame:CreateTexture(nil, "OVERLAY", nil, 2)
 	leader:SetPoint("CENTER", frame, reverse and "TOPLEFT" or "TOPRIGHT", -2, 2)
 	leader:SetSize(16, 16)
+	leader.Override = LeaderOverride
 	frame.LeaderIndicator = leader
 
 	-- Assistant icon
 	local assistant = frame:CreateTexture(nil, "OVERLAY", nil, 2)
 	assistant:SetPoint("CENTER", frame, reverse and "TOPRIGHT" or "TOPLEFT", -2, 2)
 	assistant:SetSize(16, 16)
+	assistant.Override = AssistantOverride
 	frame.AssistantIndicator = assistant
 
 	-- Dungeon role
 	local lfdRole = frame:CreateTexture(nil, "OVERLAY", nil, 2)
 	lfdRole:SetPoint("CENTER", frame, reverse and "BOTTOMRIGHT" or "BOTTOMLEFT", 2, -2)
 	lfdRole:SetSize(16, 16)
+	lfdRole.Override = RoleOverride
 	frame.GroupRoleIndicator = lfdRole
 end
 
