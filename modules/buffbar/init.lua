@@ -25,7 +25,7 @@ local next, unpack = next, unpack
 		happen in here: PTR 7 relaxed calling button APIs afterwards, but there
 		is nothing to gain by relying on that.
 
-		The widgets are handed over rather than driven - SetIcon, SetDurationCooldown
+		The widgets are handed over rather than driven - SetIcon, SetDurationText
 		and SetApplicationCount register the objects and Blizzard updates them.
 --]]
 local InitAuraButton = function(button)
@@ -55,15 +55,33 @@ local InitAuraButton = function(button)
 	icon:SetAllPoints(button)
 	button:SetIcon(icon)
 
-	local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-	cd:SetReverse(true)
-	cd:SetAllPoints(button)
-	button:SetDurationCooldown(cd)
-
 	local count = button:CreateFontString(nil)
 	count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
 	count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
 	button:SetApplicationCount(count)
+
+	--[[
+			Duration text, and no cooldown spiral behind it.
+
+			CooldownFrameTemplate draws its own countdown numbers, sized for a
+			much larger button and formatted as full minutes and seconds, so on
+			a 25px icon they overflow it. They also ignore the aura formatter
+			entirely, being a different system.
+
+			SetDurationText is the replacement. Passing no formatter leaves
+			Blizzard's DefaultAuraDurationFormatter, which is exactly what is
+			wanted here: one unit only with a one-letter suffix ("2h", "45m",
+			"12s"), and a 1.5x band on each interval so the text settles rather
+			than flickering as it crosses a boundary.
+
+			The fontstring picks up SecretAspect.Text, Alpha and VertexColor on
+			handover, so style and position it first - after this its contents
+			and colour belong to Blizzard.
+	--]]
+	local duration = button:CreateFontString(nil)
+	duration:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
+	duration:SetPoint("CENTER", button, "CENTER", 0, 0)
+	button:SetDurationText(duration, {})
 
 	button:SetTooltipAnchorPoint("ANCHOR_BOTTOMLEFT", -5, -5)
 

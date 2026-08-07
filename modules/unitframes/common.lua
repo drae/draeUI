@@ -337,15 +337,17 @@ do
 	local PostCreateButton = function(_, button)
 		button.Icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
 
-		-- Cooldown spirals wind the other way round in draeUI
-		if button.Cooldown then
-			button.Cooldown:SetReverse(true)
-		end
-
 		if button.Count then
 			button.Count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
 			button.Count:ClearAllPoints()
 			button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
+		end
+
+		-- Centred, because with the spiral gone the icon face is free
+		if button.Time then
+			button.Time:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
+			button.Time:ClearAllPoints()
+			button.Time:SetPoint("CENTER", button, "CENTER", 0, 0)
 		end
 
 		--[[
@@ -421,6 +423,21 @@ do
 		auras.maxFrameCount = num
 		auras.showCount = true
 		auras.cancelButton = "RightButtonUp"
+
+		--[[
+				Duration text rather than a cooldown spiral, same as the buffbar.
+
+				Setting no formatter leaves Blizzard's DefaultAuraDurationFormatter,
+				which renders a single unit with a one-letter suffix ("2h", "45m",
+				"12s") - the whole point, since these icons run as small as 18px
+				and the spiral's own countdown numbers overflow them.
+
+				disableCooldown also simplifies what oUF builds: with no cooldown
+				to sit above, the text parents straight to the button instead of
+				getting an extra frame to raise its level.
+		--]]
+		auras.showDuration = true
+		auras.disableCooldown = true
 		-- oUF now defaults to ANCHOR_BOTTOMLEFT; this is what it used to be
 		auras.tooltipAnchor = "ANCHOR_BOTTOMRIGHT"
 		auras.PostCreateButton = PostCreateButton
