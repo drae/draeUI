@@ -668,16 +668,6 @@ DraeUI.config = {
 		dispelGlow = {
 			enabled = true,
 			spill = 40,
-
-			--[[
-					The glow is two bands, mirrored across the frame's horizontal
-					centre line so light appears to come off it above and below.
-					`gap` is a clear strip held between them: 0 has them meet on
-					that line and read as one texture. Raise it to pull the two
-					halves apart and leave the bars in clear space; a gap wider
-					than the frame plus its spill leaves a 1px sliver.
-			--]]
-			gap = 0,
 			schools = { Magic = true, Curse = true, Disease = true, Poison = true },
 		},
 		-- Dimension of frames, large applies to player/target, small everything else

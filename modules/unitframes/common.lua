@@ -821,8 +821,7 @@ do
 				strata, and strata outranks level - so a glow left in the unit
 				frame's own strata drew over the opaque black behind the bars and
 				tinted the unfilled part of the health bar. Down here it shows
-				only where it is meant to, in the spill around the frame and the
-				gap between the bars.
+				only where it is meant to, in the spill around the frame.
 		--]]
 		glow:SetFrameStrata("BACKGROUND")
 		glow:SetFrameLevel(0)
@@ -843,13 +842,7 @@ do
 			button:SetSize(frame:GetWidth() + (spill * 2), frame:GetHeight() + (spill * 2))
 			button:EnableMouse(false)
 
-			--[[
-					The clear strip down the middle, 0 by default so the bands
-					meet on the centre line. A band is whatever height is left
-					once it is taken out of the middle.
-			--]]
-			local gap = config.gap or 0
-			local band = ((frame:GetHeight() + (spill * 2)) - gap) / 2
+			local band = (frame:GetHeight() + (spill * 2)) / 2
 
 			if band < 1 then
 				band = 1
@@ -864,11 +857,6 @@ do
 					not symmetric, and a single copy stretched over the whole
 					frame reads as one lopsided wash rather than as light coming
 					off the frame.
-
-					They meet on that line by default. Band height is half the
-					button once `gap` is taken out of the middle, so raising spill
-					makes the glow reach further past the frame, and raising gap
-					splits the two halves apart and leaves the bars in clear space.
 
 					The flip is set before AddDispelTypeTexture, which claims
 					TexCoords as a SecretAspect. PreserveAsset only drives colour,
