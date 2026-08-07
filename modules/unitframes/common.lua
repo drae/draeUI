@@ -15,7 +15,10 @@ local UnitGroupRolesAssigned = UnitGroupRolesAssigned
 local UnitIsGroupLeader, UnitLeadsAnyGroup = UnitIsGroupLeader, UnitLeadsAnyGroup
 local UnitInRaid, UnitIsGroupAssistant = UnitInRaid, UnitIsGroupAssistant
 local HasLFGRestrictions, IsInInstance = HasLFGRestrictions, IsInInstance
-local pcall, unpack = pcall, unpack
+local UnitPlayerControlled, UnitIsTapDenied = UnitPlayerControlled, UnitIsTapDenied
+local UnitIsPlayer, UnitInPartyIsAI = UnitIsPlayer, UnitInPartyIsAI
+local UnitClass, UnitReaction = UnitClass, UnitReaction
+local pcall, select, unpack = pcall, select, unpack
 -- Blizzard's own localised globals. The literal fallbacks are insurance only:
 -- these are read at file scope and land in a health update, so a client that
 -- ever dropped one would error every frame in combat rather than look wrong
@@ -179,6 +182,67 @@ do
 		end
 	end
 
+	--[[
+			oUF's Health.UpdateColor indexes colors.class with the token from
+			UnitClass, which is secret in combat in 12.1 - and a colour table
+			refuses a secret key. Identical expression, identical failure to the
+			one the drae:unitcolour tag was throwing.
+
+			Same treatment as the tag, and deliberately the same branch order:
+			resolved behind a single pcall, because UnitIsConnected,
+			UnitPlayerControlled, UnitIsTapDenied and UnitIsPlayer are boolean
+			tests on unit-scoped reads that can go secret too, and every failure
+			has the same answer - fall through to the plain health colour.
+
+			Only the branches draeUI turns on are here. colorThreat and
+			colorSmooth are never set, colorSelection and colorClassNPC/Pet are
+			set false outright. This replaces upstream's chain wholesale, so
+			switching one of those on means adding it here as well.
+	--]]
+	local ResolveHealthColour = function(element, colours, unit)
+		if element.colorDisconnected and not UnitIsConnected(unit) then
+			return colours.disconnected
+		elseif element.colorTapping and not UnitPlayerControlled(unit) and UnitIsTapDenied(unit) then
+			return colours.tapped
+		elseif element.colorClass and (UnitIsPlayer(unit) or UnitInPartyIsAI(unit)) then
+			return colours.class[select(2, UnitClass(unit))]
+		elseif element.colorReaction then
+			-- Read once. Upstream calls it twice, once to test and once to index
+			local reaction = UnitReaction(unit, "player")
+
+			if reaction then
+				return colours.reaction[reaction]
+			end
+		end
+	end
+
+	-- oUF's ColorPath calls this with the frame, not the element
+	local UpdateHealthColour = function(frame, _, unit)
+		if not unit or frame.unit ~= unit then
+			return
+		end
+
+		local element = frame.Health
+		local ok, colour = pcall(ResolveHealthColour, element, frame.colors, unit)
+
+		-- On failure the second return is the error message, not a colour
+		if not ok then
+			colour = nil
+		end
+
+		if not colour and element.colorHealth then
+			colour = frame.colors.health
+		end
+
+		if colour then
+			element:SetStatusBarColor(colour:GetRGB())
+		end
+
+		if element.PostUpdateColor then
+			element:PostUpdateColor(unit, colour)
+		end
+	end
+
 	UF.CreateHealthBar = function(frame, width, x, y, height)
 		local hp = CreateFrame("StatusBar", nil, frame)
 		hp:SetStatusBarTexture(DraeUI.media.statusbar)
@@ -196,6 +260,7 @@ do
 		hp.colorSelection = false
 
 		hp.PostUpdate = PostUpdateHealth
+		hp.UpdateColor = UpdateHealthColour
 
 		frame.Health = hp
 
