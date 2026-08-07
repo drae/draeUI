@@ -492,6 +492,44 @@ DraeUI.config = {
 	},
 
 	--[[
+		Buff bar - the player's own buffs, bottom right, plus temporary
+		weapon enchants in a second container to their left.
+
+		Sizes are in pixels. `pitch` is button size + gap, and it is what the
+		old secure header called xOffset/wrapYOffset; `perRow * pitch` is the
+		line width the flow layout wraps at.
+	--]]
+	buffbar = {
+		size = 25, -- button edge
+		spacing = 9, -- gap between buttons, and between rows
+		perRow = 16, -- buttons before wrapping to the next row
+		maxBuffs = 32, -- hard cap; perRow * 2 keeps it to two rows
+		x = -20, -- offset from UIParent BOTTOMRIGHT
+		y = 20,
+		enchantOffset = -20, -- gap between the buff bar and the enchant bar
+
+		--[[
+			"Long duration only" mode.
+
+			There is no minDuration/isPermanent candidate filter - Blizzard
+			ships maxDuration and nothing that inverts it - so long-only is
+			not directly expressible. Two mechanisms, allowlist winning:
+
+			- longDurationSpells populated -> exactly those spell IDs show.
+			  Exact, and spell-ID filtering stays legal under secret auras.
+			- left empty -> approximate it by sorting longest-first and
+			  capping at longDurationCount.
+
+			Takes effect on /rl. The container can be reconfigured live
+			(SetAuraGroupCandidateFilters and friends), but with no options
+			UI to drive it there is nothing to gain from the machinery.
+		--]]
+		longDurationOnly = false,
+		longDurationCount = 8,
+		longDurationSpells = {}, -- [spellID] = true
+	},
+
+	--[[
 		Presence - cinematic zone/quest/achievement toasts.
 	--]]
 	presence = {

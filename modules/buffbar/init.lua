@@ -1,237 +1,44 @@
 --[[
+		The player's buffs, bottom right, plus temporary weapon enchants in a
+		second container to their left.
 
-
+		12.1 replaced SecureAuraHeaderTemplate with the AuraContainer intrinsic.
+		Blizzard now owns enumeration, filtering, sorting, layout, cooldowns,
+		counts, tooltips and the click handler; this module supplies the widgets
+		and declares intent. That is why there is no throttling, no enchant
+		polling and no attribute plumbing left here - all of it was work to
+		compensate for a secure header we no longer have.
 --]]
 local DraeUI = select(2, ...)
 
 local BuffBar = DraeUI:NewModule("BuffBar", "AceEvent-3.0")
 
 --
-local strmatch = string.match
+local CreateFrame = CreateFrame
+local next, unpack = next, unpack
 
 --[[
+		Configure a button.
 
+		Called by the container as `initializeFrame`, once per button, before
+		Blizzard marks AuraButtons forbidden to tainted code. Everything has to
+		happen in here: PTR 7 relaxed calling button APIs afterwards, but there
+		is nothing to gain by relying on that.
 
-
+		The widgets are handed over rather than driven - SetIcon, SetDurationCooldown
+		and SetApplicationCount register the objects and Blizzard updates them.
 --]]
-local SetTooltip = function(button)
-	if button:GetAttribute("index") then
-		--		GameTooltip:SetUnitBuffByAuraInstanceID(button.header:GetAttribute('unit'), button.auraInstanceID)
+local InitAuraButton = function(button)
+	local config = DraeUI.config["buffbar"]
 
-		GameTooltip:SetUnitAura(button.header:GetAttribute("unit"), button:GetID(), button.filter)
+	button:SetSize(config.size, config.size)
 
-		--[[
-				Built once per aura, not once per refresh. Button_OnUpdate re-runs
-				this whole function at 10Hz so the duration in Blizzard's own lines
-				keeps ticking, but the caster line is byte-identical every time -
-				so cache it, and cache `false` for "nothing to show" so the negative
-				case stops recomputing too. UpdateAura clears it when the aura
-				changes.
-		--]]
-		if button.castByLine == nil then
-			button.castByLine = false
-
-			if issecretvalue and not issecretvalue(button.caster) and UnitExists(button.caster) then
-				local color
-
-				if UnitIsPlayer(button.caster) then
-					color = RAID_CLASS_COLORS[select(2, UnitClass(button.caster))]
-				else
-					local reaction = UnitReaction(button.caster, "player")
-					color = reaction and FACTION_BAR_COLORS[reaction]
-				end
-
-				-- UnitReaction returns nil for units we have no reaction data on,
-				-- and not every class/reaction has an entry
-				if color then
-					button.castByLine =
-						DraeUI.L["CAST_BY"]:format(DraeUI.Hex(color.r, color.g, color.b), UnitName(button.caster))
-				end
-			end
-		end
-
-		if button.castByLine then
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(button.castByLine)
-		end
-
-		GameTooltip:Show()
-	elseif button:GetAttribute("target-slot") then
-		GameTooltip:SetInventoryItem("player", button:GetID())
-	end
-end
-
-local Button_OnLeave = function(self)
-	GameTooltip:Hide()
-
-	-- Stop ticking; otherwise every button that has ever been hovered keeps
-	-- polling GameTooltip for the rest of the session
-	self.elapsed = nil
-end
-
-local Button_OnEnter = function(self)
-	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT", -5, -5)
-
-	self.elapsed = 1 -- let the tooltip update next frame
-end
-
-local Button_OnShow = function(self)
-	if self.enchantIndex then
-		self.header.enchants[self.enchantIndex] = self
-		self.header.elapsedEnchants = 1 -- let the enchant update next frame
-	end
-end
-
-local Button_OnHide = function(self)
-	self.castByLine = nil
-
-	if self.enchantIndex then
-		self.header.enchants[self.enchantIndex] = nil
-	else
-		self.instant = true
-	end
-end
-
-local Button_OnUpdate = function(self, elapsed)
-	-- Only runs while hovered - Button_OnEnter seeds .elapsed, OnLeave clears it
-	if not self.elapsed then
-		return
-	end
-
-	if self.elapsed > 0.1 then
-		if GameTooltip:IsOwned(self) then
-			SetTooltip(self)
-		end
-
-		self.elapsed = 0
-	else
-		self.elapsed = self.elapsed + elapsed
-	end
-end
-
-local UpdateAura = function(button, index)
-	local aura = C_UnitAuras.GetAuraDataByIndex(button.header:GetAttribute("unit"), index, button.filter)
-
-	if not aura then
-		return
-	end
-
-	button.caster = aura.sourceUnit
-	button.castByLine = nil -- caster may have changed; SetTooltip rebuilds it on demand
-	button.Count:SetText((aura.charges == nil and "") or (aura.charges and aura.charges <= 1 and "") or aura.charges)
-	button.Icon:SetTexture(aura.icon)
-
-	local duration = C_UnitAuras.GetAuraDuration(button.header:GetAttribute("unit"), aura.auraInstanceID)
-	if duration then
-		button.Cooldown:SetCooldownFromDurationObject(duration)
-	end
-end
-
-local UpdateTempEnchant = function(button, index, expiration)
-	if expiration then
-		button.Icon:SetTexture(GetInventoryItemTexture("player", index))
-
-		local r, g, b
-		local quality = GetInventoryItemQuality("player", index)
-
-		if quality and quality > 1 then
-			r, g, b = C_Item.GetItemQualityColor(quality)
-		else
-			r, g, b = 0, 0, 0
-		end
-
-		button:SetBackdropBorderColor(r, g, b)
-
-		local remaining = (expiration * 0.001) or 0
-		button.Cooldown:SetCooldown(GetTime(), remaining)
-	end
-end
-
-local Button_OnAttributeChanged = function(self, attr, value)
-	if attr == "index" then
-		if self.instant then
-			UpdateAura(self, value)
-			self.instant = nil
-		elseif self.header.spells[self] ~= value then
-			self.header.spells[self] = value
-		end
-	elseif attr == "target-slot" and self.enchantIndex and self.header.enchants[self.enchantIndex] ~= self then
-		self.header.enchants[self.enchantIndex] = self
-		self.header.elapsedEnchants = 0 -- reset the timer so we can wait for the data to be ready
-	end
-end
-
-local Header_OnEvent = function(self, event)
-	if event == "WEAPON_ENCHANT_CHANGED" then
-		local header = self.frame
-
-		for enchantIndex, button in next, header.enchantButtons do
-			if header.enchants[enchantIndex] ~= button then
-				header.enchants[enchantIndex] = button
-				header.elapsedEnchants = 0 -- reset the timer so we can wait for the data to be ready
-			end
-		end
-	end
-end
-
-local Header_OnUpdate = function(self, elapsed)
-	local header = self.frame
-
-	if header.elapsedSpells and header.elapsedSpells > 0.1 then
-		local button, value = next(header.spells)
-
-		while button do
-			UpdateAura(button, value)
-
-			header.spells[button] = nil
-			button, value = next(header.spells)
-		end
-
-		header.elapsedSpells = 0
-	else
-		header.elapsedSpells = (header.elapsedSpells or 0) + elapsed
-	end
-
-	if header.elapsedEnchants and header.elapsedEnchants > 0.5 then
-		local index, enchant = next(header.enchants)
-
-		if index then
-			local _, main, _, _, _, offhand, _, _, _, ranged = GetWeaponEnchantInfo()
-
-			while enchant do
-				UpdateTempEnchant(
-					enchant,
-					enchant:GetID(),
-					(index == 1 and main) or (index == 2 and offhand) or (index == 3 and ranged)
-				)
-
-				header.enchants[index] = nil
-				index, enchant = next(header.enchants)
-			end
-		end
-
-		header.elapsedEnchants = 0
-	else
-		header.elapsedEnchants = (header.elapsedEnchants or 0) + elapsed
-	end
-end
-
-BuffBar.CreateAuraButton = function(_, button)
-	button.header = button:GetParent()
-	button.name = button:GetName()
-
-	button.auraType = "HELPFUL"
-	button.filter = button.header.filter
-
-	button.enchantIndex = tonumber(strmatch(button.name, "TempEnchant(%d)$"))
-	if button.enchantIndex then
-		button.header["enchant" .. button.enchantIndex] = button
-		button.header.enchantButtons[button.enchantIndex] = button
-	else
-		button.instant = true -- let update on attribute change
-	end
-
-	local border = CreateFrame("Frame", nil, button, BackdropTemplateMixin and "BackdropTemplate")
+	--[[
+			Plain black border. Every aura here is HELPFUL, so there is no
+			dispel tint to carry and no need for AddDispelTypeTexture - this
+			stays an ordinary backdrop frame.
+	--]]
+	local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
 	border:SetPoint("TOPLEFT", button, -3, 3)
 	border:SetPoint("BOTTOMRIGHT", button, 3, -3)
 	border:SetFrameStrata("BACKGROUND")
@@ -246,127 +53,188 @@ BuffBar.CreateAuraButton = function(_, button)
 	local icon = button:CreateTexture(nil, "BACKGROUND")
 	icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
 	icon:SetAllPoints(button)
-	button.Icon = icon
-
-	local overlay = button:CreateTexture(nil, "OVERLAY")
-	button.Overlay = overlay
+	button:SetIcon(icon)
 
 	local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
 	cd:SetReverse(true)
 	cd:SetAllPoints(button)
-	button.Cooldown = cd
+	button:SetDurationCooldown(cd)
 
 	local count = button:CreateFontString(nil)
 	count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
 	count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
-	button.Count = count
+	button:SetApplicationCount(count)
 
-	button:SetScript("OnHide", Button_OnHide)
-	button:SetScript("OnShow", Button_OnShow)
-	button:SetScript("OnEnter", Button_OnEnter)
-	button:SetScript("OnLeave", Button_OnLeave)
-	button:SetScript("OnUpdate", Button_OnUpdate)
-	button:SetScript("OnAttributeChanged", Button_OnAttributeChanged)
-	--    button:RegisterForClicks('RightButtonUp', 'RightButtonDown')
+	button:SetTooltipAnchorPoint("ANCHOR_BOTTOMLEFT", -5, -5)
+
+	--[[
+			Click-off, in and out of combat.
+
+			Blizzard's OnClick_Intrinsic is untainted, so it can reach the
+			restricted C_UnitAuras.CancelAuraByInstanceID (and
+			C_PaperDollInfo.CancelTemporaryEnchantment for the enchant
+			container). SetCancelAuraButtons calls RegisterForClicks itself -
+			calling it here as well would fight it.
+	--]]
+	button:SetCancelAuraButtons("RightButtonUp")
 end
 
-local UpdateHeader = function(header)
-	header:SetAttribute("template", "DraeUIAuraTemplate")
-	header:SetAttribute("weaponTemplate", "DraeUIAuraTemplate")
+--[[
+		Translate the config into the flow layout the old secure header
+		described with point/xOffset/wrapYOffset/wrapAfter.
 
-	header:SetAttribute("unit", "player")
-	header:SetAttribute("filter", "HELPFUL")
-	header:SetAttribute("separateOwn", true)
-	header:SetAttribute("consolidateDuration", -1)
-	header:SetAttribute("includeWeapons", 1)
-	header:SetAttribute("separateOwn", 1)
-	header:SetAttribute("sortMethod", "TIME")
-	header:SetAttribute("sortDirection", "+")
-	header:SetAttribute("maxWraps", 2)
-	header:SetAttribute("wrapAfter", 16)
-	header:SetAttribute("point", "BOTTOMRIGHT")
-	header:SetAttribute("minWidth", 30)
-	header:SetAttribute("minHeight", 30)
-	header:SetAttribute("xOffset", -34)
-	header:SetAttribute("yOffset", 0)
-	header:SetAttribute("wrapXOffset", 0)
-	header:SetAttribute("wrapYOffset", 34)
+		maximumLineSize is measured in pixels, not buttons, so the wrap point
+		is perRow * pitch. Growth is BOTTOMRIGHT, leftwards, wrapping upwards.
+--]]
+local ApplyLayout = function(container)
+	local config = DraeUI.config["buffbar"]
+	local pitch = config.size + config.spacing
 
-	-- Grab the child list once rather than rebuilding the whole vararg on
-	-- every iteration
-	local children = { header:GetChildren() }
+	container:SetFlowLayoutAxis(AnchorUtil.FlowLayoutAxis.Horizontal)
+	container:SetFlowLayoutAnchorPoint("BOTTOMRIGHT")
+	container:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Left, AnchorUtil.FlowDirection.Up)
+	container:SetFlowLayoutMaximumLineSize(config.perRow * pitch)
+end
 
-	for index = 1, #children do
-		local child = children[index]
+local BuildBuffGroupOptions = function()
+	local config = DraeUI.config["buffbar"]
 
-		child.auraType = header.auraType -- used to update cooldown text
+	--[[
+			Expiration, not ExpirationOnly: it puts the player's own auras
+			ahead of everyone else's before sorting by time, which is what the
+			old header's separateOwn + sortMethod 'TIME' did together.
+	--]]
+	local options = {
+		templateNames = { "DraeUIAuraTemplate" },
+		initializeFrame = InitAuraButton,
+		maxFrameCount = config.maxBuffs,
+		sortMethod = AuraContainerSortMethod.Expiration,
+		sortDirection = AuraContainerSortDirection.Normal,
+		layout = {
+			elementWidth = config.size,
+			elementHeight = config.size,
+			elementSpacing = config.spacing,
+			lineSpacing = config.spacing,
+		},
+	}
 
-		-- Blizzard bug fix, icons arent being hidden when you reduce the amount of maximum buttons
-		if index > 16 and child:IsShown() then
-			child:Hide()
+	if config.longDurationOnly then
+		if next(config.longDurationSpells) then
+			-- Exact. Spell-ID filtering is one of the few things still legal
+			-- to ask for while auras are secret.
+			options.candidateFilters = { includeSpellIDs = config.longDurationSpells }
+		else
+			--[[
+					Approximate. Both comparators sort permanent auras last, so
+					reversing floats them to the front and orders the rest
+					longest-remaining first; the cap then trims the short ones.
+
+					ExpirationOnly here rather than Expiration: reversing
+					Expiration would also invert its own-auras-first tiebreak
+					and push the player's buffs to the back.
+			--]]
+			options.sortMethod = AuraContainerSortMethod.ExpirationOnly
+			options.sortDirection = AuraContainerSortDirection.Reverse
+			options.maxFrameCount = config.longDurationCount
 		end
 	end
+
+	return options
 end
 
--- Totally stolen from ElvUI because I"m lazy ... well, with some changes based on oUF
-local CreateBuffBarHeader = function()
-	local name = "DraeUIBuffBar"
-	local auraType = "buffs"
-	local filter = "HELPFUL"
+local CreateBuffContainer = function()
+	local config = DraeUI.config["buffbar"]
 
-	local header = CreateFrame("Frame", name, UIParent, "SecureAuraHeaderTemplate")
-	header:SetClampedToScreen(true)
-	header:UnregisterEvent("UNIT_AURA") -- we only need to watch player and vehicle
-	header:RegisterUnitEvent("UNIT_AURA", "player", "vehicle")
-	header:SetAttribute("unit", "player")
-	header:SetAttribute("filter", filter)
-	header.enchantButtons = {}
-	header.enchants = {}
-	header.spells = {}
+	local container = CreateFrame("AuraContainer", "DraeUIBuffBar", UIParent, "CustomAuraContainerTemplate")
+	container:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", config.x, config.y)
+	container:SetUnit("player")
 
-	header.visibility = CreateFrame("Frame", nil, UIParent, "SecureHandlerStateTemplate")
-	header.visibility:SetScript("OnUpdate", Header_OnUpdate) -- dont put this on the main frame
-	header.visibility:SetScript("OnEvent", Header_OnEvent) -- dont put this on the main frame
-	header.visibility.frame = header
-	header.auraType = auraType
-	header.filter = filter
-	header.name = name
+	ApplyLayout(container)
+	container:AddAuraGroup("buffs", "HELPFUL", BuildBuffGroupOptions())
 
-	header.visibility:RegisterEvent("WEAPON_ENCHANT_CHANGED")
-
-	RegisterAttributeDriver(header, "unit", "[vehicleui] vehicle; player")
-	SecureHandlerSetFrameRef(header.visibility, "AuraHeader", header)
-	RegisterStateDriver(header.visibility, "customVisibility", "[petbattle] 0;1")
-
-	header.visibility:SetAttribute(
-		"_onstate-customVisibility",
-		[[
-		local header = self:GetFrameRef('AuraHeader')
-		local hide, shown = newstate == 0, header:IsShown()
-		if hide and shown then header:Hide() elseif not hide and not shown then header:Show() end
-	]]
-	) -- use custom script that will only call hide when it needs to, this prevents spam to `SecureAuraHeader_Update`
-
-	header:SetAttribute("consolidateDuration", -1)
-	header:SetAttribute("includeWeapons", 1)
-
-	UpdateHeader(header)
-	header:Show()
-
-	return header
+	return container
 end
 
-BuffBar.PlayerEnteringWorld = function(self)
-	self:UnregisterEvent("PLAYER_ENTERING_WORLD")
+--[[
+		Temporary weapon enchants, in their own container so they can sit to
+		the left of the buffs and slide as buffs come and go.
+
+		DisableUntrustedLayoutScriptsTemplate is load-bearing, not decoration.
+		AddAuraGroup stamps ForbiddenAspect.UntrustedLayoutScriptExecution onto
+		the buff container, which stops addon frames anchoring to it; Blizzard
+		exposes this template (ForbiddenAspectTemplates.xml) as the opt-in, and
+		it only applies at creation, so it has to be inherited here rather than
+		set later.
+--]]
+local CreateEnchantContainer = function(buffs)
+	local config = DraeUI.config["buffbar"]
+
+	local container = CreateFrame(
+		"AuraContainer",
+		"DraeUIEnchantBar",
+		UIParent,
+		"CustomAuraContainerTemplate,DisableUntrustedLayoutScriptsTemplate"
+	)
+	container:SetPoint("BOTTOMRIGHT", buffs, "BOTTOMLEFT", config.enchantOffset, 0)
+	container:SetUnit("player")
+
+	ApplyLayout(container)
+
+	local slots = {
+		AuraContainerItemEnchantmentSlot.MainHand,
+		AuraContainerItemEnchantmentSlot.OffHand,
+		AuraContainerItemEnchantmentSlot.Ranged,
+	}
+
+	for _, slot in next, slots do
+		container:AddItemEnchantment(slot, {
+			templateNames = { "DraeUIAuraTemplate" },
+			initializeFrame = InitAuraButton,
+		})
+	end
+
+	return container
 end
 
-BuffBar.OnInitialize = function(self)
-	-- Do things when we enter the world
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "PlayerEnteringWorld")
+--[[
+		Vehicle and pet battle handling.
+
+		The secure header needed a SecureHandlerStateTemplate frame and an
+		attribute driver for this, purely because it couldn't be touched in
+		combat. Containers can be created and mutated in combat, so plain
+		events do the job.
+
+		Only the buffs follow the vehicle - weapon enchants are not vehicle
+		state, and "vehicle" has no inventory to read.
+--]]
+BuffBar.UpdateUnit = function(self, _, unit)
+	-- The vehicle events fire for every unit in the group
+	if unit and unit ~= "player" then
+		return
+	end
+
+	self.BuffFrame:SetUnit(UnitHasVehicleUI("player") and "vehicle" or "player")
+end
+
+BuffBar.PetBattleOpened = function(self)
+	self.BuffFrame:Hide()
+	self.EnchantFrame:Hide()
+end
+
+BuffBar.PetBattleClosed = function(self)
+	self.BuffFrame:Show()
+	self.EnchantFrame:Show()
 end
 
 BuffBar.OnEnable = function(self)
-	self.BuffFrame = CreateBuffBarHeader()
+	self.BuffFrame = CreateBuffContainer()
+	self.EnchantFrame = CreateEnchantContainer(self.BuffFrame)
 
-	self.BuffFrame:SetPoint("BOTTOMRIGHT", _G.UIParent, "BOTTOMRIGHT", -20, 20)
+	self:RegisterEvent("UNIT_ENTERED_VEHICLE", "UpdateUnit")
+	self:RegisterEvent("UNIT_EXITED_VEHICLE", "UpdateUnit")
+	self:RegisterEvent("PET_BATTLE_OPENING_START", "PetBattleOpened")
+	self:RegisterEvent("PET_BATTLE_CLOSE", "PetBattleClosed")
+
+	-- /rl inside a vehicle would otherwise leave us showing the player's auras
+	self:UpdateUnit()
 end
