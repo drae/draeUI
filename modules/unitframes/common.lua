@@ -502,6 +502,14 @@ end
 -- Aura handling
 do
 	--[[
+			How far outside the icon draeUI's ring of furniture sits. The plain
+			outline, the dispel border and oUF's own stealable overlay all share
+			it, so the coloured ring lands exactly on the black one rather than
+			inside the icon art.
+	--]]
+	local OUTLINE_INSET = 3
+
+	--[[
 			Restyle the button oUF has just built.
 
 			oUF's own CreateButton does the construction now - icon, cooldown,
@@ -513,7 +521,7 @@ do
 			Forbidden Aspect, so OnEnter/OnLeave/OnUpdate cannot be installed;
 			tooltips are Blizzard's, anchored through tooltipAnchor below.
 	--]]
-	local PostCreateButton = function(_, button)
+	local PostCreateButton = function(element, button)
 		button.Icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
 
 		if button.Count then
@@ -530,6 +538,54 @@ do
 		end
 
 		--[[
+				Blizzard's dispel orb is a fixed 18px in oUF, which is the whole
+				width of an auraTny icon and a third of an auraHge one. Scaled to
+				the button instead, so it reads the same at every aura size.
+
+				Size is ours to set: AddDispelTypeTexture claims VertexColor,
+				Alpha, TexCoords and Shown on a texture it registers, and leaves
+				the dimensions alone. Its anchor is oUF's - centred on TOPRIGHT,
+				so it stays half off the corner as the size changes.
+		--]]
+		if button.DispelIndicator then
+			-- 16 is oUF's own default when an element carries no size
+			local size = (element.size or 16) * (DraeUI.config["frames"].auras.dispelIndicatorScale or 0.6)
+
+			button.DispelIndicator:SetSize(size, size)
+		end
+
+		--[[
+				The outline again, this time in the dispel school's colour.
+
+				A solid texture inset by the same OUTLINE_INSET, on BACKGROUND -
+				below the BORDER-layer icon, so the icon face covers everything
+				but the margin and what is left showing is a ring sitting exactly
+				over the black one. PreserveAsset keeps the asset ours and
+				customDispelColorMap does the tinting, the same pairing the frame
+				glow uses.
+
+				Blizzard hides it on a debuff with no dispel school, and the black
+				outline shows through instead - which is the reason that one has
+				to stay unregistered.
+
+				oUF's showDebuffBorder is off for this: it builds its texture with
+				SetAllPoints, so Blizzard's border art lands inside the icon face
+				rather than around it.
+		--]]
+		local dispelRing = button:CreateTexture(nil, "BACKGROUND")
+		dispelRing:SetTexture("Interface\\Buttons\\WHITE8x8")
+		dispelRing:SetPoint("TOPLEFT", button, -OUTLINE_INSET, OUTLINE_INSET)
+		dispelRing:SetPoint("BOTTOMRIGHT", button, OUTLINE_INSET, -OUTLINE_INSET)
+		button.DispelRing = dispelRing
+
+		button:AddDispelTypeTexture(dispelRing, {
+			style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
+			showWhenHarmful = true,
+			showWithoutDispelType = false,
+			customDispelColorMap = element.__owner.colors.dispel,
+		})
+
+		--[[
 				draeUI's plain outline, kept as its own backdrop frame and
 				deliberately not registered with AddDispelTypeTexture.
 
@@ -542,13 +598,13 @@ do
 				texture over it when there is a dispel type to show.
 		--]]
 		local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
-		border:SetPoint("TOPLEFT", button, -3, 3)
-		border:SetPoint("BOTTOMRIGHT", button, 3, -3)
+		border:SetPoint("TOPLEFT", button, -OUTLINE_INSET, OUTLINE_INSET)
+		border:SetPoint("BOTTOMRIGHT", button, OUTLINE_INSET, -OUTLINE_INSET)
 		border:SetFrameStrata("BACKGROUND")
 		border:SetBackdrop({
 			edgeFile = "Interface\\Buttons\\WHITE8x8",
 			tile = false,
-			edgeSize = 3,
+			edgeSize = OUTLINE_INSET,
 		})
 		border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
 		button.Outline = border
@@ -666,14 +722,31 @@ do
 		)
 
 		--[[
-				showDebuffBorder replaces the old showDebuffType plus the
-				PostUpdateButton that read GetAuraDispelTypeColor - which errors
-				once auras are secret. oUF now hands colors.dispel to Blizzard
-				as the button's customDispelColorMap, so the tint still comes
-				from config.general.colours.dispel, just without an addon ever
-				reading the aura's dispel type.
+				Not showDebuffBorder. That builds its texture with SetAllPoints,
+				so Blizzard's Border artwork draws inside the icon face - the
+				colour ends up over the aura art with the black outline still
+				black around it, which is backwards. PostCreateButton registers
+				draeUI's own ring in its place, on the outline where it belongs.
+
+				What that inherits from showDebuffBorder is the important half:
+				colors.dispel goes to Blizzard as the button's
+				customDispelColorMap, so the tint still comes from
+				config.general.colours.dispel without an addon ever reading the
+				aura's dispel school - which is what stopped being possible when
+				aura data became secret.
 		--]]
-		debuffs.showDebuffBorder = true
+
+		--[[
+				The dispel-school orb on the icon's top-right corner, the same
+				marker Blizzard puts on its own debuff frames - the ring's sibling,
+				one texture registered as an Icon style rather than PreserveAsset.
+
+				oUF registers this one without a customDispelColorMap, so it keeps
+				Blizzard's own art and colours rather than
+				config.general.colours.dispel. Sized in PostCreateButton, since
+				oUF's fixed 18px does not survive contact with an 18px aura.
+		--]]
+		debuffs.showDebuffIndicator = DraeUI.config["frames"].auras.showDispelIndicator
 
 		debuffs:AddGroup("HARMFUL")
 	end
@@ -740,8 +813,19 @@ do
 		local glow = self:CreateAuras({ initialAnchor = "CENTER" })
 		glow:SetPoint("CENTER", self, "CENTER", 0, 0)
 
-		-- Behind the bars: children of the frame default to a level above it
-		glow:SetFrameLevel(self:GetFrameLevel())
+		--[[
+				Behind everything, and BACKGROUND strata is what it takes.
+
+				Dropping the frame level alone was not enough: the bar backdrops
+				from CreateUnitFrameBackground are their own frames in BACKGROUND
+				strata, and strata outranks level - so a glow left in the unit
+				frame's own strata drew over the opaque black behind the bars and
+				tinted the unfilled part of the health bar. Down here it shows
+				only where it is meant to, in the spill around the frame and the
+				gap between the bars.
+		--]]
+		glow:SetFrameStrata("BACKGROUND")
+		glow:SetFrameLevel(0)
 
 		glow.disableMouse = true
 		glow.disableCooldown = true
@@ -759,22 +843,67 @@ do
 			button:SetSize(frame:GetWidth() + (spill * 2), frame:GetHeight() + (spill * 2))
 			button:EnableMouse(false)
 
-			local tex = button:CreateTexture(nil, "BACKGROUND")
-			tex:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\glow_horizontal")
-			tex:SetAllPoints(button)
+			--[[
+					The clear strip down the middle, 0 by default so the bands
+					meet on the centre line. A band is whatever height is left
+					once it is taken out of the middle.
+			--]]
+			local gap = config.gap or 0
+			local band = ((frame:GetHeight() + (spill * 2)) - gap) / 2
+
+			if band < 1 then
+				band = 1
+			end
 
 			--[[
-					PreserveAsset keeps glow_horizontal - every other style
-					swaps in Blizzard's own dispel artwork. showWithoutDispelType
-					stays false so an untyped debuff lights nothing rather than
-					washing the frame in a fallback colour.
+					One band of the glow, full width, hugging the top or the
+					bottom edge of the button.
+
+					The pair are mirrors across the horizontal centre line, so the
+					asset's bright end faces outwards on both - glow_horizontal is
+					not symmetric, and a single copy stretched over the whole
+					frame reads as one lopsided wash rather than as light coming
+					off the frame.
+
+					They meet on that line by default. Band height is half the
+					button once `gap` is taken out of the middle, so raising spill
+					makes the glow reach further past the frame, and raising gap
+					splits the two halves apart and leaves the bars in clear space.
+
+					The flip is set before AddDispelTypeTexture, which claims
+					TexCoords as a SecretAspect. PreserveAsset only drives colour,
+					alpha and visibility, so it should survive registration - the
+					one part of this worth confirming in game.
 			--]]
-			button:AddDispelTypeTexture(tex, {
-				style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
-				showWhenHarmful = true,
-				showWithoutDispelType = false,
-				customDispelColorMap = frame.colors.dispel,
-			})
+			local AddBand = function(edge, vTop, vBottom)
+				local tex = button:CreateTexture(nil, "BACKGROUND")
+				tex:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\glow_horizontal")
+				tex:SetTexCoord(0, 1, vTop, vBottom)
+				tex:SetPoint("LEFT", button, "LEFT")
+				tex:SetPoint("RIGHT", button, "RIGHT")
+				tex:SetPoint(edge, button, edge)
+				tex:SetHeight(band)
+
+				--[[
+						PreserveAsset keeps glow_horizontal - every other style
+						swaps in Blizzard's own dispel artwork.
+						showWithoutDispelType stays false so an untyped debuff
+						lights nothing rather than washing the frame in a
+						fallback colour.
+				--]]
+				button:AddDispelTypeTexture(tex, {
+					style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
+					showWhenHarmful = true,
+					showWithoutDispelType = false,
+					customDispelColorMap = frame.colors.dispel,
+				})
+
+				return tex
+			end
+
+			-- Bright end outwards on both: v runs 0 at the top of the asset
+			button.GlowTop = AddBand("TOP", 0, 1)
+			button.GlowBottom = AddBand("BOTTOM", 1, 0)
 		end
 
 		--[[

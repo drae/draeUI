@@ -667,7 +667,17 @@ DraeUI.config = {
 		--]]
 		dispelGlow = {
 			enabled = true,
-			spill = 20,
+			spill = 40,
+
+			--[[
+					The glow is two bands, mirrored across the frame's horizontal
+					centre line so light appears to come off it above and below.
+					`gap` is a clear strip held between them: 0 has them meet on
+					that line and read as one texture. Raise it to pull the two
+					halves apart and leave the bars in clear space; a gap wider
+					than the frame plus its spill leaves a 1px sliver.
+			--]]
+			gap = 0,
 			schools = { Magic = true, Curse = true, Disease = true, Poison = true },
 		},
 		-- Dimension of frames, large applies to player/target, small everything else
@@ -730,6 +740,18 @@ DraeUI.config = {
 			showDebuffsOnPlayer = true, -- Debuffs on myself or pet
 			showBuffsOnTarget = true,
 			showDebuffsOnTarget = false,
+
+			--[[
+					Blizzard's dispel-school orb, pinned to the top-right corner of
+					a debuff icon. Colour and visibility are Blizzard's - it only
+					appears on a debuff that has a dispel school at all.
+
+					Its scale is a fraction of the icon, not a fixed size: oUF's own
+					18px would be the full width of an 18px aura and a third of a
+					32px one. false, or a scale of 0, turns it off.
+			--]]
+			showDispelIndicator = true,
+			dispelIndicatorScale = 0.6,
 		},
 	},
 }
