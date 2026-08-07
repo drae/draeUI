@@ -415,24 +415,29 @@ local ShowExperience = function()
 		turnIn = format(" |cffff9700(%d%%)|r", mmin(cur + readyXP, max) / max * 100)
 	end
 
-	local restedText = ""
-
-	if rested > 0 and max ~= 0 then
-		restedText = format(" |cff00ff00%d|r|cffffffff%%rested|r", rested / max * 100)
-	end
-
 	plugin:SetText(
 		format(
-			(IsResting() and (restingIcon .. " ") or "") .. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp%s%s",
+			(IsResting() and (restingIcon .. " ") or "") .. "[|cff00ff00%s|r] |cff%02x%02x%02x%d|r|cffffffff%%|rxp%s",
 			level,
 			r1 * 255,
 			g1 * 255,
 			b1 * 255,
 			pct,
-			turnIn,
-			restedText
+			turnIn
 		)
 	)
+
+	--[[
+		Rested goes to the far end of the plugin rather than trailing the
+		percentage. The minimum width leaves a gap after the main readout, and
+		this fills it - which also stops the whole line reflowing every time
+		rested appears or disappears.
+	--]]
+	if rested > 0 and max ~= 0 then
+		plugin:SetRightText(format("|cff00ff00%d|r|cffffffff%%rested|r", rested / max * 100))
+	else
+		plugin:SetRightText("")
+	end
 end
 
 --[[
@@ -463,6 +468,9 @@ local ShowReputation = function(data)
 	plugin:SetBarColor("xp", colour.r, colour.g, colour.b)
 	plugin:SetBarShown("rested", false)
 	plugin:SetBarShown("quest", false)
+
+	-- Nothing rested about reputation; clear it or the last xp figure sticks
+	plugin:SetRightText("")
 
 	local r, g, b = colour.r * 255, colour.g * 255, colour.b * 255
 

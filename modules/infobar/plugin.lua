@@ -67,10 +67,15 @@ end
 local methods = {}
 
 --[[
-	Width comes from the text alone. Called on every text change, so the
-	Changed() guard above is what stops it running once a second per plugin for
-	an unchanged string.
+	Width comes from the text. Called on every text change, so the Changed()
+	guard above is what stops it running once a second per plugin for an
+	unchanged string.
+
+	A plugin using the right-hand text needs room for both plus a gap between,
+	unless its minimum already covers it.
 --]]
+local TEXT_GAP = 8
+
 methods.Resize = function(self)
 	local frame = self.frame
 
@@ -78,7 +83,14 @@ methods.Resize = function(self)
 		return
 	end
 
-	frame:SetWidth(mmax(frame.text:GetStringWidth(), self.minWidth))
+	local width = frame.text:GetStringWidth()
+	local right = frame.rightText:GetStringWidth()
+
+	if right > 0 then
+		width = width + TEXT_GAP + right
+	end
+
+	frame:SetWidth(mmax(width, self.minWidth))
 end
 
 methods.SetText = function(self, value)
@@ -90,6 +102,25 @@ methods.SetText = function(self, value)
 
 	if self.frame then
 		self.frame.text:SetText(value)
+		self:Resize()
+	end
+end
+
+--[[
+	The second readout, pinned to the plugin's right edge rather than following
+	the first. Only worth it where a minimum width leaves a gap to fill - the
+	experience plugin puts its rested figure here so it sits at the far end of
+	its own bar instead of trailing the percentage.
+--]]
+methods.SetRightText = function(self, value)
+	if not Changed(self.rightText, value) then
+		return
+	end
+
+	self.rightText = value
+
+	if self.frame then
+		self.frame.rightText:SetText(value or "")
 		self:Resize()
 	end
 end
@@ -378,6 +409,13 @@ Plugin.Build = function(_, plugin, bar)
 
 	frame.text = DraeUI.CreateFontObject(frame, { point = "LEFT" })
 
+	--[[
+		Built for every plugin whether or not it uses one. A FontString holding
+		"" measures zero and draws nothing, and six of them cost less than a
+		flag to declare them and a class of bugs from forgetting to.
+	--]]
+	frame.rightText = DraeUI.CreateFontObject(frame, { point = "RIGHT" })
+
 	if plugin.statusbar then
 		frame.statusbar = {}
 
@@ -393,6 +431,7 @@ Plugin.Build = function(_, plugin, bar)
 
 	-- Replay: text first so the width is right before anything measures it
 	frame.text:SetText(plugin.text)
+	frame.rightText:SetText(plugin.rightText or "")
 	plugin:Resize()
 
 	for barName, state in pairs(plugin.bars) do
