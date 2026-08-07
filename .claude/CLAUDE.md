@@ -77,6 +77,7 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
   its teleport spell, so it had to match `C_ChallengeMode.GetMapTable()` names against the
   player's spellbook, and that never worked reliably. Don't rebuild it without a real
   dungeon-to-spell source.
+- **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
 - **infobar/** (modules/infobar/): FPS, latency, durability, gold, XP/reputation and Rebirth-charge readouts in the strip between the micro menu and the minimap. See the registration contract below. Restored from `55e4c81^` and brought up to 12.0 — fps, latency, durability and gold are confirmed working; the res plugin has never been exercised in a raid or M+, so treat it with suspicion.
 - **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. Those four are StyLua-ignored so they stay diffable against upstream; every deliberate divergence in them carries a `-- draeUI:` comment.
 
@@ -295,10 +296,18 @@ Rules for the oUF subset:
   (`colors.power[0] == colors.power.MANA`), so assigning a fresh colour to the token
   orphans the numeric key and elements that look up by ID get Blizzard's original. This
   is why config keys power by string token only — the numeric aliases follow for free.
-- **`dispel` is the exception:** it holds the raw `DEBUFF_TYPE_*_COLOR` globals, so those
-  entries are assigned. It is also the only colour oUF *snapshots* (into a per-element
-  `dispelColorCurve` at Enable), so it must be set before `oUF:Spawn` — which is why the
-  applier stays in `DraeUI:OnEnable`, ahead of `UF:OnEnable`.
+- **`dispel` used to be the exception; it no longer is.** Since the 12.1 aura rewrite oUF
+  builds `colors.dispel` from `AuraUtil.GetDebuffDisplayInfoTable()` as its own
+  `oUF:CreateColor` objects, keyed by dispel **name** ("Magic", "Curse", …) rather than a
+  numeric `oUF.Enum.DispelType` index — that enum is gone. So it mutates like everything
+  else, and there are no Blizzard-shared `DEBUFF_TYPE_*_COLOR` globals left to protect.
+  The `dispelColorCurve` snapshot is gone too, but **the applier still runs in
+  `DraeUI:OnEnable` ahead of `UF:OnEnable`**: the table is handed to Blizzard as an
+  `AuraButton`'s `customDispelColorMap` at button creation, and whether that reads live or
+  copies C-side is unverified.
+- There is deliberately **no `None` entry**. The old step curve resolved a dispel-less aura
+  to `None` rather than nil, so one had to be supplied to stop `DEBUFF_TYPE_NONE_COLOR`
+  tinting every ordinary debuff border. `AuraButton` has no such fallback.
 - **Never override `class`.** oUF rebuilds `colors.class` from a `CUSTOM_CLASS_COLORS`
   callback with fresh objects and would discard any override.
 - Overrides are partial — any key left out keeps oUF's Blizzard-derived default.
@@ -357,6 +366,48 @@ The same rule bites teardown: `TargetFrame.spellbar:SetUnit(nil)` errors. Suppre
 bars with a plain `showCastbar = false` field write plus `UnregisterAllEvents()`/`Hide()`.
 `:Kill()` is also wrong for them — it reparents, and `TargetSpellBarMixin:AdjustPosition`
 reads `auraRows` off its parent.
+
+**Aura data is secret** in combat, encounters, M+ and PvP as of 12.1. Every `C_UnitAuras`
+and `C_TooltipInfo` function that reads an aura **by index, slot or instance ID** errors
+when an addon calls it while auras are secret — `GetAuraDataByIndex`, `GetAuraSlots`,
+`GetAuraDataBySlot`, `GetAuraDispelTypeColor`. Only spell-ID and spell-name lookups
+survive, which is why `candidateFilters.includeSpellIDs` is the one exact filter the
+buffbar can offer. `SECURE_ACTIONS.cancelaura` is dead for the same reason: it needs an
+aura index.
+
+### The 12.1 AuraContainer
+
+Both aura displays run on Blizzard's `AuraContainer`/`AuraButton` intrinsics.
+`SecureAuraHeaderTemplate` is gone from Mainline. The division of labour is fixed:
+**Blizzard owns the data and the behaviour, addons own the presentation.** Anything that
+looks like re-implementing enumeration, sorting, throttling or tooltips is a sign of
+working against it.
+
+- **Configure everything inside `initializeFrame`.** `AuraButton`s become forbidden to
+  tainted code once auras are secret, applied after that callback returns.
+- **`ScriptedInput` is a Forbidden Aspect on `AuraButton`.** No `OnEnter`/`OnLeave`/
+  `OnUpdate`/`OnClick` — tooltips come from `SetTooltipAnchorPoint`, cancelling from
+  `SetCancelAuraButtons` (which calls `RegisterForClicks` itself; don't call it too).
+  Cancelling works **in and out of combat**, because the handler is Blizzard's and
+  untainted, so it can reach the restricted `C_UnitAuras.CancelAuraByInstanceID`.
+- **A container's size is `secretwrap`ped.** Nothing may measure it.
+- **`AddAuraGroup` stamps `ForbiddenAspect.UntrustedLayoutScriptExecution` on the
+  container**, which blocks addon frames from anchoring to it. The opt-in is inheriting
+  `DisableUntrustedLayoutScriptsTemplate` (Blizzard's `ForbiddenAspectTemplates.xml`) on
+  the frame doing the anchoring, **at creation** — that's how `DraeUIEnchantBar` anchors
+  to `DraeUIBuffBar`.
+- **A texture handed to `AddDispelTypeTexture` gains `SecretAspect.VertexColor`, `Alpha`,
+  `TexCoords` and `Shown`** — its appearance stops being yours to set. That is why the
+  unit frames keep their plain outline as a *separate, unregistered* backdrop frame
+  (`button.Outline`) underneath oUF's dispel texture.
+- **Container enums are bare globals** — `AuraContainerSortMethod`,
+  `AuraContainerSortDirection`, `AuraContainerItemEnchantmentSlot`. *Button* enums are
+  `Enum.`-prefixed. Layout uses `AnchorUtil.FlowLayoutAxis` / `AnchorUtil.FlowDirection`,
+  and `maximumLineSize` is in **pixels**, not buttons.
+- On the oUF side auras are a **meta element**: `frame:CreateAuras(options)` then
+  `:AddGroup(filter, options)` / `:AddSlot(filter, options)`. There is no `self.Buffs` or
+  `self.Debuffs`. `options.templates` inherits onto the *container*; a group's
+  `templateNames` is what reaches the buttons.
 
 ### Blizzard Frame Hiding
 
