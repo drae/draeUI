@@ -402,10 +402,9 @@ do
 	)
 		--[[
 				No `templates`: that option inherits onto the *container*, not
-				the buttons. Blizzard always builds buttons from
-				CustomAuraButtonTemplate and only appends a group's
-				templateNames, which is what the buffbar uses to get Masque's
-				frame level. The unit frames never had a button template.
+				the buttons. Buttons are built from CustomAuraButtonTemplate,
+				which Blizzard always applies itself, plus anything listed in a
+				group's `templateNames` - and nothing here needs one.
 		--]]
 		local auras = self:CreateAuras({
 			initialAnchor = point,

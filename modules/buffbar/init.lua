@@ -105,7 +105,6 @@ local BuildBuffGroupOptions = function()
 			old header's separateOwn + sortMethod 'TIME' did together.
 	--]]
 	local options = {
-		templateNames = { "DraeUIAuraTemplate" },
 		initializeFrame = InitAuraButton,
 		maxFrameCount = config.maxBuffs,
 		sortMethod = AuraContainerSortMethod.Expiration,
@@ -187,10 +186,7 @@ local CreateEnchantContainer = function(buffs)
 	}
 
 	for _, slot in next, slots do
-		container:AddItemEnchantment(slot, {
-			templateNames = { "DraeUIAuraTemplate" },
-			initializeFrame = InitAuraButton,
-		})
+		container:AddItemEnchantment(slot, { initializeFrame = InitAuraButton })
 	end
 
 	return container

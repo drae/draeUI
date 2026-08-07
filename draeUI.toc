@@ -22,7 +22,7 @@ functions\game.lua
 functions\toolkit.lua
 
 # BuffBar
-modules\buffbar\Load_Auras.xml
+modules\buffbar\init.lua
 
 # Skins - static UI artwork, and the addon's shared skinning helpers
 # (DraeUI.CreateBorder, DraeUI.CreateOverlay). Must precede the minimap and
