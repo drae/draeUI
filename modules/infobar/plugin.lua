@@ -281,24 +281,30 @@ local CreateStatusBar = function(parent, settings)
 	end
 
 	--[[
-		Blizzard's cast bar pip, the same atlas UF.CreateCastBar drives its Spark
-		from. This used to be media/statusbars/statusbar-spark-white, a local TGA
-		retired in 4da49a1 - the atlas keeps the art out of the tree and tracks
-		whatever Blizzard does to it.
+		A local texture rather than Blizzard's ui-castingbar-pip atlas.
 
-		Deliberately not SetAtlas(atlas, true): useAtlasSize would take the pip's
-		native height, and these bars are 5px. The two anchors pin it to the fill
-		texture's height instead, so only the width is ours.
+		The pip briefly lived here on the reasoning that it keeps art out of the
+		tree, and it doesn't work: it's drawn for a 208x11 cast bar where it's
+		always in motion, and these are short segments sitting still. Static and
+		ten pixels tall, it reads as a smudge. statusbar-spark-white was drawn
+		for this job.
 
-		`spark = true` takes the default; a plugin wanting different art can pass
-		the atlas name as the value instead.
+		The anchors pin the spark to the fill texture's height, so only its
+		width is ours - the art stretches to whatever the bar is.
+
+		`spark = true` takes the default; a string is a texture path.
 
 		isStatusBar as well as spark: the anchors need GetStatusBarTexture, so a
 		spark on a plain Frame would error here.
 	--]]
 	if settings.spark and settings.isStatusBar then
 		local spark = bar:CreateTexture(nil, "OVERLAY", nil, 5)
-		spark:SetAtlas(type(settings.spark) == "string" and settings.spark or "ui-castingbar-pip")
+
+		spark:SetTexture(
+			type(settings.spark) == "string" and settings.spark
+				or "Interface\\AddOns\\draeUI\\media\\statusbars\\statusbar-spark-white"
+		)
+
 		spark:SetPoint("BOTTOMRIGHT", bar:GetStatusBarTexture(), "BOTTOMRIGHT")
 		spark:SetPoint("TOPRIGHT", bar:GetStatusBarTexture(), "TOPRIGHT")
 		spark:SetWidth(8)
