@@ -345,7 +345,7 @@ do
 
 		-- Centred, because with the spiral gone the icon face is free
 		if button.Time then
-			button.Time:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
+			button.Time:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize2, "OUTLINE")
 			button.Time:ClearAllPoints()
 			button.Time:SetPoint("CENTER", button, "CENTER", 0, 0)
 		end
@@ -527,5 +527,91 @@ do
 		buffs.showStealableBorder = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
 
 		buffs:AddGroup("HELPFUL")
+	end
+
+	--[[
+			A coloured wash across the frame, tinted by the dispel school of a
+			debuff on the unit.
+
+			Structurally this is an aura button that never draws an icon.
+			AddDispelTypeTexture validates that the texture is a descendant of
+			the button it is registered against, so a texture hung on the unit
+			frame cannot be registered at all - instead the button *is* the
+			glow: sized over the frame, mouse disabled, carrying nothing else.
+
+			A slot rather than a group, so there is exactly one. That also keeps
+			the container freely anchorable, since AddAuraGroup stamps
+			ForbiddenAspect.UntrustedLayoutScriptExecution onto its container
+			and AddAuraSlot does not.
+
+			Blizzard owns the texture's colour and whether it shows, which is
+			the whole point: the version of this that lived on the old sword
+			frame read the debuff's type in Lua, and that is precisely what
+			stopped being possible when aura data became secret.
+	--]]
+	UF.AddDispelGlow = function(self)
+		local config = DraeUI.config["frames"].dispelGlow
+
+		if not (config and config.enabled) then
+			return
+		end
+
+		local spill = config.spill or 0
+
+		local glow = self:CreateAuras({ initialAnchor = "CENTER" })
+		glow:SetPoint("CENTER", self, "CENTER", 0, 0)
+
+		-- Behind the bars: children of the frame default to a level above it
+		glow:SetFrameLevel(self:GetFrameLevel())
+
+		glow.disableMouse = true
+		glow.disableCooldown = true
+
+		glow.CreateButton = function(element, _, button)
+			local frame = element.__owner
+
+			--[[
+					Anchored and sized off the frame rather than the container.
+					A container's size is secretwrapped once Blizzard lays it
+					out, so nothing may measure it or fill it.
+			--]]
+			button:ClearAllPoints()
+			button:SetPoint("CENTER", frame, "CENTER", 0, 0)
+			button:SetSize(frame:GetWidth() + (spill * 2), frame:GetHeight() + (spill * 2))
+			button:EnableMouse(false)
+
+			local tex = button:CreateTexture(nil, "BACKGROUND")
+			tex:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\glow_horizontal")
+			tex:SetAllPoints(button)
+
+			--[[
+					PreserveAsset keeps glow_horizontal - every other style
+					swaps in Blizzard's own dispel artwork. showWithoutDispelType
+					stays false so an untyped debuff lights nothing rather than
+					washing the frame in a fallback colour.
+			--]]
+			button:AddDispelTypeTexture(tex, {
+				style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
+				showWhenHarmful = true,
+				showWithoutDispelType = false,
+				customDispelColorMap = frame.colors.dispel,
+			})
+		end
+
+		--[[
+				Filtered to schools that have a colour, which is load-bearing
+				rather than tidiness: the slot holds one aura, no comparator
+				sorts by dispel school, so without the filter an untyped debuff
+				can take the slot while a Magic one sits ignored.
+
+				Default sort because it surfaces isPriorityAura first. Not
+				UnitFrameDebuff, whose comparator reads a debuffType that only
+				AuraUtil.ProcessAura ever assigns - without that policy every
+				aura would compare nil against nil.
+		--]]
+		glow:AddSlot("HARMFUL", {
+			candidateFilters = { includeDispelTypes = config.schools },
+			sortMethod = AuraContainerSortMethod.Default,
+		})
 	end
 end

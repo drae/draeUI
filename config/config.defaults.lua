@@ -645,6 +645,31 @@ DraeUI.config = {
 			here keeps that (false) behaviour and makes it reachable.
 		--]]
 		showStealableBuffs = false,
+
+		--[[
+			Dispel glow - a coloured wash across the player frame, tinted by
+			the dispel school of a debuff on you.
+
+			Blizzard drives both the colour and whether it shows, reading
+			colours.dispel through the button's customDispelColorMap, so this
+			survives aura data being secret. Nothing here reads the debuff.
+
+			`schools` is the filter, and only schools with a colour belong in
+			it: a debuff with no dispel type lights nothing rather than washing
+			the frame in a fallback colour. Bleed and Enrage can be added -
+			they keep oUF's own colours, since general.colours.dispel doesn't
+			override them.
+
+			`spill` is how far the glow bleeds past the frame edge. It needs to
+			be non-zero to be worth having: the bars are opaque and the glow
+			sits behind them, so with no spill it would only show in the gap
+			between health and power.
+		--]]
+		dispelGlow = {
+			enabled = true,
+			spill = 20,
+			schools = { Magic = true, Curse = true, Disease = true, Poison = true },
+		},
 		-- Dimension of frames, large applies to player/target, small everything else
 		-- don't change these, change the scale
 		playerWidth = 240,
