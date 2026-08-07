@@ -93,16 +93,17 @@ DraeUI.config = {
 			tapped = { 153 / 255, 153 / 255, 153 / 255 },
 
 			--[[
-				Aura border tint per dispel type, keyed by oUF.Enum.DispelType
-				name. Bleed and Enrage are left out and keep oUF's defaults.
+				Aura border tint per dispel type, keyed by the dispel name oUF
+				takes from AuraUtil.GetDebuffDisplayInfoTable(). Bleed and
+				Enrage are left out and keep oUF's defaults.
 
-				None has to be listed: oUF evaluates a step curve, so an aura
-				with no dispel type resolves to the None colour rather than
-				nil, and Blizzard's DEBUFF_TYPE_NONE_COLOR is a dark red that
-				would tint every ordinary debuff border.
+				There is no None entry any more. The old step curve resolved a
+				dispel-less aura to a None colour rather than nil, so one had
+				to be supplied to stop Blizzard's dark-red DEBUFF_TYPE_NONE_COLOR
+				tinting every ordinary debuff border. AuraButton has no such
+				fallback - an aura with no dispel type simply gets no tint.
 			--]]
 			dispel = {
-				None = { 0, 0, 0 },
 				Magic = { 51 / 255, 153 / 255, 255 / 255 },
 				Curse = { 153 / 255, 0, 255 / 255 },
 				Disease = { 153 / 255, 102 / 255, 0 },
