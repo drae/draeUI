@@ -8,7 +8,6 @@ local UF = DraeUI:GetModule("UnitFrames")
 
 -- Local copies
 local CreateFrame = CreateFrame
-local GameTooltip = GameTooltip
 local UnitFrame_OnEnter, UnitFrame_OnLeave = UnitFrame_OnEnter, UnitFrame_OnLeave
 local UnitIsConnected, UnitIsGhost = UnitIsConnected, UnitIsGhost
 local UnitIsDead, AbbreviateNumbers = UnitIsDead, AbbreviateNumbers
@@ -323,50 +322,45 @@ end
 
 -- Aura handling
 do
-	local UpdateTooltip = function(button)
-		if GameTooltip:IsForbidden() then
-			return
+	--[[
+			Restyle the button oUF has just built.
+
+			oUF's own CreateButton does the construction now - icon, cooldown,
+			count, the dispel border and the stealable overlay are all built
+			from the flags set on the element, and Blizzard drives them. This
+			only adjusts what draeUI wants to look different.
+
+			There are no scripts here. AuraButton treats ScriptedInput as a
+			Forbidden Aspect, so OnEnter/OnLeave/OnUpdate cannot be installed;
+			tooltips are Blizzard's, anchored through tooltipAnchor below.
+	--]]
+	local PostCreateButton = function(_, button)
+		button.Icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
+
+		-- Cooldown spirals wind the other way round in draeUI
+		if button.Cooldown then
+			button.Cooldown:SetReverse(true)
 		end
 
-		-- Real since 10.0, but the generated annotations don't carry it
-		---@diagnostic disable-next-line: undefined-field
-		GameTooltip:SetUnitAuraByAuraInstanceID(button:GetParent().__owner.unit, button.auraInstanceID)
-	end
-
-	local onEnter = function(button)
-		if GameTooltip:IsForbidden() or not button:IsVisible() then
-			return
+		if button.Count then
+			button.Count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
+			button.Count:ClearAllPoints()
+			button.Count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
 		end
 
-		-- Avoid parenting GameTooltip to frames with anchoring restrictions,
-		-- otherwise it'll inherit said restrictions which will cause issues with
-		-- its further positioning, clamping, etc
-		GameTooltip:SetOwner(
-			button,
-			button:GetParent().__restricted and "ANCHOR_CURSOR" or button:GetParent().tooltipAnchor
-		)
-		button:UpdateTooltip()
-	end
+		--[[
+				draeUI's plain outline, kept as its own backdrop frame and
+				deliberately not registered with AddDispelTypeTexture.
 
-	local onLeave = function()
-		if GameTooltip:IsForbidden() then
-			return
-		end
-
-		GameTooltip:Hide()
-	end
-
-	local CreateAuraIconCore = function(element, index)
-		-- Unnamed: naming these put a permanent _G entry in for every button,
-		-- border and cooldown on every frame
-		local button = CreateFrame("Button", nil, element)
-
-		button:EnableMouse(true)
-
-		button:SetWidth(element.size or 16)
-		button:SetHeight(element.size or 16)
-
-		local border = CreateFrame("Frame", nil, button, BackdropTemplateMixin and "BackdropTemplate")
+				A registered texture picks up SecretAspect.VertexColor and
+				Alpha, so its colour stops being ours to set - which is fine
+				for the dispel tint that Blizzard drives off colors.dispel,
+				but no good for an outline that has to be there, in
+				colours.auraBorder, on every aura regardless of dispel type.
+				So the two are separate: this underneath, always; oUF's dispel
+				texture over it when there is a dispel type to show.
+		--]]
+		local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
 		border:SetPoint("TOPLEFT", button, -3, 3)
 		border:SetPoint("BOTTOMRIGHT", button, 3, -3)
 		border:SetFrameStrata("BACKGROUND")
@@ -376,72 +370,63 @@ do
 			edgeSize = 3,
 		})
 		border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
-		button.Border = border
-
-		local icon = button:CreateTexture(nil, "BACKGROUND")
-		icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
-		icon:SetAllPoints(button)
-		button.Icon = icon
-
-		--[[
-				No button.Overlay. oUF's own aura buttons carry a UI-Debuff-Overlays
-				texture that it tints by dispel type; draeUI shows that on the
-				backdrop border instead (see PostUpdateButton), and leaving an
-				untextured Overlay here just makes oUF tint and show nothing.
-		--]]
-
-		local cd = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
-		cd:SetReverse(true)
-		cd:SetAllPoints(button)
-		button.Cooldown = cd
-
-		local count = button:CreateFontString(nil)
-		count:SetFont(DraeUI.media.font, DraeUI.config["general"].fontsize3, "OUTLINE")
-		count:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 7, -6)
-		button.Count = count
-
-		button.parent = element
-
-		return button
-	end
-
-	local CreateButton = function(element, index)
-		local button = CreateAuraIconCore(element, index)
-
-		button:RegisterForClicks("RightButtonUp")
-
-		local stealable = button:CreateTexture(nil, "OVERLAY")
-		stealable:SetTexture("Interface\\TargetingFrame\\UI-TargetingFrame-Stealable")
-		stealable:SetPoint("TOPLEFT", button, "TOPLEFT")
-		stealable:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT")
-		stealable:SetBlendMode("ADD")
-		button.Stealable = stealable
-
-		button.UpdateTooltip = UpdateTooltip
-		button:SetScript("OnEnter", onEnter)
-		button:SetScript("OnLeave", onLeave)
-
-		return button
+		button.Outline = border
 	end
 
 	--[[
-			oUF calls this as element:PostUpdateButton(button, unit, data, position)
+			Build one aura container and hand back the element.
 
-			element.dispelColorCurve is built by oUF when the aura element is
-			enabled, from oUF.colors.dispel - which init.lua has already overridden
-			from config by then. GetAuraDispelTypeColor returns nil for auras with
-			no dispel type, which is when the border falls back to plain.
+			Auras stopped being an element you assign in 12.1 and became a meta
+			element you call, so there is no self.Buffs / self.Debuffs any more
+			- oUF tracks the containers itself, keyed off the frame, and names
+			them $parentAuras<n>. Calling it twice per frame is expected and is
+			what lets buffs and debuffs anchor to different points.
+
+			layoutLimit is the wrap width in pixels: perRow buttons at a pitch
+			of size + spacing. Height is not passed - the container sizes itself
+			and Blizzard secret-wraps the result, so nothing may measure it.
 	--]]
-	local PostUpdateButton = function(element, button, unit, data)
-		local colour = C_UnitAuras.GetAuraDispelTypeColor(unit, data.auraInstanceID, element.dispelColorCurve)
+	local CreateAuraElement = function(
+		self,
+		point,
+		relativeFrame,
+		relativePoint,
+		ofsx,
+		ofsy,
+		num,
+		size,
+		spacing,
+		growthx,
+		growthy,
+		perRow
+	)
+		--[[
+				No `templates`: that option inherits onto the *container*, not
+				the buttons. Blizzard always builds buttons from
+				CustomAuraButtonTemplate and only appends a group's
+				templateNames, which is what the buffbar uses to get Masque's
+				frame level. The unit frames never had a button template.
+		--]]
+		local auras = self:CreateAuras({
+			initialAnchor = point,
+			growthX = growthx,
+			growthY = growthy,
+			layoutLimit = perRow * (size + spacing),
+		})
 
-		if colour then
-			button.Border:SetBackdropBorderColor(colour:GetRGB())
-		else
-			button.Border:SetBackdropBorderColor(unpack(COLOURS.auraBorder))
-		end
+		auras:SetPoint(point, relativeFrame, relativePoint, ofsx, ofsy)
 
-		button.Icon:SetDesaturated(data.isHarmfulAura and not data.isPlayerAura)
+		auras.size = size
+		auras.elementSpacing = spacing
+		auras.lineSpacing = spacing
+		auras.maxFrameCount = num
+		auras.showCount = true
+		auras.cancelButton = "RightButtonUp"
+		-- oUF now defaults to ANCHOR_BOTTOMLEFT; this is what it used to be
+		auras.tooltipAnchor = "ANCHOR_BOTTOMRIGHT"
+		auras.PostCreateButton = PostCreateButton
+
+		return auras
 	end
 
 	-- boss1..boss5 etc. share a single config key, so strip any trailing index
@@ -470,54 +455,61 @@ do
 		local perRow = DraeUI.config["frames"].auras.debuffs_per_row
 		local debuffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
 
-		local width = (spacing * debuffsPerRow) + (size * debuffsPerRow)
-		local height = (spacing * (num / debuffsPerRow)) + (size * (num / debuffsPerRow))
+		local debuffs = CreateAuraElement(
+			self,
+			point,
+			relativeFrame,
+			relativePoint,
+			ofsx,
+			ofsy,
+			num,
+			size,
+			spacing,
+			growthx,
+			growthy,
+			debuffsPerRow
+		)
 
-		local debuffs = CreateFrame("Frame", nil, self)
-		debuffs:SetPoint(point, relativeFrame, relativePoint, ofsx, ofsy)
-		debuffs:SetSize(width, height)
+		--[[
+				showDebuffBorder replaces the old showDebuffType plus the
+				PostUpdateButton that read GetAuraDispelTypeColor - which errors
+				once auras are secret. oUF now hands colors.dispel to Blizzard
+				as the button's customDispelColorMap, so the tint still comes
+				from config.general.colours.dispel, just without an addon ever
+				reading the aura's dispel type.
+		--]]
+		debuffs.showDebuffBorder = true
 
-		debuffs.num = num
-		debuffs.size = size
-		debuffs.spacing = spacing
-		debuffs.initialAnchor = point
-		debuffs.growthX = growthx
-		debuffs.growthY = growthy
-		debuffs.filter = "HARMFUL" -- Explicitly set the filter or the first customFilter call won"t work
-		debuffs.showDebuffType = true
-		-- .dispelColorCurve is built by oUF's auras element on Enable when absent
-
-		--		debuffs.FilterAura = CustomFilter
-		debuffs.CreateButton = CreateButton
-		debuffs.PostUpdateButton = PostUpdateButton
-
-		self.Debuffs = debuffs
+		debuffs:AddGroup("HARMFUL")
 	end
 
 	UF.AddBuffs = function(self, point, relativeFrame, relativePoint, ofsx, ofsy, num, size, spacing, growthx, growthy)
 		local perRow = DraeUI.config["frames"].auras.buffs_per_row
 		local buffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
 
-		local width = (spacing * buffsPerRow) + (size * buffsPerRow)
-		local height = (spacing * (num / buffsPerRow)) + (size * (num / buffsPerRow))
+		local buffs = CreateAuraElement(
+			self,
+			point,
+			relativeFrame,
+			relativePoint,
+			ofsx,
+			ofsy,
+			num,
+			size,
+			spacing,
+			growthx,
+			growthy,
+			buffsPerRow
+		)
 
-		local buffs = CreateFrame("Frame", nil, self)
-		buffs:SetPoint(point, relativeFrame, relativePoint, ofsx, ofsy)
-		buffs:SetSize(width, height)
+		--[[
+				The stealable overlay is oUF's now, off a flag, rather than a
+				texture draeUI hangs on the button - same UI-TargetingFrame-Stealable
+				art, but driven through AddDispelTypeTexture so it keeps working
+				when the aura data behind it is secret.
+		--]]
+		buffs.showStealableBorder = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
 
-		buffs.num = num
-		buffs.size = size
-		buffs.spacing = spacing
-		buffs.initialAnchor = point
-		buffs.growthX = growthx
-		buffs.growthY = growthy
-		buffs.filter = "HELPFUL" -- Explicitly set the filter or the first customFilter call won"t work
-		buffs.showStealableBuffs = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
-
-		--		buffs.FilterAura = CustomFilter
-		buffs.CreateButton = CreateButton
-		buffs.PostUpdateButton = PostUpdateButton
-
-		self.Buffs = buffs
+		buffs:AddGroup("HELPFUL")
 	end
 end

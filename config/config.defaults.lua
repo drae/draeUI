@@ -638,6 +638,13 @@ DraeUI.config = {
 		-- Display or hide frames
 		showBoss = true, -- Boss frames
 		hideArena = true, -- Suppress Blizzard's arena enemy/prep frames
+		--[[
+			Mage only: the spellsteal sparkle over stealable buffs on the
+			target. common.lua has always read this key and it has never been
+			defined, so the overlay has never actually appeared - declaring it
+			here keeps that (false) behaviour and makes it reachable.
+		--]]
+		showStealableBuffs = false,
 		-- Dimension of frames, large applies to player/target, small everything else
 		-- don't change these, change the scale
 		playerWidth = 240,
