@@ -166,7 +166,25 @@ DraeUI.config = {
 			bossEmote = { 1, 0.2, 0.2 },
 			discovery = { 0.4, 1, 0.5 },
 
-			-- Zone toasts, when presence.zoneTypeColouring is on
+			--[[
+				Chrome rather than game state: the backing behind the minimap's
+				buttons and its zone/clock bands. One knob so they always agree.
+
+				Black at 0.8 reads as part of the frame against the map without
+				going fully opaque. Lower the alpha to let more map through.
+			--]]
+			panel = { 0, 0, 0, 0.8 },
+
+			--[[
+				Zone PvP ruleset. Two readers: Presence's zone toasts, when
+				presence.zoneTypeColouring is on, and the minimap's zone label,
+				when minimap.text.zone.pvpColour is on. They agreeing on what
+				"hostile" looks like is the point of one table rather than two.
+
+				C_PvP.GetZonePVPInfo also returns "arena" and "combat"; the
+				minimap folds both into hostile, since all three mean the same
+				thing to someone reading a zone name.
+			--]]
 			zone = {
 				friendly = { 0.1, 1.0, 0.1 },
 				hostile = { 1.0, 0.1, 0.1 },
@@ -225,6 +243,193 @@ DraeUI.config = {
 			x = -100,
 			y = -15,
 		},
+	},
+
+	--[[
+		The minimap. Read by modules/minimap/*.lua on enable.
+
+		draeUI skins Blizzard's minimap *in place*. It stays inside
+		MinimapCluster, the cluster keeps its alpha and its mouse, and Edit Mode
+		still owns both where the thing sits and how big it is. That is a
+		deliberate departure from every other minimap addon and it buys three
+		things: Edit Mode keeps working, infobar.right.relTo = "MinimapCluster"
+		keeps measuring something real, and the Minimap is never reparented -
+		which is the manoeuvre that makes Blizzard's map pin code blow up on the
+		protected SetPropagateMouseClicks during a world map open.
+
+		There is deliberately no `size` key. See the header of
+		modules/minimap/init.lua for why forcing one is a fight not worth having.
+
+		Every `pos` below is one of the ten anchors in modules/minimap/init.lua:
+		the eight compass points on the map itself, plus ABOVE and BELOW, which
+		float clear of it. x/y nudge from there in pixels, positive being
+		right/up regardless of which corner you anchored to.
+
+		There are no colours here. Everything draeUI tints lives in
+		general.colours - the zone readout reads general.colours.zone.
+	--]]
+	minimap = {
+		--[[
+			Pixel thickness of the framing art, the same unitframe.tga nine-slice
+			the unit frames use. 14 matches a unit frame exactly; 20 is the
+			visual match for the fixed Minimap.tga ring this replaced.
+		--]]
+		border = 20,
+
+		--[[
+			Wheel zoom, 0-5. persist keeps the level in draeUIDB across reloads.
+			That is data the player set with the mouse rather than a setting -
+			the same reason the infobar's Coin plugin is allowed in there.
+		--]]
+		zoom = {
+			wheel = true,
+			persist = true,
+		},
+
+		--[[
+			Middle-click opens the micro menu. The world ping is swallowed either
+			way; the overlay that swallows it is also what makes the square
+			corners scrollable at all.
+		--]]
+		microMenu = {
+			enabled = true,
+			width = 150,
+			rowHeight = 18,
+		},
+
+		--[[
+			Readouts, each on its own small plate straddling an edge of the map.
+
+			Straddling rather than sitting inside is the point: the plate is
+			centred ON the border, so it reads as part of the frame instead of as
+			something floating on the map. Each is only as wide as its own string,
+			and a readout with nothing to say hides its plate rather than leaving
+			an empty tab - which is what the difficulty one does in the open world.
+
+			Blizzard's zone text and clock are hidden whenever ours are on; its
+			difficulty flag is hidden whenever `difficulty` is, since the two say
+			the same thing.
+
+			`band` is top or bottom, `align` is LEFT, CENTER or RIGHT along it.
+			Two readouts can share an edge as long as they don't share an
+			alignment. Corner-hung plates inset themselves clear of the framing
+			art automatically.
+
+			`border` frames each plate in the same nine-slice as the map. 0 is
+			off; try 10 or 12 if you want them to match the map's own edging
+			rather than being flat panels.
+		--]]
+		text = {
+			height = 16,
+			border = 10,
+
+			padding = 10, -- padding around text
+
+			-- y nudges outward from the map, so the same positive value raises a
+			-- top plate and lowers a bottom one
+			zone = { band = "bottom", align = "CENTER", size = 12, y = 2, pvpColour = true },
+			clock = { band = "top", align = "CENTER", size = 12, y = 2 },
+			difficulty = { band = "top", align = "RIGHT", size = 12, y = 2 },
+		},
+
+		--[[
+			Two columns of buttons, both hanging off the outside of the map's
+			left edge.
+
+			The split is by what makes a button come and go. `elements` holds the
+			Blizzard-derived indicators, which appear and disappear with game
+			state - mail arrives, a crafting order lands - so they grow DOWN from
+			the top and the movement stays up there. `buttons` holds ours and any
+			third-party ones, which are fixed for the session, so they grow UP
+			from the bottom and don't get shoved around when mail turns up.
+
+			Anything false below is absent from its column entirely rather than
+			present-and-hidden, so the gaps close.
+
+			Our indicators are addon-owned buttons drawn from Blizzard's atlases;
+			Blizzard's own are alpha-zeroed rather than reparented, so nothing of
+			theirs is ever moved and there is no taint surface.
+
+			pos takes the OUT* anchors from modules/minimap/init.lua, which hang
+			a column beside the map rather than on it. grow is DOWN/UP/LEFT/RIGHT.
+			Both are symmetric, so putting the columns on the right edge is
+			OUTRIGHTTOP + OUTRIGHTBOTTOM and nothing else.
+		--]]
+		rows = {
+			size = 20,
+
+			-- 0 so a bordered group reads as one block rather than as tiles with
+			-- map showing between them. The group's backdrop sits behind any gap
+			gap = 0,
+
+			--[[
+				One border around each column, in the same nine-slice as the map
+				and the text plates - per group rather than per button, so a
+				column reads as a single framed object rather than a stack of
+				them. 0 turns it off.
+
+				It draws border/2 - 1 px outside the column, so raising it eats
+				into the gap the x nudge below leaves against the map's own art.
+			--]]
+			border = 10,
+
+			-- x/y are a nudge on top of the automatic border clearance, so 0
+			-- means flush against the framing art rather than on top of it
+			elements = { pos = "OUTLEFTTOP", grow = "DOWN", x = 3, y = 0 },
+			buttons = { pos = "OUTLEFTBOTTOM", grow = "UP", x = 3, y = 0 },
+
+			-- Off: right-clicking the map opens Blizzard's tracking menu anyway
+			tracking = false,
+			calendar = true,
+			lockouts = true, -- saved instances in the calendar button's tooltip
+			mail = true,
+			crafting = true,
+			friends = true,
+
+			-- Blizzard's addon compartment. Only takes a slot when something
+			-- has actually registered an entry with it
+			compartment = true,
+		},
+
+		--[[
+			Third-party minimap buttons.
+
+			They are swept off the map and held down - Blizzard's addon
+			compartment is the collector, so an addon that registers an entry is
+			reachable there and one that only scatters a button on the map is
+			simply hidden.
+
+			`standalone` is the exception list: these keep their icon and go in
+			the button column instead. Named with any LibDBIcon10_ prefix already
+			stripped, and the order here is the order in the column.
+
+			`/draeui buttons` lists every child of the Minimap and what was
+			decided about it, for when something is still visible.
+		--]]
+		buttons = {
+			standalone = {
+				"BugSack",
+			},
+		},
+
+		-- Online guild members and friends. maxRows 0 is uncapped
+		friends = {
+			maxRows = 0,
+			width = 260,
+			rowHeight = 14,
+		},
+
+		--[[
+			The expansion landing button, centred on a map corner. Blizzard
+			re-anchors it after loading screens without calling Show, so it needs
+			re-asserting; see modules/minimap/buttons.lua.
+
+			A button column anchored to the same corner shifts along its growth
+			direction to clear this, and only while the button actually exists and
+			is shown - so moving the columns to the right edge, or playing an
+			expansion with no landing button, needs no other change here.
+		--]]
+		landingPage = { pos = "OVERBOTTOMLEFT", x = 0, y = 0, scale = 0.75 },
 	},
 
 	--[[

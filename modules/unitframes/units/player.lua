@@ -32,9 +32,9 @@ local StyleDrae_Player = function(frame)
 	frame.Power = pp
 
 	UF.CreateUnitFrameBackground(frame.Health)
-	UF.CreateBorder(frame.Health)
+	DraeUI.CreateBorder(frame.Health)
 	UF.CreateUnitFrameBackground(frame.Power)
-	UF.CreateBorder(frame.Power)
+	DraeUI.CreateBorder(frame.Power)
 
 	-- HP/level
 	local textHp = CreateFrame("Frame", nil, frame.Health)

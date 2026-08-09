@@ -39,7 +39,7 @@ local StyleDrae_FocusTarget = function(frame)
 	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
 	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
 
-	UF.CreateBorder(border)
+	DraeUI.CreateBorder(border)
 
 	UF.CreateTargetArrow(frame)
 

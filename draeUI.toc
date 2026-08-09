@@ -24,8 +24,22 @@ functions\toolkit.lua
 # BuffBar
 modules\buffbar\Load_Auras.xml
 
-# Skins - static UI artwork
+# Skins - static UI artwork, and the addon's shared skinning helpers
+# (DraeUI.CreateBorder, DraeUI.CreateOverlay). Must precede the minimap and
+# unitframes modules, which both frame themselves with CreateBorder.
 modules\skins\init.lua
+
+# Minimap - a square skin on Blizzard's minimap, built in place inside
+# MinimapCluster. init.lua first: it creates the module, the anchor vocabulary,
+# the square mouse surface and the tooltip helper that the others read off the
+# module table. The rest may be listed in any order - none of them touches
+# another at load, only at enable.
+modules\minimap\init.lua
+modules\minimap\text.lua
+modules\minimap\buttons.lua
+modules\minimap\addonbuttons.lua
+modules\minimap\friends.lua
+modules\minimap\micromenu.lua
 
 # Presence - cinematic zone/quest/achievement notifications.
 modules\presence\init.lua

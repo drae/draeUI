@@ -26,6 +26,29 @@ L["GHOST"] = "Ghost"
 L["CAST_BY"] = "Cast by %s%s|r"
 
 --[[
+	Minimap
+
+	Only the gaps: every label with a Blizzard global behind it (TRACKING,
+	HAVE_MAIL, GUILD, CALENDAR, WHISPER...) uses that instead, so these are the
+	handful Blizzard has no string for.
+--]]
+L["MINIMAP_ADDON_BUTTONS"] = "Addon buttons"
+L["MINIMAP_BATTLENET"] = "Battle.net"
+L["MINIMAP_CALENDAR"] = "Calendar"
+L["MINIMAP_CRAFTING_ORDERS"] = "Crafting orders"
+L["MINIMAP_FRIENDS"] = "Friends"
+L["MINIMAP_GUILD"] = "Guild"
+L["MINIMAP_HOUSING"] = "Housing"
+L["MINIMAP_INVITE"] = "Invite"
+L["MINIMAP_LOCKOUTS"] = "Saved instances"
+L["MINIMAP_MAIL"] = "You have unread mail"
+L["MINIMAP_NOBODY_ONLINE"] = "Nobody online"
+L["MINIMAP_SERVER_TIME"] = "Server time"
+L["MINIMAP_TRACKING"] = "Tracking"
+L["MINIMAP_WEEKLY_RESET"] = "Weekly reset"
+L["MINIMAP_WHISPER"] = "Whisper"
+
+--[[
 	Infobar
 
 	Slot names are draeUI's rather than Blizzard's INVTYPE_* globals: those

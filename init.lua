@@ -556,6 +556,32 @@ do
 			elseif smatch(msg, "^grid ?[0-9]*") then
 				local grid_size = smatch(msg, "^grid ?([0-9]*)")
 				ConsoleGrid(grid_size)
+			elseif msg == "minimap" or msg == "buttons" then
+				--[[
+					Two dumps, both there because the client is the only thing
+					that can answer the question.
+
+					minimap - what MinimapCluster is drawing, ours marked, for
+					when something is still on screen that shouldn't be.
+
+					buttons - every child of the Minimap and what the sweep
+					decided about it, for when a third-party button is still
+					visible. Either we never saw the frame or a filter rejected
+					it, and this says which.
+				--]]
+				local minimap = DraeUI:GetModule("Minimap", true)
+
+				if not minimap then
+					return
+				end
+
+				if msg == "buttons" then
+					if minimap.AddonButtons then
+						minimap.AddonButtons:Report()
+					end
+				else
+					minimap:Report()
+				end
 			end
 		end
 	end

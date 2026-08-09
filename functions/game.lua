@@ -64,6 +64,30 @@ DraeUI.IsInPartyDungeon = function()
 	return ok and instanceType == "party"
 end
 
+--[[
+	True in the instanced content where Blizzard hands out secret values freely -
+	Mythic+ and raids. Callers use it to skip a query entirely rather than to
+	branch on its result: C_Container.GetItemCooldown, for one, returns secrets
+	in here, and comparing one throws rather than returning false.
+
+	Deliberately coarser than IsInPartyDungeon: this is about the taint regime,
+	not about what kind of instance you are standing in.
+--]]
+DraeUI.IsProtectedInstance = function()
+	local ok, _, instanceType, difficultyID = pcall(GetInstanceInfo)
+
+	if not ok then
+		return false
+	end
+
+	if instanceType == "raid" then
+		return true
+	end
+
+	-- Mythic Keystone is difficulty 8 and the only 5-man that qualifies
+	return instanceType == "party" and difficultyID == 8
+end
+
 DraeUI.IsDelveActive = function()
 	if C_PartyInfo and C_PartyInfo.IsDelveInProgress then
 		local ok, inDelve = pcall(C_PartyInfo.IsDelveInProgress)

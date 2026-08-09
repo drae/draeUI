@@ -26,7 +26,7 @@ local StyleDrae_Pet = function(frame)
 	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
 	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
 
-	UF.CreateBorder(border)
+	DraeUI.CreateBorder(border)
 
 	local text = CreateFrame("Frame", nil, frame.Health)
 	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
