@@ -10,10 +10,7 @@ LSM:Register("statusbar", "Gradient1", "Interface\\AddOns\\draeUI\\media\\status
 LSM:Register("statusbar", "DF Stripes Soft", "Interface\\AddOns\\draeUI\\media\\statusbars\\DF_Stripes_Soft.tga")
 LSM:Register("statusbar", "Zurrn Bar", "Interface\\AddOns\\draeUI\\media\\statusbars\\ZurrnBar.tga")
 
-LSM:Register("border", "Zurrn Border", "Interface\\AddOns\\draeUI\\media\\borders\\Zurrn_Border.tga", 13)
-
 LSM:Register("background", "ActionBarFooter", "Interface\\AddOns\\draeUI\\media\\textures\\ActionBar.tga")
 LSM:Register("background", "ActionBarGem", "Interface\\AddOns\\draeUI\\media\\textures\\ActionBarGem.tga")
 LSM:Register("background", "MicroMenu", "Interface\\AddOns\\draeUI\\media\\textures\\MicroMenu.tga")
-LSM:Register("background", "MiniMap", "Interface\\AddOns\\draeUI\\media\\textures\\Minimap.tga")
 LSM:Register("background", "MiniMapSide", "Interface\\AddOns\\draeUI\\media\\textures\\MinimapSide.tga")
