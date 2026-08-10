@@ -201,8 +201,8 @@ DraeUI.OnEnable = function(self)
 		--[[
 				Blizzard now ships bar artwork for nearly every power type, but most
 				of it is just the stock HUD bar recoloured - only a handful of class
-				powers have genuinely distinctive art. general.powerAtlas is the
-				allowlist of tokens allowed to keep theirs.
+				powers have genuinely distinctive art. general.colours.atlas is
+				the allowlist of tokens allowed to keep theirs.
 
 				Power elements set colorPowerAtlas unconditionally; which powers
 				actually use an atlas is decided here, by clearing .atlas on the
@@ -216,7 +216,7 @@ DraeUI.OnEnable = function(self)
 				possible to see what's on offer:
 				/run for k,v in pairs(DraeUI.powerAtlases) do print(k,v) end
 		--]]
-		local atlasWanted = DraeUI.config["general"].powerAtlas or {}
+		local atlasWanted = colours.atlas or {}
 
 		DraeUI.powerAtlases = {}
 

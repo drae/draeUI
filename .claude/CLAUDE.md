@@ -281,6 +281,10 @@ Cache WoW API functions and Lua built-ins at file scope.
 (`healthPrediction`, `auraBorder`, `healthText`, and Presence's
 `quest`/`bossEmote`/`discovery`/`zone`) is read directly at the point of use.
 
+The one key in there that isn't a colour is `colours.atlas`, the power-atlas allowlist —
+it lives alongside `colours.power` because it decides which powers get artwork *instead*
+of a tint. See "Power Bar Atlases" below.
+
 The cast bars are the one part of the UI with no entry here at all - every colour on
 them is baked into Blizzard's fill atlases.
 
@@ -307,7 +311,7 @@ restores `element.__texture` and applies the config colour — so every power ba
 `__texture` for that fallback to work. When an atlas is used the bar is drawn at
 `SetVertexColor(1, 1, 1)`, so `colours.power` is ignored for that power.
 
-**Which powers get one is controlled by `general.powerAtlas`, an allowlist of tokens.**
+**Which powers get one is controlled by `general.colours.atlas`, an allowlist of tokens.**
 Blizzard ships an atlas for nearly every power type, but most are just the stock HUD bar
 recoloured, so the applier in init.lua **clears `.atlas`** on everything not in the list —
 that is what sends a power down the fallback path. Clear the field directly; `SetAtlas(nil)`

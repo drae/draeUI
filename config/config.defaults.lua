@@ -22,25 +22,6 @@ DraeUI.config = {
 		statusbar_power = "Striped",
 		statusbar_absorb = "DF Stripes Soft",
 
-		--[[
-				Power types allowed to use Blizzard's own bar artwork instead of
-				statusbar_power tinted with colours.power.
-
-				To see everything that ships with an atlas, so you can audit this
-				list, log in and run:
-				/run for k,v in pairs(DraeUI.powerAtlases) do print(k,v) end
-
-				Set to false to use statusbar_power for every power type.
-		--]]
-		powerAtlas = {
-			EBON_MIGHT = true, -- Augmentation evoker
-			FURY = true, -- Havoc demon hunter
-			INSANITY = true, -- Shadow priest
-			LUNAR_POWER = true, -- Balance druid
-			MAELSTROM = true, -- Elemental/enhancement shaman
-			PAIN = true, -- Vengeance demon hunter
-		},
-
 		font = "Proza",
 		fontSmall = "LiberationSans",
 		fontTitles = "Vollkorn",
@@ -54,7 +35,27 @@ DraeUI.config = {
 
 		colours = {
 			--[[
-				Everything from here down to `quest` is applied onto oUF.colors
+				The one entry here that isn't a colour: power types allowed to
+				keep Blizzard's own bar artwork, instead of statusbar_power
+				tinted with `power` below. Keyed by oUF's string token.
+
+				To see everything that ships with an atlas, so you can audit
+				this list, log in and run:
+				/run for k,v in pairs(DraeUI.powerAtlases) do print(k,v) end
+
+				Set to false to use statusbar_power for every power type.
+			--]]
+			atlas = {
+				EBON_MIGHT = true, -- Augmentation evoker
+				FURY = true, -- Havoc demon hunter
+				INSANITY = true, -- Shadow priest
+				LUNAR_POWER = true, -- Balance druid
+				MAELSTROM = true, -- Elemental/enhancement shaman
+				PAIN = true, -- Vengeance demon hunter
+			},
+
+			--[[
+				Everything from `power` down to `quest` is applied onto oUF.colors
 				by DraeUI:OnEnable. They are partial overrides - any key left
 				out keeps oUF's Blizzard-derived default.
 

@@ -24,7 +24,7 @@ local StyleDrae_Target = function(frame)
 	pp.colorTapping = true
 	pp.colorDisconnected = true
 	pp.colorPower = true
-	-- Which powers keep an atlas is decided in init.lua from general.powerAtlas
+	-- Which powers keep an atlas is decided in init.lua from general.colours.atlas
 	pp.colorPowerAtlas = true
 
 	pp.__texture = DraeUI.media.statusbar_power

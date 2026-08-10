@@ -282,7 +282,7 @@ do
 		pp.colorPower = true
 
 		-- Which powers actually have an atlas left to use is decided in init.lua
-		-- from config.general.powerAtlas
+		-- from config.general.colours.atlas
 		pp.colorPowerAtlas = true
 
 		-- What oUF restores for the powers that don't
