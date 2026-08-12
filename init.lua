@@ -149,9 +149,11 @@ DraeUI.OnEnable = function(self)
 				This has to happen here rather than at file scope: config.defaults.lua
 				loads after init.lua, so DraeUI.config doesn't exist yet at load. It
 				also has to happen before oUF:Spawn - AceAddon enables the addon
-				before its modules, so DraeUI:OnEnable beats UF:OnEnable. That matters
-				for `dispel`, which oUF snapshots into a per-element colour curve when
-				the aura element is enabled; mutating it later wouldn't propagate.
+				before its modules, so DraeUI:OnEnable beats UF:OnEnable. That still
+				matters for `dispel`: oUF no longer snapshots it into a per-element
+				colour curve, but it hands the table to Blizzard as an AuraButton's
+				customDispelColorMap at button creation, and whether that is read live
+				or copied C-side is unverified. Ordering it first costs nothing.
 		--]]
 		local colours = DraeUI.config["general"].colours
 
@@ -186,16 +188,14 @@ DraeUI.OnEnable = function(self)
 		ApplyColour(oUF.colors, "tapped", colours.tapped)
 
 		--[[
-				colors.dispel holds the raw DEBUFF_TYPE_*_COLOR globals, so these get
-				assigned, never mutated - SetRGB'ing them would edit Blizzard's own
-				shared colour objects.
+				colors.dispel is keyed by dispel *name* ("Magic", "Curse", ...), built
+				by oUF from AuraUtil.GetDebuffDisplayInfoTable(). config uses the same
+				names, so this is a straight pass through ApplyColour - the entries are
+				oUF's own colour objects now, not Blizzard's shared DEBUFF_TYPE_*_COLOR
+				globals, so mutating them is both safe and required (see below).
 		--]]
 		for name, rgb in next, colours.dispel do
-			local index = oUF.Enum.DispelType[name]
-
-			if index then
-				oUF.colors.dispel[index] = oUF:CreateColor(rgb[1], rgb[2], rgb[3])
-			end
+			ApplyColour(oUF.colors.dispel, name, rgb)
 		end
 
 		--[[

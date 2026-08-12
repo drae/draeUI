@@ -19,6 +19,35 @@ local pcall, select = pcall, select
 		Unit frame tags
 --]]
 
+--[[
+		The body of drae:unitcolour, hoisted out of the tag method and taking
+		the colour table as an argument: oUF setfenv's tag methods, so _COLORS
+		only resolves inside the method itself.
+
+		It sits behind a pcall because every call in here can hand back a secret
+		in 12.1. A boolean test on one errors, and so does indexing a colour
+		table with one - which is what UnitClass returns for a unit the client
+		won't describe, and what produced 354x of
+		"attempted to index a table that cannot be indexed with secret keys"
+		during combat.
+
+		One pcall rather than a CanAccessValue guard per read: this evaluates on
+		every frame show and every one of the tag's events, five guards would be
+		ten pcalls, and the fallback is the same neutral colour whichever read
+		failed. It also covers the reads that haven't gone secret yet.
+--]]
+local ResolveUnitColour = function(u, colours)
+	if not UnitIsConnected(u) then
+		return colours.disconnected
+	elseif not UnitPlayerControlled(u) and UnitIsTapDenied(u) then
+		return colours.tapped
+	elseif UnitIsPlayer(u) or UnitInPartyIsAI(u) then
+		return colours.class[select(2, UnitClass(u))]
+	end
+
+	return colours.reaction[UnitReaction(u, "player") or 0]
+end
+
 -- Events
 oUF.Tags.Events["drae:unitcolour"] = "UNIT_FACTION UNIT_ENTERED_VEHICLE UNIT_EXITED_VEHICLE UNIT_PET UNIT_CONNECTION"
 oUF.Tags.Events["drae:afk"] = "PLAYER_FLAGS_CHANGED"
@@ -36,19 +65,11 @@ oUF.Tags.Events["drae:shortclassification"] = "UNIT_CLASSIFICATION_CHANGED"
 		name text always agrees with the bar underneath it.
 --]]
 oUF.Tags.Methods["drae:unitcolour"] = function(u)
-	local colour
+	local ok, colour = pcall(ResolveUnitColour, u, _COLORS)
 
-	if not UnitIsConnected(u) then
-		colour = _COLORS.disconnected
-	elseif not UnitPlayerControlled(u) and UnitIsTapDenied(u) then
-		colour = _COLORS.tapped
-	elseif UnitIsPlayer(u) or UnitInPartyIsAI(u) then
-		colour = _COLORS.class[select(2, UnitClass(u))]
-	else
-		colour = _COLORS.reaction[UnitReaction(u, "player") or 0]
-	end
-
-	return (colour or _COLORS.health):GenerateHexColorMarkup()
+	-- A failed resolve and an unmatched branch land in the same place: the name
+	-- keeps its text, it just isn't coloured
+	return ((ok and colour) or _COLORS.health):GenerateHexColorMarkup()
 end
 
 oUF.Tags.Methods["drae:afk"] = function(u)
@@ -69,6 +90,13 @@ end
 
 oUF.Tags.Methods["drae:shortclassification"] = function(u)
 	local c = UnitClassification(u)
+
+	-- Another string that can't be compared once it's secret, same as the role
+	-- token on the flag icons
+	if not DraeUI.CanAccessValue(c) then
+		return
+	end
+
 	if c == "rare" then
 		return "[R] "
 	elseif c == "minus" then

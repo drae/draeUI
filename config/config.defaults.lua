@@ -93,16 +93,17 @@ DraeUI.config = {
 			tapped = { 153 / 255, 153 / 255, 153 / 255 },
 
 			--[[
-				Aura border tint per dispel type, keyed by oUF.Enum.DispelType
-				name. Bleed and Enrage are left out and keep oUF's defaults.
+				Aura border tint per dispel type, keyed by the dispel name oUF
+				takes from AuraUtil.GetDebuffDisplayInfoTable(). Bleed and
+				Enrage are left out and keep oUF's defaults.
 
-				None has to be listed: oUF evaluates a step curve, so an aura
-				with no dispel type resolves to the None colour rather than
-				nil, and Blizzard's DEBUFF_TYPE_NONE_COLOR is a dark red that
-				would tint every ordinary debuff border.
+				There is no None entry any more. The old step curve resolved a
+				dispel-less aura to a None colour rather than nil, so one had
+				to be supplied to stop Blizzard's dark-red DEBUFF_TYPE_NONE_COLOR
+				tinting every ordinary debuff border. AuraButton has no such
+				fallback - an aura with no dispel type simply gets no tint.
 			--]]
 			dispel = {
-				None = { 0, 0, 0 },
 				Magic = { 51 / 255, 153 / 255, 255 / 255 },
 				Curse = { 153 / 255, 0, 255 / 255 },
 				Disease = { 153 / 255, 102 / 255, 0 },
@@ -491,6 +492,44 @@ DraeUI.config = {
 	},
 
 	--[[
+		Buff bar - the player's own buffs, bottom right, plus temporary
+		weapon enchants in a second container to their left.
+
+		Sizes are in pixels. `pitch` is button size + gap, and it is what the
+		old secure header called xOffset/wrapYOffset; `perRow * pitch` is the
+		line width the flow layout wraps at.
+	--]]
+	buffbar = {
+		size = 25, -- button edge
+		spacing = 9, -- gap between buttons, and between rows
+		perRow = 16, -- buttons before wrapping to the next row
+		maxBuffs = 32, -- hard cap; perRow * 2 keeps it to two rows
+		x = -20, -- offset from UIParent BOTTOMRIGHT
+		y = 20,
+		enchantOffset = -20, -- gap between the buff bar and the enchant bar
+
+		--[[
+			"Long duration only" mode.
+
+			There is no minDuration/isPermanent candidate filter - Blizzard
+			ships maxDuration and nothing that inverts it - so long-only is
+			not directly expressible. Two mechanisms, allowlist winning:
+
+			- longDurationSpells populated -> exactly those spell IDs show.
+			  Exact, and spell-ID filtering stays legal under secret auras.
+			- left empty -> approximate it by sorting longest-first and
+			  capping at longDurationCount.
+
+			Takes effect on /rl. The container can be reconfigured live
+			(SetAuraGroupCandidateFilters and friends), but with no options
+			UI to drive it there is nothing to gain from the machinery.
+		--]]
+		longDurationOnly = false,
+		longDurationCount = 8,
+		longDurationSpells = {}, -- [spellID] = true
+	},
+
+	--[[
 		Presence - cinematic zone/quest/achievement toasts.
 	--]]
 	presence = {
@@ -599,6 +638,38 @@ DraeUI.config = {
 		-- Display or hide frames
 		showBoss = true, -- Boss frames
 		hideArena = true, -- Suppress Blizzard's arena enemy/prep frames
+		--[[
+			Mage only: the spellsteal sparkle over stealable buffs on the
+			target. common.lua has always read this key and it has never been
+			defined, so the overlay has never actually appeared - declaring it
+			here keeps that (false) behaviour and makes it reachable.
+		--]]
+		showStealableBuffs = false,
+
+		--[[
+			Dispel glow - a coloured wash across the player frame, tinted by
+			the dispel school of a debuff on you.
+
+			Blizzard drives both the colour and whether it shows, reading
+			colours.dispel through the button's customDispelColorMap, so this
+			survives aura data being secret. Nothing here reads the debuff.
+
+			`schools` is the filter, and only schools with a colour belong in
+			it: a debuff with no dispel type lights nothing rather than washing
+			the frame in a fallback colour. Bleed and Enrage can be added -
+			they keep oUF's own colours, since general.colours.dispel doesn't
+			override them.
+
+			`spill` is how far the glow bleeds past the frame edge. It needs to
+			be non-zero to be worth having: the bars are opaque and the glow
+			sits behind them, so with no spill it would only show in the gap
+			between health and power.
+		--]]
+		dispelGlow = {
+			enabled = true,
+			spill = 40,
+			schools = { Magic = true, Curse = true, Disease = true, Poison = true },
+		},
 		-- Dimension of frames, large applies to player/target, small everything else
 		-- don't change these, change the scale
 		playerWidth = 240,
@@ -659,6 +730,18 @@ DraeUI.config = {
 			showDebuffsOnPlayer = true, -- Debuffs on myself or pet
 			showBuffsOnTarget = true,
 			showDebuffsOnTarget = false,
+
+			--[[
+					Blizzard's dispel-school orb, pinned to the top-right corner of
+					a debuff icon. Colour and visibility are Blizzard's - it only
+					appears on a debuff that has a dispel school at all.
+
+					Its scale is a fraction of the icon, not a fixed size: oUF's own
+					18px would be the full width of an 18px aura and a third of a
+					32px one. false, or a scale of 0, turns it off.
+			--]]
+			showDispelIndicator = true,
+			dispelIndicatorScale = 0.6,
 		},
 	},
 }

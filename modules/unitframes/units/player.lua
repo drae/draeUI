@@ -82,6 +82,9 @@ local StyleDrae_Player = function(frame)
 		"UP"
 	)
 
+	-- Coloured wash behind the bars when a dispellable debuff is on us
+	UF.AddDispelGlow(frame)
+
 	-- No cast bar: the player keeps Blizzard's own PlayerCastingBarFrame
 
 	frame.ClassPower = UF.CreateClassPowerBar(frame, "CENTER", UIParent, "CENTER", 0, -275)

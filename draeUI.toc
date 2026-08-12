@@ -1,4 +1,4 @@
-## Interface: 120000, 120001
+## Interface: 120100
 ## Author: Drae
 ## Title: draeUI
 ## Category: Unit Frames
@@ -22,7 +22,7 @@ functions\game.lua
 functions\toolkit.lua
 
 # BuffBar
-modules\buffbar\Load_Auras.xml
+modules\buffbar\init.lua
 
 # Skins - static UI artwork, and the addon's shared skinning helpers
 # (DraeUI.CreateBorder, DraeUI.CreateOverlay). Must precede the minimap and
@@ -67,7 +67,6 @@ modules\infobar\plugins\durability.lua
 modules\infobar\plugins\res.lua
 
 # Unitframes
-modules\unitframes\auras.xml
 modules\unitframes\init.lua
 modules\unitframes\common.lua
 modules\unitframes\castbar.lua
