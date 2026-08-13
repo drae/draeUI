@@ -27,8 +27,6 @@ local StyleDrae_Target = function(frame)
 	-- Which powers keep an atlas is decided in init.lua from general.colours.atlas
 	pp.colorPowerAtlas = true
 
-	pp.__texture = DraeUI.media.statusbar_power
-
 	frame.Power = pp
 
 	UF.CreateUnitFrameBackground(frame)

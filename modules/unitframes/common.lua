@@ -19,9 +19,8 @@ local UnitPlayerControlled, UnitIsTapDenied = UnitPlayerControlled, UnitIsTapDen
 local UnitIsPlayer, UnitInPartyIsAI = UnitIsPlayer, UnitInPartyIsAI
 local UnitClass, UnitReaction = UnitClass, UnitReaction
 local pcall, select, unpack = pcall, select, unpack
--- Blizzard's own localised globals. The literal fallbacks are insurance only:
--- these are read at file scope and land in a health update, so a client that
--- ever dropped one would error every frame in combat rather than look wrong
+
+-- Blizzard's own localised globals
 local PLAYER_OFFLINE = PLAYER_OFFLINE or "Offline"
 local DEAD = DEAD or "Dead"
 
@@ -30,25 +29,27 @@ local COLOURS = DraeUI.config["general"].colours
 -- Health bar stand-in text (offline/ghost/dead) is greyed out
 local GREY = DraeUI.Hex(COLOURS.healthText)
 
--- Built once. Every operand is a constant and these land in a health update, so
--- assembling them per call was two concatenations and a fresh string on every
--- UNIT_HEALTH for a dead or disconnected unit
 local OFFLINE_TEXT = GREY .. PLAYER_OFFLINE .. "|r"
 local GHOST_TEXT = GREY .. DraeUI.L["GHOST"] .. "|r"
 local DEAD_TEXT = GREY .. DEAD .. "|r"
 
 --[[
+		Blizzard's UnitFrame_UpdateTooltip reads `self.unit`, and oUF stopped
+		maintaining that field - it tracks the unit as `__unit` now, and nothing
+		writes the plain name any more. So it is filled in on the way past
+--]]
+local OnEnter = function(self, ...)
+	self.unit = self.__unit
+
+	return UnitFrame_OnEnter(self, ...)
+end
+
+--[[
 		General frame related functions
 --]]
 UF.CommonInit = function(self)
-	--[[
-		No custom menu handler here: oUF already sets '*type2' = 'togglemenu' in
-		Spawn, which is the path that still works. The old one went through
-		ToggleDropDownMenu and <Unit>FrameDropDown, both removed in the 11.0
-		menu rewrite.
-	--]]
 	self:RegisterForClicks("AnyDown")
-	self:SetScript("OnEnter", UnitFrame_OnEnter)
+	self:SetScript("OnEnter", OnEnter)
 	self:SetScript("OnLeave", UnitFrame_OnLeave)
 end
 
@@ -65,7 +66,7 @@ UF.CommonPostInit = function(self, size, noRaidIcons)
 
 	self.Range = {
 		insideAlpha = 1.0,
-		outsideAlpha = 1 / 2,
+		outsideAlpha = 0.5,
 	}
 end
 
@@ -76,11 +77,7 @@ UF.CreateTargetArrow = function(frame)
 	arrow:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\unitframe_right_arrow")
 end
 
--- The border nine-slice moved to modules/skins/init.lua as DraeUI.CreateBorder,
--- which the minimap frames itself with too. Call that directly.
-
 UF.CreateUnitFrameBackground = function(frame)
-	-- Framebackdrop - edging is what is coloured for debuff type/threat situation
 	local backdrop = CreateFrame("Frame", nil, frame, BackdropTemplateMixin and "BackdropTemplate")
 	backdrop:SetFrameStrata("BACKGROUND")
 	backdrop:SetPoint("TOPLEFT", frame, 0, 0)
@@ -163,13 +160,12 @@ do
 		},
 	}
 
-	-- oUF calls this as PostUpdate(unit, cur, max, lossPerc)
 	local PostUpdateHealth = function(health, u, cur)
 		if not health.value then
 			return
 		end
 
-		-- PLAYER_OFFLINE and DEAD are Blizzard's own localised globals; there's no
+		-- PLAYER_OFFLINE and DEAD are Blizzard's localised globals; there's no
 		-- equivalent for ghost, so that one comes from config/locale.enGB.lua
 		if not UnitIsConnected(u) then
 			health.value:SetText(OFFLINE_TEXT)
@@ -185,19 +181,7 @@ do
 	--[[
 			oUF's Health.UpdateColor indexes colors.class with the token from
 			UnitClass, which is secret in combat in 12.1 - and a colour table
-			refuses a secret key. Identical expression, identical failure to the
-			one the drae:unitcolour tag was throwing.
-
-			Same treatment as the tag, and deliberately the same branch order:
-			resolved behind a single pcall, because UnitIsConnected,
-			UnitPlayerControlled, UnitIsTapDenied and UnitIsPlayer are boolean
-			tests on unit-scoped reads that can go secret too, and every failure
-			has the same answer - fall through to the plain health colour.
-
-			Only the branches draeUI turns on are here. colorThreat and
-			colorSmooth are never set, colorSelection and colorClassNPC/Pet are
-			set false outright. This replaces upstream's chain wholesale, so
-			switching one of those on means adding it here as well.
+			refuses a secret key
 	--]]
 	local ResolveHealthColour = function(element, colours, unit)
 		if element.colorDisconnected and not UnitIsConnected(unit) then
@@ -218,7 +202,7 @@ do
 
 	-- oUF's ColorPath calls this with the frame, not the element
 	local UpdateHealthColour = function(frame, _, unit)
-		if not unit or frame.unit ~= unit then
+		if not unit or frame.__unit ~= unit then
 			return
 		end
 
@@ -244,10 +228,16 @@ do
 	end
 
 	UF.CreateHealthBar = function(frame, width, x, y, height)
+		local temphp = CreateFrame("StatusBar", nil, frame)
+		temphp:SetStatusBarTexture("UI-HUD-UnitFrame-Target-PortraitOn-Bar-TempHPLoss")
+		temphp:SetReverseFill(true)
+		temphp:SetSize(width, height or 30)
+		temphp:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+
 		local hp = CreateFrame("StatusBar", nil, frame)
 		hp:SetStatusBarTexture(DraeUI.media.statusbar)
-		hp:SetSize(width, height or 30)
-		hp:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+		hp:SetPoint("TOPLEFT", temphp, "TOPLEFT")
+		hp:SetPoint("BOTTOMRIGHT", temphp:GetStatusBarTexture(), "BOTTOMLEFT")
 
 		hp.colorClass = true
 		hp.colorClassPet = false
@@ -263,40 +253,40 @@ do
 		hp.UpdateColor = UpdateHealthColour
 
 		frame.Health = hp
+		frame.Health.TempLoss = temphp
 
-		-- Total healing required to increase units health due to a heal absorb debuff/effect
-		local myBar = CreateFrame("StatusBar", nil, frame)
+		-- Incoming healing from the player, stacked past the health bar's fill
+		local myBar = CreateFrame("StatusBar", nil, frame.Health)
 		myBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		myBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingPlayer))
 		myBar:SetPoint("TOP")
 		myBar:SetPoint("BOTTOM")
 		myBar:SetPoint("LEFT", hp:GetStatusBarTexture(), "RIGHT")
-		myBar:SetWidth(width)
 
-		local otherBar = CreateFrame("StatusBar", nil, frame)
+		-- Incoming healing from everyone else, stacked past that
+		local otherBar = CreateFrame("StatusBar", nil, frame.Health)
 		otherBar:SetStatusBarTexture(DraeUI.media.statusbar)
 		otherBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healingOther))
 		otherBar:SetPoint("TOP")
 		otherBar:SetPoint("BOTTOM")
 		otherBar:SetPoint("LEFT", myBar:GetStatusBarTexture(), "RIGHT")
-		otherBar:SetWidth(width)
 
-		local absorbBar = CreateFrame("StatusBar", nil, frame)
+		-- Damage absorbs, drawn back over the filled end of the health bar
+		local absorbBar = CreateFrame("StatusBar", nil, frame.Health)
 		absorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		absorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.damageAbsorb))
 		absorbBar:SetPoint("TOP")
 		absorbBar:SetPoint("BOTTOM")
 		absorbBar:SetPoint("RIGHT", hp:GetStatusBarTexture())
-		absorbBar:SetWidth(width)
 		absorbBar:SetReverseFill(true)
 
-		local healAbsorbBar = CreateFrame("StatusBar", nil, frame)
+		-- Healing that will be absorbed before it lands, past the incoming heals
+		local healAbsorbBar = CreateFrame("StatusBar", nil, frame.Health)
 		healAbsorbBar:SetStatusBarTexture(DraeUI.media.statusbar_absorb)
 		healAbsorbBar:SetStatusBarColor(unpack(COLOURS.healthPrediction.healAbsorb))
 		healAbsorbBar:SetPoint("TOP")
 		healAbsorbBar:SetPoint("BOTTOM")
 		healAbsorbBar:SetPoint("LEFT", otherBar:GetStatusBarTexture(), "RIGHT")
-		healAbsorbBar:SetWidth(width)
 
 		-- Damage (shields/absorbs) greater than health
 		local overAbsorb = hp:CreateTexture(nil, "OVERLAY")
@@ -306,7 +296,8 @@ do
 		overAbsorb:SetPoint("TOP")
 		overAbsorb:SetPoint("BOTTOM")
 		overAbsorb:SetPoint("LEFT", hp, "RIGHT", -4, 0)
-		overAbsorb:SetWidth(4)
+		overAbsorb:SetWidth(5)
+		overAbsorb:SetAlpha(0)
 
 		-- Healing absorb greater than health
 		local overHealAbsorb = hp:CreateTexture(nil, "OVERLAY")
@@ -316,21 +307,19 @@ do
 		overHealAbsorb:SetPoint("TOP")
 		overHealAbsorb:SetPoint("BOTTOM")
 		overHealAbsorb:SetPoint("RIGHT", hp, "LEFT")
-		overHealAbsorb:SetWidth(4)
+		overHealAbsorb:SetWidth(5)
+		overHealAbsorb:SetAlpha(0)
 
-		frame.HealthPrediction = {
-			healingPlayer = myBar,
-			healingOther = otherBar,
-			damageAbsorb = absorbBar,
-			healAbsorb = healAbsorbBar,
-			overDamageAbsorbIndicator = overAbsorb,
-			overHealAbsorbIndicator = overHealAbsorb,
-		}
+		frame.Health.HealingPlayer = myBar
+		frame.Health.HealingOther = otherBar
+		frame.Health.DamageAbsorb = absorbBar
+		frame.Health.HealAbsorb = healAbsorbBar
+		frame.Health.OverDamageAbsorbIndicator = overAbsorb
+		frame.Health.OverHealAbsorbIndicator = overHealAbsorb
 	end
 end
 
 do
-	-- oUF calls this as PostUpdate(unit, cur, min, max)
 	local PostUpdatePower = function(power, u, cur)
 		if not power.value then
 			return
@@ -349,12 +338,9 @@ do
 		pp.colorDisconnected = true
 		pp.colorPower = true
 
-		-- Which powers actually have an atlas left to use is decided in init.lua
-		-- from config.general.colours.atlas
+		-- Which powers keep an atlas is decided in init.lua from general.colours.atlas;
+		-- oUF restores the texture set above for the rest
 		pp.colorPowerAtlas = true
-
-		-- What oUF restores for the powers that don't
-		pp.__texture = DraeUI.media.statusbar_power
 
 		pp.PostUpdate = PostUpdatePower
 
@@ -363,25 +349,15 @@ do
 end
 
 --[[
-		UnitGroupRolesAssigned returns a secret string in 12.1, and oUF's own
-		element compares it against 'TANK' on the very next line - which is the
-		error, not the display.
-
-		There is no way to keep the icon for a secret role. SetAlphaFromBoolean
-		and SetVertexColorFromBoolean are the only setters that take a secret,
-		and the boolean they'd need can only come from the comparison that
-		errors. UnitGroupRolesAssignedEnum is the same data as a number, and
-		UnitGetAvailableRoles answers a different question. So the icon is
-		hidden for units whose role the client won't disclose.
-
-		Hoisted rather than built per frame: the element arrives as self, so
-		there is nothing to capture.
+		UnitGroupRolesAssigned returns a secret string in 12.1 and oUF's element
+		compares it against 'TANK'. There's no secret-safe way to keep the icon -
+		the boolean SetAlphaFromBoolean needs can only come from that comparison -
+		so it hides for units whose role the client won't disclose
 --]]
 local RoleOverride = function(self)
 	local element = self.GroupRoleIndicator
 
-	-- pcall takes the function and its args, same as tags.lua's drae:afk
-	local ok, role = pcall(UnitGroupRolesAssigned, self.unit)
+	local ok, role = pcall(UnitGroupRolesAssigned, self.__unit)
 
 	-- CanAccessValue is false for nil too, so an absent role hides as well
 	if not ok or not DraeUI.CanAccessValue(role) then
@@ -406,17 +382,12 @@ end
 
 --[[
 		UnitIsGroupLeader and UnitLeadsAnyGroup return a secret boolean in 12.1,
-		and oUF's element puts it straight into an `if`.
-
-		Unlike the role, this one survives: a boolean is exactly what
-		SetAlphaFromBoolean takes. The atlas is chosen from HasLFGRestrictions,
-		which is group-wide state with no unit argument and stays plain, so it
-		can be set before the visibility is known. Shown can't carry a secret,
-		so the texture stays up permanently and alpha is what hides it.
+		and oUF's element puts it straight into an `if`. Unlike the role icon,
+		this one survives
 --]]
 local LeaderOverride = function(self)
 	local element = self.LeaderIndicator
-	local unit = self.unit
+	local unit = self.__unit
 	local isLeader
 
 	if IsInInstance() then
@@ -434,22 +405,15 @@ local LeaderOverride = function(self)
 end
 
 --[[
-		Same failure as the leader - upstream's `UnitInRaid(unit) and
-		UnitIsGroupAssistant(unit) and not UnitIsGroupLeader(unit)` is three
-		boolean tests, any of which can be handed a secret.
-
-		Alpha carries exactly one boolean, so two secrets can't be combined:
-		when both are secret the leader term is dropped and the icon follows
-		the assistant flag alone. That only shows an extra icon on a leader who
-		is also flagged assistant, and the two sit in different corners here.
-		When the values are readable it takes the exact upstream path.
+		Alpha carries one boolean, so two secrets can't be combined: when both are
+		secret the leader term is dropped and the icon follows the assistant flag
+		alone, which only over-shows on a leader who is also flagged assistant
 --]]
 local AssistantOverride = function(self)
 	local element = self.AssistantIndicator
-	local unit = self.unit
+	local unit = self.__unit
 	local inRaid = UnitInRaid(unit)
 
-	-- A raid index, not a flag, so there is no alpha channel to fall back on
 	if not DraeUI.CanAccessValue(inRaid) or not inRaid then
 		element:Hide()
 
@@ -501,26 +465,10 @@ end
 
 -- Aura handling
 do
-	--[[
-			How far outside the icon draeUI's ring of furniture sits. The plain
-			outline, the dispel border and oUF's own stealable overlay all share
-			it, so the coloured ring lands exactly on the black one rather than
-			inside the icon art.
-	--]]
 	local OUTLINE_INSET = 3
 
-	--[[
-			Restyle the button oUF has just built.
-
-			oUF's own CreateButton does the construction now - icon, cooldown,
-			count, the dispel border and the stealable overlay are all built
-			from the flags set on the element, and Blizzard drives them. This
-			only adjusts what draeUI wants to look different.
-
-			There are no scripts here. AuraButton treats ScriptedInput as a
-			Forbidden Aspect, so OnEnter/OnLeave/OnUpdate cannot be installed;
-			tooltips are Blizzard's, anchored through tooltipAnchor below.
-	--]]
+	-- Restyle the button oUF has just built - it constructs everything from the flags
+	-- on the element, this only changes what draeUI wants to look different
 	local PostCreateButton = function(element, button)
 		button.Icon:SetTexCoord(unpack(DraeUI.config["general"].texcoords))
 
@@ -538,14 +486,10 @@ do
 		end
 
 		--[[
-				Blizzard's dispel orb is a fixed 18px in oUF, which is the whole
-				width of an auraTny icon and a third of an auraHge one. Scaled to
-				the button instead, so it reads the same at every aura size.
-
-				Size is ours to set: AddDispelTypeTexture claims VertexColor,
-				Alpha, TexCoords and Shown on a texture it registers, and leaves
-				the dimensions alone. Its anchor is oUF's - centred on TOPRIGHT,
-				so it stays half off the corner as the size changes.
+				oUF's fixed 18px is the whole width of an auraTny icon, so it's
+				scaled to the button instead. Size is ours to set:
+				AddDispelTypeTexture claims VertexColor, Alpha, TexCoords and
+				Shown, and leaves the dimensions alone
 		--]]
 		if button.DispelIndicator then
 			-- 16 is oUF's own default when an element carries no size
@@ -555,22 +499,11 @@ do
 		end
 
 		--[[
-				The outline again, this time in the dispel school's colour.
-
-				A solid texture inset by the same OUTLINE_INSET, on BACKGROUND -
-				below the BORDER-layer icon, so the icon face covers everything
-				but the margin and what is left showing is a ring sitting exactly
-				over the black one. PreserveAsset keeps the asset ours and
-				customDispelColorMap does the tinting, the same pairing the frame
-				glow uses.
-
-				Blizzard hides it on a debuff with no dispel school, and the black
-				outline shows through instead - which is the reason that one has
-				to stay unregistered.
-
-				oUF's showDebuffBorder is off for this: it builds its texture with
-				SetAllPoints, so Blizzard's border art lands inside the icon face
-				rather than around it.
+				The outline again, in the dispel school's colour, inset to land
+				exactly over the black one. PreserveAsset keeps the asset ours,
+				customDispelColorMap does the tinting. Not showDebuffBorder - that
+				builds with SetAllPoints, so Blizzard's border art draws inside
+				the icon face rather than around it
 		--]]
 		local dispelRing = button:CreateTexture(nil, "BACKGROUND")
 		dispelRing:SetTexture("Interface\\Buttons\\WHITE8x8")
@@ -586,16 +519,10 @@ do
 		})
 
 		--[[
-				draeUI's plain outline, kept as its own backdrop frame and
-				deliberately not registered with AddDispelTypeTexture.
-
-				A registered texture picks up SecretAspect.VertexColor and
-				Alpha, so its colour stops being ours to set - which is fine
-				for the dispel tint that Blizzard drives off colors.dispel,
-				but no good for an outline that has to be there, in
-				colours.auraBorder, on every aura regardless of dispel type.
-				So the two are separate: this underneath, always; oUF's dispel
-				texture over it when there is a dispel type to show.
+				draeUI's plain outline, deliberately not registered with
+				AddDispelTypeTexture: a registered texture picks up
+				SecretAspect.VertexColor and Alpha, and this one has to be there in
+				colours.auraBorder on every aura regardless of dispel type
 		--]]
 		local border = CreateFrame("Frame", nil, button, "BackdropTemplate")
 		border:SetPoint("TOPLEFT", button, -OUTLINE_INSET, OUTLINE_INSET)
@@ -611,17 +538,12 @@ do
 	end
 
 	--[[
-			Build one aura container and hand back the element.
+			Build one aura container and hand back the element. Auras are a meta
+			element in 12.1 - there is no self.Buffs / self.Debuffs - so calling
+			this twice per frame is what lets buffs and debuffs anchor to
+			different points.
 
-			Auras stopped being an element you assign in 12.1 and became a meta
-			element you call, so there is no self.Buffs / self.Debuffs any more
-			- oUF tracks the containers itself, keyed off the frame, and names
-			them $parentAuras<n>. Calling it twice per frame is expected and is
-			what lets buffs and debuffs anchor to different points.
-
-			layoutLimit is the wrap width in pixels: perRow buttons at a pitch
-			of size + spacing. Height is not passed - the container sizes itself
-			and Blizzard secret-wraps the result, so nothing may measure it.
+			layoutLimit is the wrap width in pixels, not a button count
 	--]]
 	local CreateAuraElement = function(
 		self,
@@ -637,12 +559,8 @@ do
 		growthy,
 		perRow
 	)
-		--[[
-				No `templates`: that option inherits onto the *container*, not
-				the buttons. Buttons are built from CustomAuraButtonTemplate,
-				which Blizzard always applies itself, plus anything listed in a
-				group's `templateNames` - and nothing here needs one.
-		--]]
+		-- No `templates`: that inherits onto the container, not the buttons. Buttons
+		-- take CustomAuraButtonTemplate plus whatever a group lists in templateNames
 		local auras = self:CreateAuras({
 			initialAnchor = point,
 			growthX = growthx,
@@ -661,15 +579,9 @@ do
 
 		--[[
 				Duration text rather than a cooldown spiral, same as the buffbar.
-
-				Setting no formatter leaves Blizzard's DefaultAuraDurationFormatter,
-				which renders a single unit with a one-letter suffix ("2h", "45m",
-				"12s") - the whole point, since these icons run as small as 18px
-				and the spiral's own countdown numbers overflow them.
-
-				disableCooldown also simplifies what oUF builds: with no cooldown
-				to sit above, the text parents straight to the button instead of
-				getting an extra frame to raise its level.
+				Setting no formatter leaves Blizzard's one-letter format ("2h",
+				"45m", "12s"), which these icons need - the spiral's own countdown
+				overflows 18px
 		--]]
 		auras.showDuration = true
 		auras.disableCooldown = true
@@ -704,7 +616,7 @@ do
 		growthy
 	)
 		local perRow = DraeUI.config["frames"].auras.debuffs_per_row
-		local debuffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
+		local debuffsPerRow = perRow[ConfigUnit(self.__unit)] or perRow["other"]
 
 		local debuffs = CreateAuraElement(
 			self,
@@ -721,31 +633,8 @@ do
 			debuffsPerRow
 		)
 
-		--[[
-				Not showDebuffBorder. That builds its texture with SetAllPoints,
-				so Blizzard's Border artwork draws inside the icon face - the
-				colour ends up over the aura art with the black outline still
-				black around it, which is backwards. PostCreateButton registers
-				draeUI's own ring in its place, on the outline where it belongs.
-
-				What that inherits from showDebuffBorder is the important half:
-				colors.dispel goes to Blizzard as the button's
-				customDispelColorMap, so the tint still comes from
-				config.general.colours.dispel without an addon ever reading the
-				aura's dispel school - which is what stopped being possible when
-				aura data became secret.
-		--]]
-
-		--[[
-				The dispel-school orb on the icon's top-right corner, the same
-				marker Blizzard puts on its own debuff frames - the ring's sibling,
-				one texture registered as an Icon style rather than PreserveAsset.
-
-				oUF registers this one without a customDispelColorMap, so it keeps
-				Blizzard's own art and colours rather than
-				config.general.colours.dispel. Sized in PostCreateButton, since
-				oUF's fixed 18px does not survive contact with an 18px aura.
-		--]]
+		-- Blizzard's own dispel-school marker, keeping its art and colours - this one
+		-- is registered without a customDispelColorMap. Sized in PostCreateButton
 		debuffs.showDebuffIndicator = DraeUI.config["frames"].auras.showDispelIndicator
 
 		debuffs:AddGroup("HARMFUL")
@@ -753,7 +642,7 @@ do
 
 	UF.AddBuffs = function(self, point, relativeFrame, relativePoint, ofsx, ofsy, num, size, spacing, growthx, growthy)
 		local perRow = DraeUI.config["frames"].auras.buffs_per_row
-		local buffsPerRow = perRow[ConfigUnit(self.unit)] or perRow["other"]
+		local buffsPerRow = perRow[ConfigUnit(self.__unit)] or perRow["other"]
 
 		local buffs = CreateAuraElement(
 			self,
@@ -770,12 +659,7 @@ do
 			buffsPerRow
 		)
 
-		--[[
-				The stealable overlay is oUF's now, off a flag, rather than a
-				texture draeUI hangs on the button - same UI-TargetingFrame-Stealable
-				art, but driven through AddDispelTypeTexture so it keeps working
-				when the aura data behind it is secret.
-		--]]
+		-- oUF's flag now, driven through AddDispelTypeTexture so it survives secret aura data
 		buffs.showStealableBorder = DraeUI.playerClass == "MAGE" and DraeUI.config["frames"].showStealableBuffs or false
 
 		buffs:AddGroup("HELPFUL")
@@ -783,23 +667,12 @@ do
 
 	--[[
 			A coloured wash across the frame, tinted by the dispel school of a
-			debuff on the unit.
+			debuff on the unit. Structurally an aura button that never draws an
+			icon: AddDispelTypeTexture requires its texture to be a descendant of
+			the button it's registered against, so the button *is* the glow.
 
-			Structurally this is an aura button that never draws an icon.
-			AddDispelTypeTexture validates that the texture is a descendant of
-			the button it is registered against, so a texture hung on the unit
-			frame cannot be registered at all - instead the button *is* the
-			glow: sized over the frame, mouse disabled, carrying nothing else.
-
-			A slot rather than a group, so there is exactly one. That also keeps
-			the container freely anchorable, since AddAuraGroup stamps
-			ForbiddenAspect.UntrustedLayoutScriptExecution onto its container
-			and AddAuraSlot does not.
-
-			Blizzard owns the texture's colour and whether it shows, which is
-			the whole point: the version of this that lived on the old sword
-			frame read the debuff's type in Lua, and that is precisely what
-			stopped being possible when aura data became secret.
+			A slot rather than a group - exactly one aura, and no
+			ForbiddenAspect.UntrustedLayoutScriptExecution on the container
 	--]]
 	UF.AddDispelGlow = function(self)
 		local config = DraeUI.config["frames"].dispelGlow
@@ -814,14 +687,10 @@ do
 		glow:SetPoint("CENTER", self, "CENTER", 0, 0)
 
 		--[[
-				Behind everything, and BACKGROUND strata is what it takes.
-
-				Dropping the frame level alone was not enough: the bar backdrops
+				BACKGROUND strata, not just a low frame level: the bar backdrops
 				from CreateUnitFrameBackground are their own frames in BACKGROUND
-				strata, and strata outranks level - so a glow left in the unit
-				frame's own strata drew over the opaque black behind the bars and
-				tinted the unfilled part of the health bar. Down here it shows
-				only where it is meant to, in the spill around the frame.
+				and strata outranks level, so anything higher tints the unfilled
+				part of the health bar
 		--]]
 		glow:SetFrameStrata("BACKGROUND")
 		glow:SetFrameLevel(0)
@@ -832,11 +701,8 @@ do
 		glow.CreateButton = function(element, _, button)
 			local frame = element.__owner
 
-			--[[
-					Anchored and sized off the frame rather than the container.
-					A container's size is secretwrapped once Blizzard lays it
-					out, so nothing may measure it or fill it.
-			--]]
+			-- Off the frame, not the container: a container's size is secretwrapped
+			-- once Blizzard lays it out, so nothing may measure it
 			button:ClearAllPoints()
 			button:SetPoint("CENTER", frame, "CENTER", 0, 0)
 			button:SetSize(frame:GetWidth() + (spill * 2), frame:GetHeight() + (spill * 2))
@@ -849,19 +715,11 @@ do
 			end
 
 			--[[
-					One band of the glow, full width, hugging the top or the
-					bottom edge of the button.
-
-					The pair are mirrors across the horizontal centre line, so the
-					asset's bright end faces outwards on both - glow_horizontal is
-					not symmetric, and a single copy stretched over the whole
-					frame reads as one lopsided wash rather than as light coming
-					off the frame.
-
-					The flip is set before AddDispelTypeTexture, which claims
-					TexCoords as a SecretAspect. PreserveAsset only drives colour,
-					alpha and visibility, so it should survive registration - the
-					one part of this worth confirming in game.
+					Two bands mirrored across the centre line so the asset's bright
+					end faces outwards on both - glow_horizontal isn't symmetric,
+					and one copy stretched over the frame reads as a lopsided wash.
+					TexCoords are set before AddDispelTypeTexture claims them as a
+					SecretAspect
 			--]]
 			local AddBand = function(edge, vTop, vBottom)
 				local tex = button:CreateTexture(nil, "BACKGROUND")
@@ -872,13 +730,8 @@ do
 				tex:SetPoint(edge, button, edge)
 				tex:SetHeight(band)
 
-				--[[
-						PreserveAsset keeps glow_horizontal - every other style
-						swaps in Blizzard's own dispel artwork.
-						showWithoutDispelType stays false so an untyped debuff
-						lights nothing rather than washing the frame in a
-						fallback colour.
-				--]]
+				-- PreserveAsset keeps glow_horizontal; showWithoutDispelType stays
+				-- false so an untyped debuff lights nothing
 				button:AddDispelTypeTexture(tex, {
 					style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset,
 					showWhenHarmful = true,
@@ -895,15 +748,10 @@ do
 		end
 
 		--[[
-				Filtered to schools that have a colour, which is load-bearing
-				rather than tidiness: the slot holds one aura, no comparator
-				sorts by dispel school, so without the filter an untyped debuff
-				can take the slot while a Magic one sits ignored.
-
-				Default sort because it surfaces isPriorityAura first. Not
-				UnitFrameDebuff, whose comparator reads a debuffType that only
-				AuraUtil.ProcessAura ever assigns - without that policy every
-				aura would compare nil against nil.
+				The filter is load-bearing, not tidiness: the slot holds one aura
+				and nothing sorts by dispel school, so without it an untyped debuff
+				can take the slot while a Magic one sits ignored. Default sort puts
+				isPriorityAura first
 		--]]
 		glow:AddSlot("HARMFUL", {
 			candidateFilters = { includeDispelTypes = config.schools },

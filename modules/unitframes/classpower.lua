@@ -11,28 +11,26 @@ local UF = DraeUI:GetModule("UnitFrames")
 local CreateFrame = CreateFrame
 
 --[[
-	This used to keep its own class -> power ID/type table and hand oUF an
-	Override, which meant reimplementing resource detection. That drifted:
-	several class powers aren't a UnitPower lookup at all but aura stacks with
-	no power ID (Shaman Maelstrom Weapon, Hunter Tip of the Spear, Demon Hunter
-	Soul Fragments, Frost Mage Icicles), and spec matters too (Monk Chi only in
-	Windwalker, Mage Arcane Charges only in Arcane).
+	No per-class power table here: several class powers aren't a UnitPower lookup
+	at all but aura stacks with no power ID (Maelstrom Weapon, Tip of the Spear,
+	Soul Fragments, Icicles), and spec matters too. oUF's own Update handles all
+	of it, so PostUpdate below is purely the orb animation.
 
-	oUF's own Update already handles all of that, so we let it run and hook
-	PostUpdate purely for the orb animation. The only thing oUF needs that a
-	Frame doesn't have is SetValue, which we stub out per orb below.
+	The only thing oUF needs that a Frame doesn't have is SetValue, stubbed per orb
 --]]
 local MAX_ORBS = 10
 
 local NoOp = function() end
 
--- Position orbs dynamically based on current max power
-local UpdatePowerPositions = function(element)
+-- Position the orbs for the current max power. `max` is passed in because oUF's
+-- copy is private, so PostUpdate is the only place the number is available
+local UpdatePowerPositions = function(element, max)
 	if not element then
 		return
 	end
 
-	local max = element.__max or 0
+	max = max or 0
+
 	if element.__lastMaxPositioned ~= max and max > 0 then
 		local _prev
 
@@ -50,12 +48,9 @@ local UpdatePowerPositions = function(element)
 	end
 end
 
---[[
-	oUF has already shown/hidden the orbs for the current max and stored
-	__cur/__max by the time we get here; all that's left is to animate any orb
-	whose active state changed.
---]]
-local PostUpdate = function(element, cur, max, hasMaxChanged)
+-- oUF has already shown/hidden the orbs; this only animates the ones whose active
+-- state changed. Note the argument order - hasCurChanged comes before hasMaxChanged
+local PostUpdate = function(element, cur, max, _, hasMaxChanged)
 	-- oUF skips the cur/max lookup entirely on ClassPowerDisable, so both
 	-- arrive nil - just drop the orbs back to inactive without animating
 	if not cur or not max then
@@ -66,8 +61,11 @@ local PostUpdate = function(element, cur, max, hasMaxChanged)
 		return
 	end
 
+	-- The only place the max is visible; PostVisibility has no arguments of its own
+	element.lastMax = max
+
 	if hasMaxChanged then
-		UpdatePowerPositions(element)
+		UpdatePowerPositions(element, max)
 	end
 
 	for i = 1, max do
@@ -100,7 +98,7 @@ end
 
 local PostVisibility = function(element, isVisible)
 	if isVisible then
-		UpdatePowerPositions(element)
+		UpdatePowerPositions(element, element.lastMax)
 	end
 end
 

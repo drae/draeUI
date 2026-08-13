@@ -50,8 +50,10 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
     instead** - see the taint note below
   - `tags.lua`: Custom oUF tags
   - `units/*.lua`: Individual unit styles (player, target, pet, focus, boss, etc.)
-  - `resources/*.lua`: Class-specific resource bars (monk.lua is active, others commented)
-  - `elements/`: Additional frame elements (embed.xml)
+  - `classpower.lua`: One resource bar for every class, drawn as chi orbs. oUF's own
+    ClassPower element decides which resource a spec actually has - the per-class
+    tables this used to keep drifted, because several class powers are aura stacks
+    with no power ID at all. `PostUpdate` here is purely the orb animation
   
 - **buffbar/** (modules/buffbar/): Aura tracking system
 - **skins/** (modules/skins/): Two jobs. It lays down the static decorative artwork (the
@@ -131,14 +133,23 @@ options mean, then an example where one helps.
 
 **A constraint survives as a rule, never as a story.** "Don't do X, it causes Y" earns its
 place — it stops the next person reintroducing a bug. "X is what we tried first and it cost a
-frame rate" does not: the reader needs the constraint, not the diary. `common.lua`'s note about
-the removed shadow pass is the right length, and it ends with what to do if you want it back.
+frame rate" does not: the reader needs the constraint, not the diary. The two bullets in
+`castbar.lua`'s `SuppressBlizzardCastBars` are the right shape — each names a call not to
+make and the error it produces, and stops there.
+
+**Be short.** One or two `--` lines is the default. A `--[[ ]]` block is for something that
+genuinely needs a paragraph, and four to six lines is its ceiling; past that you are arguing
+for the code rather than describing it. State the constraint and stop — the reader doesn't
+need the reasoning chain that got you to it. Say it once, too: if a rule already sits at the
+call site that depends on it, a second copy in the file header is a pointer, not a comment.
 
 So, concretely, these do **not** belong in a comment:
 
 - what an earlier version of this code did, or which round of work fixed what
-- how a bug was found, or how long it took
-- comparisons to another addon that don't change what you'd write here
+- how a bug was found, how long it took, or what was tried and rejected
+- comparisons to upstream or another addon that don't change what you'd write here
+- a restatement of a signature or a name the next line already shows
+- a pointer to where something else lives
 
 and these do:
 
@@ -147,10 +158,16 @@ and these do:
 - any place Blizzard's behaviour forces an unobvious shape (idempotent re-assert hooks, LoD
   frames that don't exist at login, `SetPoint` hooks that must no-op when nothing moved)
 - a known gap, so it arrives as a documented limitation rather than a bug report
+- a number or offset that is Blizzard's rather than ours, and what it assumes
 
-Density is not the measure and should not be chased: files across this addon run from 8% to
-44% comment lines and all of them are fine. Judge a comment by whether it changes what the
-next person writes.
+Density is a symptom rather than the target, but it locates the line: the files converted to
+this style run 13–25% comment lines — `modules/unitframes/common.lua` at 18%, `castbar.lua`
+at 25% because it is largely a transcription of Blizzard's template. Anything still in the
+thirties or forties predates the style and is a candidate, not an example. Verbatim reference
+material doesn't count against it: the animation XML quoted in `classpower.lua`, and the four
+upstream `modules/presence/` files.
+
+Judge a comment by whether it changes what the next person writes.
 
 ### Addon Namespace Pattern
 
@@ -263,6 +280,48 @@ oUF:Spawn("player", "DraePlayer")
 
 Styles defined in `modules/unitframes/units/*.lua` files.
 
+### oUF keeps its own state private
+
+**A unit frame's unit is `frame.__unit`.** There is no `frame.unit` — oUF stopped writing
+one, and nothing else does either. It is set before the style function runs, so it's
+readable at style time as well as from a callback. The one place a plain `.unit` is still
+needed is Blizzard's `UnitFrame_UpdateTooltip`, which reads it; `common.lua` fills it in
+from its `OnEnter` wrapper rather than keeping a copy that would go stale on a vehicle swap.
+
+**An element's working state is not on the element.** Each element module keeps a table
+keyed by widget, so `Castbar.channeling`, `Castbar.notInterruptible`, `Castbar.holdTime`,
+`ClassPower.__max`, `Power.cost` and friends all read `nil` from a layout. Nothing errors —
+the value is simply absent, which is what makes this class of breakage look like a
+rendering bug. What a layout gets instead:
+
+- **the `Post*` callback arguments**, which is where most of it moved. Check the parameter
+  list in the element source before trusting a signature; several gained arguments in the
+  middle (`ClassPower:PostUpdate` now passes `hasCurChanged` ahead of `hasMaxChanged`).
+- **the API**, re-read the way the element reads it. `castbar.lua`'s `SyncCastType` is the
+  model: it derives cast/channel/empower from `UnitCastingInfo`/`UnitChannelInfo` with the
+  same precedence oUF uses, so the two can't disagree.
+- **the documented `Override`/`OnUpdate` hooks**, when behaviour rather than a value is
+  what's wanted. `Castbar` installs `element.OnUpdate` in place of its own, which is how
+  the cast bar keeps its fade-out alive now that `holdTime` is unreachable.
+
+Health prediction is no longer an element. Its widgets are **PascalCase sub-widgets of
+Health** — `TempLoss`, `HealingAll`, `HealingPlayer`, `HealingOther`, `DamageAbsorb`,
+`HealAbsorb`, `OverHealIndicator`, `OverDamageAbsorbIndicator`, `OverHealAbsorbIndicator`.
+oUF looks each name up and skips what it can't find, so a misspelled one leaves the bar
+built, unsized and permanently full instead of erroring. The over-indicators are driven by
+`SetAlphaFromBoolean`, never `Show`/`Hide`, so they must be created at alpha 0.
+
+**Known gap: `frame.Health` is not a fixed rectangle.** `UF.CreateHealthBar` follows oUF's
+own layout — the `TempLoss` bar holds the size and placement, and the health bar's
+BOTTOMRIGHT is anchored to `TempLoss`'s *fill*. So once a unit's max health is temporarily
+reduced, `frame.Health`'s RIGHT, TOPRIGHT, BOTTOMRIGHT, TOP, BOTTOM and CENTER all move
+with it. LEFT and BOTTOM don't, which is why the power bars and aura anchors hang off
+TOPLEFT/BOTTOMLEFT and are unaffected. What *is* affected, and is accepted rather than
+fixed: the player frame's health backdrop and border, the name-text containers on
+focus/focustarget/pet/target/targettarget, the raid target icon, and any cast bar with
+`relTo = "Health"` all contract with the bar. `frame.Health.TempLoss` is the full
+rectangle if one of these ever needs pinning down.
+
 ### Local Function Caching
 
 Heavily used pattern to optimize performance:
@@ -316,8 +375,10 @@ Rules for the oUF subset:
 
 Power elements set `colorPowerAtlas = true` unconditionally. oUF then swaps the bar to
 Blizzard's own artwork whenever `colors.power[token]:GetAtlas()` is non-nil, and otherwise
-restores `element.__texture` and applies the config colour — so every power bar must set
-`__texture` for that fallback to work. When an atlas is used the bar is drawn at
+restores the bar's original texture and applies the config colour. That original is
+snapshotted from the bar itself when the element is enabled, so **the only thing a power
+bar has to do is call `SetStatusBarTexture` before it's handed to oUF** — there is no
+`__texture` field to set any more. When an atlas is used the bar is drawn at
 `SetVertexColor(1, 1, 1)`, so `colours.power` is ignored for that power.
 
 **Which powers get one is controlled by `general.colours.atlas`, an allowlist of tokens.**

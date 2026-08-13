@@ -2,44 +2,28 @@
 	Cast bars.
 
 	A replica of Blizzard's player cast bar, extended to the target and focus
-	frames, which is the one thing Blizzard's own code won't let you do:
-	TargetSpellBarMixin:AdjustPosition() re-anchors their target and focus bars
-	to the parent frame on every aura row change, ToT toggle, classification
-	change and target swap.
+	frames - the one thing their own code won't let you do, since
+	TargetSpellBarMixin:AdjustPosition() re-anchors those two to the parent frame
+	on every aura row change, ToT toggle, classification change and target swap.
 
-	Everything below is transcribed from CastingBarFrameBaseTemplate in
-	Blizzard_UIPanels_Game/Mainline/CastingBarFrame.xml - the same atlases, the
-	same draw layers, the same offsets, the same font objects.
+	Transcribed from CastingBarFrameBaseTemplate in
+	Blizzard_UIPanels_Game/Mainline/CastingBarFrame.xml - the same atlases, draw
+	layers, offsets and font objects.
 
 	**Read the XML, not CastingBarMixin:SetLook().** SetLook has no callers
-	anywhere in the interface code: `look` is nil on every cast bar in the game,
-	so its "CLASSIC" branch is dead and its numbers are stale. Most of them agree
-	with the XML anyway, which is what makes it such a convincing trap - but two
-	don't, and both are load-bearing. The shield is a 29x33 emblem off the left
-	end over the icon, not the 256x64 banner across the bar CLASSIC claims; and
-	the icon is shown, because ShouldIconBeShown() only bails when `look` is set
-	to something other than "UNITFRAME".
+	anywhere in the interface code, so `look` is nil on every cast bar in the game
+	and its "CLASSIC" numbers are stale. Most agree with the XML, which is what
+	makes it a convincing trap; the two that don't are noted where they're used.
 
-	One offset is re-expressed against the bar's bottom edge rather than its top
-	so it lands correctly at heights other than Blizzard's 11; it's commented
-	where it happens. Nothing else is invented.
+	Don't instance CastingBarFrameTemplate and let CastingBarMixin:SetUnit() drive
+	it either. CastingBarTypeInfo is keyed by secretwrap() values in 12.0 and
+	ShowSpark, HideSpark and StopFinishAnims all pairs() over it, so any
+	addon-initiated call into the mixin trips "attempted to iterate a table that
+	cannot be accessed while tainted".
 
-	The player bar is deliberately left alone. It's Blizzard's own
-	PlayerCastingBarFrame, it already looks like this, and it stays in Edit Mode
-	where you put it.
-
-	Why not just instance CastingBarFrameTemplate and let
-	CastingBarMixin:SetUnit() drive it? Because in 12.0 CastingBarTypeInfo is
-	keyed by secretwrap() values, and ShowSpark, HideSpark and StopFinishAnims
-	all pairs() over it. Any addon-initiated call into the mixin - SetUnit
-	included - trips "attempted to iterate a table that cannot be accessed while
-	tainted". The mixin is Blizzard-only now.
-
-	What can't be reproduced this way is the finish choreography: the flakes,
-	the channel wisps and sparkles, the crafting shine. Those are a dozen
-	mask-clipped textures driven by animation groups on Blizzard's template.
-	Everything else - fills, flash, spark and its glow, interrupt shake and
-	outer glow - is here.
+	The player keeps Blizzard's own PlayerCastingBarFrame, and with it the finish
+	choreography this can't reproduce - the flakes, channel wisps and crafting
+	shine are mask-clipped textures driven by animation groups on their template.
 --]]
 local DraeUI = select(2, ...)
 local oUF = DraeUI.oUF or oUF
@@ -52,12 +36,10 @@ local CreateFrame, pairs, unpack = CreateFrame, pairs, unpack
 local GetCVar = GetCVar
 local hooksecurefunc = hooksecurefunc
 local C_Texture, Enum = C_Texture, Enum
+local UnitCastingInfo, UnitChannelInfo = UnitCastingInfo, UnitChannelInfo
 
---[[
-	Blizzard's CastingBarTypeInfo, minus the two that can't apply here:
-	Empowered has no fill at all (it's drawn from per-tier art) and
-	ApplyingCrafting only ever shows on Blizzard's own player bar.
---]]
+-- Blizzard's CastingBarTypeInfo, minus Empowered (no fill - per-tier art) and
+-- ApplyingCrafting (player bar only)
 local ATLAS = {
 	standard = {
 		filling = "ui-castingbar-filling-standard",
@@ -86,69 +68,72 @@ local FADE_HOLD = 0.5
 local INTERRUPT_HOLD = 1.3
 
 --[[
-	Every size and offset Blizzard authored for this bar assumes their 208x11 one,
-	so the numbers below are theirs verbatim, scaled by height/11. Note that means
-	*height* - none of them track how long the bar is. The shield in particular is
-	a fixed emblem: sizing it off the bar's width made it 553px wide and swallowed
-	the whole bar.
+	Every size and offset below is Blizzard's, authored for their 208x11 bar and
+	scaled by height/11. That's *height* - none of them track how long the bar is,
+	and the shield in particular is a fixed emblem
 --]]
 local BLIZZARD_BAR_HEIGHT = 11
 
 --[[
-	Which artwork a cast is wearing.
+	What kind of cast is in flight, in draeUI's own fields - oUF's live in a table
+	private to its castbar module. Read back off the API the same way oUF's
+	CastStart does, so the two can't disagree: a cast wins if UnitCastingInfo has
+	one, and an empowered channel is its own thing rather than a channel.
 
-	Blizzard's CastingBarMixin:GetEffectiveType tests notInterruptible first, but
-	we can't: in 12.0 UnitCastingInfo returns that field as a secret boolean for
-	other players, and addon-tainted code can't perform a boolean test on a
-	secret. Both discriminators left here are oUF's own plain booleans. The
-	uninterruptible artwork is handled by the overlay instead - see
-	SyncUninterruptible.
+	notInterruptible is the secret value; it's only stored, never tested
 --]]
-local ArtFor = function(element)
-	return element.channeling and ATLAS.channel or ATLAS.standard
+local SyncCastType = function(element, unit, notInterruptible)
+	local channelName, _, _, _, _, _, _, _, isEmpowered = UnitChannelInfo(unit)
+	local isChanneling = UnitCastingInfo(unit) == nil and channelName ~= nil
+
+	element.isEmpowering = isChanneling and isEmpowered or false
+	element.isChanneling = isChanneling and not element.isEmpowering
+	element.uninterruptible = notInterruptible
 end
 
 --[[
-	The uninterruptible fill.
-
-	A secret value can be handed to a widget setter even though it can't be read,
-	which is how oUF drives the shield off the same field. So the artwork lives on
-	a StatusBar of its own stacked over the fill, and the secret only ever reaches
-	SetAlphaFromBoolean.
-
-	It carries the bar's own duration object rather than being anchored to the
-	fill's rect, so it crops as it fills instead of stretching - the same reason
-	oUF hands the real bar a timer.
+	Which artwork a cast is wearing. Blizzard's GetEffectiveType tests
+	notInterruptible first, which we can't - it's a secret boolean for other
+	players. The uninterruptible artwork goes on the overlay instead
 --]]
-local SyncUninterruptible = function(element)
+local ArtFor = function(element)
+	return element.isChanneling and ATLAS.channel or ATLAS.standard
+end
+
+--[[
+	The uninterruptible fill. A secret can be handed to a widget setter even
+	though it can't be read, so the artwork lives on a StatusBar of its own and
+	the secret only ever reaches SetAlphaFromBoolean.
+
+	It carries the bar's duration object rather than the fill's rect, so it crops
+	as it fills instead of stretching. `direction` comes from PostCastUpdate when
+	there is one; otherwise it follows the channel flag, as oUF's does
+--]]
+local SyncUninterruptible = function(element, direction)
 	local overlay = element.Uninterruptible
 
-	overlay:SetAlphaFromBoolean(element.notInterruptible, 1, 0)
+	overlay:SetAlphaFromBoolean(element.uninterruptible, 1, 0)
 
 	local duration = element:GetTimerDuration()
 
 	if duration then
-		-- oUF picks RemainingTime only for a channel that isn't empowered, so
-		-- channeling on its own is the matching test
 		overlay:SetTimerDuration(
 			duration,
 			element.smoothing,
-			element.channeling and Enum.StatusBarTimerDirection.RemainingTime
-				or Enum.StatusBarTimerDirection.ElapsedTime
+			direction
+				or (
+					element.isChanneling and Enum.StatusBarTimerDirection.RemainingTime
+					or Enum.StatusBarTimerDirection.ElapsedTime
+				)
 		)
 	end
 end
 
 --[[
-	Three-slice a piece of the framing art.
-
-	Blizzard draw these at 208 wide and never stretch them further, so the
-	atlases carry no slice data of their own - at 450 the rounded end caps
-	stretch along with everything else and it shows. This pins the caps at their
-	own width and stretches only the middle.
-
-	Deliberately skipped when an atlas does have slice data: SetAtlas applies
-	that automatically and Blizzard's numbers beat the guess below.
+	Three-slice a piece of the framing art. Blizzard never stretch these past 208
+	so the atlases carry no slice data, and at 450 the rounded end caps stretch
+	with everything else. Skipped when an atlas does have slice data - SetAtlas
+	applies that itself and their numbers beat the guess below
 --]]
 local SliceEnds = function(texture, atlas, cap)
 	local info = C_Texture.GetAtlasInfo(atlas)
@@ -158,13 +143,9 @@ local SliceEnds = function(texture, atlas, cap)
 	end
 
 	--[[
-		The margin wants to be at least as wide as the rounded cap, and erring
-		high is close to free while erring low is what shows: too wide only
-		pulls some of the straight middle into the unstretched region, and that
-		stretch of art is uniform along its length so nobody can tell. Too
-		narrow leaves part of the curve in the stretched band, which is exactly
-		the artefact this is here to remove. So the default is deliberately
-		generous - set castbar.<unit>.sliceCap to pin it down by eye.
+		Deliberately generous: too wide only pulls uniform middle art into the
+		unstretched region and nobody can tell, too narrow leaves curve in the
+		stretched band. Set castbar.<unit>.sliceCap to pin it down by eye
 	--]]
 	cap = cap or (info.height * 3)
 
@@ -190,19 +171,49 @@ local StopAnims = function(element)
 end
 
 --[[
-	Callbacks
+	Hold the bar open long enough to see the finish. oUF's own OnUpdate hides it
+	on the first tick after a cast ends, cutting the animations off mid-play, and
+	its hold timer is private now - so `fadeHold` is ours and the bar only goes
+	once the animations are done with it.
+
+	oUF installs element.OnUpdate in place of its own when one is set. Nothing
+	here is wanted while a cast is live, hence the early return
 --]]
-local PostCastStart = function(element, unit)
+local OnUpdate = function(element, elapsed)
+	if element.active then
+		return
+	end
+
+	if element.fadeHold and element.fadeHold > 0 then
+		element.fadeHold = element.fadeHold - elapsed
+
+		return
+	end
+
+	if element.FadeOut:IsPlaying() or element.HoldFadeOut:IsPlaying() then
+		return
+	end
+
+	element:Hide()
+end
+
+-- Callbacks
+local PostCastStart = function(element, unit, _, notInterruptible)
+	SyncCastType(element, unit, notInterruptible)
+
+	element.active = true
+	element.fadeHold = nil
+
 	local art = ArtFor(element)
 	element.art = art
 
 	element.fill:SetAtlas(art.filling)
 
-	element.Spark:SetAtlas(element.empowering and "ui-castingbar-empower-cursor" or "ui-castingbar-pip")
+	element.Spark:SetAtlas(element.isEmpowering and "ui-castingbar-empower-cursor" or "ui-castingbar-pip")
 
 	if element.fx then
-		element.SparkGlow:SetShown(not element.channeling)
-		element.SparkShadow:SetShown(element.channeling == true)
+		element.SparkGlow:SetShown(not element.isChanneling)
+		element.SparkShadow:SetShown(element.isChanneling)
 	end
 
 	element.Flash:Hide()
@@ -214,11 +225,13 @@ local PostCastStart = function(element, unit)
 end
 
 -- Delays and channel updates re-time the bar, so the overlay has to follow
-local PostCastUpdate = function(element, unit)
-	SyncUninterruptible(element)
+local PostCastUpdate = function(element, unit, _, _, direction)
+	SyncUninterruptible(element, direction)
 end
 
-local PostCastStop = function(element, unit, empowerComplete)
+local PostCastStop = function(element, unit, _, empowerComplete)
+	element.active = false
+
 	local art = element.art or ATLAS.standard
 
 	element.fill:SetAtlas(art.full)
@@ -233,16 +246,14 @@ local PostCastStop = function(element, unit, empowerComplete)
 	element.Flash:Show()
 	element.FlashAnim:Play()
 
-	-- oUF hides the bar once holdTime runs out, so buy time for the fade
-	element.holdTime = FADE_HOLD
+	element.fadeHold = FADE_HOLD
 	element.FadeOut:Play()
 end
 
---[[
-	Failed and interrupted share Blizzard's artwork. oUF has already set
-	holdTime to timeToHold and filled the bar by the time we get here.
---]]
+-- Failed and interrupted share Blizzard's artwork; oUF has already filled the bar
 local PostCastFail = function(element, unit)
+	element.active = false
+
 	element.art = ATLAS.interrupted
 	element.fill:SetAtlas(ATLAS.interrupted.full)
 
@@ -263,24 +274,27 @@ local PostCastFail = function(element, unit)
 		end
 	end
 
+	element.fadeHold = INTERRUPT_HOLD
 	element.HoldFadeOut:Play()
 end
 
-local PostCastInterrupted = function(element, unit, interruptedBy)
+local PostCastInterrupted = function(element, unit)
 	PostCastFail(element, unit)
 end
 
---[[
-	The cast became (un)interruptible mid-flight. oUF assigns a plain boolean on
-	this path rather than the API's secret one, but SetAlphaFromBoolean takes
-	either.
---]]
-local PostCastInterruptible = function(element, unit)
+-- Became (un)interruptible mid-flight. oUF passes a plain boolean on this path
+-- rather than the API's secret one, but SetAlphaFromBoolean takes either
+local PostCastInterruptible = function(element, unit, _, notInterruptible)
+	element.uninterruptible = notInterruptible
+
 	SyncUninterruptible(element)
 end
 
 local OnHide = function(element)
 	StopAnims(element)
+
+	element.active = false
+	element.fadeHold = nil
 
 	element:SetAlpha(1)
 	element.Flash:Hide()
@@ -293,10 +307,7 @@ local OnHide = function(element)
 	end
 end
 
---[[
-	Animations, transcribed from CastingBarFrameAnimsTemplate and
-	CastingBarFrameAnimsFXTemplate.
---]]
+-- Transcribed from CastingBarFrameAnimsTemplate and CastingBarFrameAnimsFXTemplate
 local CreateAnimations = function(element)
 	-- FadeOutAnim
 	local fade = element:CreateAnimationGroup()
@@ -351,10 +362,8 @@ local CreateAnimations = function(element)
 	glowOut:SetDuration(1.0)
 	element.InterruptGlowAnim = glow
 
-	--[[
-		InterruptShakeAnim. The offsets sum to zero, which is what puts the bar
-		back where it started - don't "tidy" them.
-	--]]
+	-- InterruptShakeAnim. The offsets sum to zero, which is what puts the bar back
+	-- where it started - don't "tidy" them
 	local shake = element:CreateAnimationGroup()
 	local offsets = { { 0, 0 }, { -1, 1 }, { 1, -2 }, { 1, 2 }, { -1, -1 } }
 
@@ -372,9 +381,7 @@ local CreateAnimations = function(element)
 	element.InterruptShakeAnim = shake
 end
 
---[[
-	Create a cast bar. cfg is an entry from DraeUI.config["castbar"].
---]]
+-- Create a cast bar. cfg is an entry from DraeUI.config["castbar"]
 UF.CreateCastBar = function(frame, cfg)
 	if not cfg then
 		return
@@ -389,7 +396,11 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar:SetFrameLevel(frame:GetFrameLevel() + 5)
 
 	castbar.fx = cfg.fx ~= false
-	castbar.timeToHold = INTERRUPT_HOLD
+	--[[
+		Deliberately no timeToHold: oUF only decrements its hold timer from the
+		OnUpdate we replace below, so setting one stops resetState wiping after a
+		failed cast and carries a stale channel flag into the next
+	--]]
 	-- Kept because the Flash swaps atlas per cast type and has to be re-sliced
 	castbar.sliceCap = cfg.sliceCap
 	-- Blizzard keep crafting off every unit frame bar, so opt in rather than out
@@ -401,14 +412,11 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar.fill:SetDrawLayer("BORDER")
 
 	--[[
-		The uninterruptible fill, stacked over the one above. A bar of its own
-		rather than a texture so it crops as it fills; see SyncUninterruptible for
-		why it exists at all.
-
-		The frame level matches the parent deliberately. A child frame one level up
-		would draw over every region the parent owns - border, shield, spark and
-		all - whereas at the same level the regions interleave by draw layer, so
-		BORDER 1 lands above the fill and still below the border art at ARTWORK 4.
+		The uninterruptible fill, stacked over the one above; a bar rather than a
+		texture so it crops as it fills. The frame level matches the parent
+		deliberately - one level up would draw over every region the parent owns,
+		whereas level regions interleave by draw layer, putting BORDER 1 above the
+		fill and still below the border art at ARTWORK 4
 	--]]
 	local uninterruptible = CreateFrame("StatusBar", nil, castbar)
 	uninterruptible:SetAllPoints(castbar)
@@ -418,10 +426,7 @@ UF.CreateCastBar = function(frame, cfg)
 	uninterruptible:SetAlpha(0)
 	castbar.Uninterruptible = uninterruptible
 
-	--[[
-		The plaque the spell name sits on. Blizzard anchor it from the bar's top
-		down to 12px past its bottom, and SetLook("CLASSIC") shows it.
-	--]]
+	-- The plaque the spell name sits on, from the bar's top to 12px past its bottom
 	local textBorder = castbar:CreateTexture(nil, "BACKGROUND", nil, 0)
 	textBorder:SetAtlas("ui-castingbar-textbox")
 	textBorder:SetPoint("TOPLEFT", castbar, "TOPLEFT", 0, 0)
@@ -440,11 +445,9 @@ UF.CreateCastBar = function(frame, cfg)
 	SliceEnds(border, "ui-castingbar-frame", cfg.sliceCap)
 
 	--[[
-		The uninterruptible shield: a small emblem off the left end, over the
-		icon. Not the 256x64 banner across the bar that SetLook("CLASSIC")
-		describes - see the note at the top of the file about why SetLook doesn't
-		count. Sublevel 3 keeps it under the icon and border, which is the order
-		Blizzard declare the three in.
+		The uninterruptible shield: a 29x33 emblem off the left end over the icon,
+		not the 256x64 banner SetLook("CLASSIC") describes. Sublevel 3 keeps it
+		under the icon and border, the order Blizzard declare the three in
 	--]]
 	local shield = castbar:CreateTexture(nil, "ARTWORK", nil, 3)
 	shield:SetAtlas("ui-castingbar-shield")
@@ -462,10 +465,9 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar.Flash = flash
 
 	--[[
-		Spell name. Blizzard put it at TOP, 0, -10 on an 11px bar - i.e. one
-		pixel below the bar's bottom edge, sitting in the textbox plaque. Anchored
-		off the bottom here instead so it lands there at any bar height, and
-		spanning the bar rather than Blizzard's fixed 185 so it scales too.
+		Spell name, one pixel below the bar in the textbox plaque. Blizzard's
+		TOP, 0, -10 re-expressed against the bottom edge so it lands there at any
+		height, and spanning the bar rather than their fixed 185 so it scales
 	--]]
 	local text = castbar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	text:SetPoint("TOPLEFT", castbar, "BOTTOMLEFT", 0, 1)
@@ -483,10 +485,9 @@ UF.CreateCastBar = function(frame, cfg)
 	end
 
 	--[[
-		The spell icon. On by default because Blizzard's is: ShouldIconBeShown()
-		only bails when `look` is set to something other than "UNITFRAME", and
-		nothing ever sets it. 16x16 against an 11px bar, so it overhangs top and
-		bottom - that's theirs, not a mistake.
+		The spell icon. On by default because Blizzard's is - ShouldIconBeShown()
+		only bails when `look` is something other than "UNITFRAME" and nothing sets
+		it. 16x16 against an 11px bar overhangs top and bottom; that's theirs
 	--]]
 	if cfg.icon ~= false then
 		local icon = castbar:CreateTexture(nil, "ARTWORK", nil, 4)
@@ -518,13 +519,10 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar.SparkShadow = sparkShadow
 
 	--[[
-		BorderMask. Both bits of spark dressing trail behind the spark, so at the
-		start of a cast they hang off the left end of the bar - this is what
-		clips them to it.
-
-		The one thing here that genuinely does track bar width: it has to cover
-		the bar to clip against it, so Blizzard's 256 over a 208 bar is the same
-		relationship rather than a coincidence.
+		BorderMask. Both bits of spark dressing trail behind the spark, so early in
+		a cast they hang off the left end of the bar - this clips them to it. The
+		one thing here that does track bar width, since it has to cover the bar to
+		clip against it
 	--]]
 	local mask = castbar:CreateMaskTexture()
 	mask:SetAtlas("cast_standard_barmask", false, nil, nil, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -535,10 +533,9 @@ UF.CreateCastBar = function(frame, cfg)
 	sparkShadow:AddMaskTexture(mask)
 
 	--[[
-		Knowingly not Blizzard's: they draw this at atlas size, centred, because
-		their bar is only 208 wide. A fixed glow floating in the middle of a 450px
-		one looks like a bug, so it spans the bar. It's a soft additive wash
-		rather than a hard-edged emblem, so stretching it costs nothing.
+		Knowingly not Blizzard's: they draw this at atlas size, centred, which on a
+		450px bar reads as a glow floating in the middle. Spans the bar instead -
+		it's a soft additive wash, so stretching costs nothing
 	--]]
 	if castbar.fx then
 		local interruptGlow = castbar:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -559,6 +556,9 @@ UF.CreateCastBar = function(frame, cfg)
 	castbar.PostCastInterrupted = PostCastInterrupted
 	castbar.PostCastInterruptible = PostCastInterruptible
 
+	-- oUF installs this in place of its own OnUpdate; see the note on OnUpdate
+	castbar.OnUpdate = OnUpdate
+
 	castbar:HookScript("OnHide", OnHide)
 
 	frame.Castbar = castbar
@@ -567,17 +567,13 @@ UF.CreateCastBar = function(frame, cfg)
 end
 
 --[[
-	Stop Blizzard's target and focus bars. PlayerCastingBarFrame is left alone
-	on purpose - it's the bar this whole file is a copy of.
+	Stop Blizzard's target and focus bars. PlayerCastingBarFrame is left alone -
+	it's the bar this file is a copy of. Two things not to do:
 
-	Two things not to do here:
-
-	- Don't call spellbar:SetUnit(nil). It reaches StopAnims -> StopFinishAnims,
-	  which iterates the secret-keyed CastingBarTypeInfo and errors under addon
-	  taint.
+	- Don't call spellbar:SetUnit(nil). It reaches StopFinishAnims, which iterates
+	  the secret-keyed CastingBarTypeInfo and errors under addon taint.
 	- Don't :Kill() them. That reparents, and TargetSpellBarMixin:AdjustPosition
-	  reads auraRows off its parent, so it would error against the hidden frame
-	  the next time TargetFrame updated its auras.
+	  reads auraRows off its parent
 --]]
 UF.SuppressBlizzardCastBars = function()
 	for _, name in pairs({ "TargetFrame", "FocusFrame" }) do
@@ -585,8 +581,7 @@ UF.SuppressBlizzardCastBars = function()
 		local spellbar = frame and frame.spellbar
 
 		if spellbar then
-			-- Plain field write; ShouldShowCastBar() reads it and nothing we
-			-- leave registered can set it back
+			-- Plain field write; ShouldShowCastBar() reads it
 			spellbar.showCastbar = false
 
 			spellbar:UnregisterAllEvents()
