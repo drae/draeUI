@@ -50,27 +50,46 @@ local CreateRow = function(window, index)
 		colours.barBackground[4] or 1
 	)
 
+	local level = row:GetFrameLevel()
+
 	local bar = CreateFrame("StatusBar", nil, row)
 	bar:SetAllPoints(row)
+	bar:SetFrameLevel(level + 1)
 	bar:SetStatusBarTexture(DraeUI.FetchMedia("statusbar", cfg.bar.texture, DraeUI.media.statusbar))
 	bar:SetAlpha(cfg.bar.alpha)
 	bar:SetMinMaxValues(0, 1)
 	bar:SetValue(0)
 
+	if (cfg.rows.outline or 0) > 0 then
+		local outline = DraeUI.CreateOutline(row, cfg.rows.outline, colours.rowOutline, 0)
+
+		if outline then
+			outline:SetFrameLevel(level + 2)
+		end
+	end
+
+	--[[
+		Everything that has to sit over the fill.
+
+		A child frame draws above its parent's textures whatever draw layer they
+		are on, so the bar covers anything left on the row - at a bar alpha below
+		1 that shows through and looks intentional, and at 1 the icon simply
+		vanishes.
+	--]]
+	local top = CreateFrame("Frame", nil, row)
+	top:SetAllPoints(row)
+	top:SetFrameLevel(level + 3)
+
 	if cfg.bar.overlay then
-		local overlay = row:CreateTexture(nil, "ARTWORK")
-		overlay:SetAllPoints(row)
+		local overlay = top:CreateTexture(nil, "ARTWORK")
+		overlay:SetAllPoints(top)
 		overlay:SetColorTexture(colours.overlay[1], colours.overlay[2], colours.overlay[3], colours.overlay[4] or 1)
 	end
 
-	if (cfg.rows.outline or 0) > 0 then
-		DraeUI.CreateOutline(row, cfg.rows.outline, colours.rowOutline, 0)
-	end
-
 	if cfg.icon.enabled then
-		local icon = row:CreateTexture(nil, "OVERLAY")
-		icon:SetPoint("TOPLEFT", row, 0, 0)
-		icon:SetPoint("BOTTOMLEFT", row, 0, 0)
+		local icon = top:CreateTexture(nil, "OVERLAY")
+		icon:SetPoint("TOPLEFT", top, 0, 0)
+		icon:SetPoint("BOTTOMLEFT", top, 0, 0)
 		icon:SetWidth(cfg.rows.height)
 
 		local zoom = cfg.icon.zoom or 0
@@ -79,11 +98,6 @@ local CreateRow = function(window, index)
 		row.icon = icon
 	end
 
-	-- Text above the outline, or a 1px edge draws over the descenders
-	local text = CreateFrame("Frame", nil, row)
-	text:SetAllPoints(row)
-	text:SetFrameLevel(row:GetFrameLevel() + 3)
-
 	local font = {
 		size = cfg.text.size,
 		flags = cfg.text.flags,
@@ -91,7 +105,7 @@ local CreateRow = function(window, index)
 		shadow = cfg.text.shadow and { 0, 0, 0, 1 } or nil,
 	}
 
-	row.label = DraeUI.CreateFontObject(text, {
+	row.label = DraeUI.CreateFontObject(top, {
 		point = "LEFT",
 		x = (cfg.icon.enabled and cfg.rows.height or 0) + 3,
 		size = font.size,
@@ -100,7 +114,7 @@ local CreateRow = function(window, index)
 		shadow = font.shadow,
 	})
 
-	row.amount = DraeUI.CreateFontObject(text, {
+	row.amount = DraeUI.CreateFontObject(top, {
 		point = "RIGHT",
 		x = -3,
 		justify = "RIGHT",
@@ -115,15 +129,22 @@ local CreateRow = function(window, index)
 	row.label:SetWordWrap(false)
 	row.label:SetPoint("RIGHT", row.amount, "LEFT", -6, 0)
 
-	local highlight = row:CreateTexture(nil, "HIGHLIGHT")
-	highlight:SetAllPoints(row)
+	--[[
+		Driven by hand rather than left on the HIGHLIGHT layer. That layer shows
+		itself on mouseover, but only for a texture owned by the Button - and a
+		texture on the Button is back under the fill.
+	--]]
+	local highlight = top:CreateTexture(nil, "OVERLAY", nil, 7)
+	highlight:SetAllPoints(top)
 	highlight:SetColorTexture(
 		colours.highlight[1],
 		colours.highlight[2],
 		colours.highlight[3],
 		colours.highlight[4] or 1
 	)
+	highlight:Hide()
 
+	row.highlight = highlight
 	row.bar = bar
 	row.window = window
 
@@ -135,6 +156,15 @@ local CreateRow = function(window, index)
 	end)
 
 	Meter:GetModule("Tooltip"):Attach(row)
+
+	-- Hooked, because Attach owns OnEnter and OnLeave outright
+	row:HookScript("OnEnter", function(self)
+		self.highlight:Show()
+	end)
+
+	row:HookScript("OnLeave", function(self)
+		self.highlight:Hide()
+	end)
 
 	window.rows[index] = row
 
@@ -339,8 +369,11 @@ Rows.Refresh = function(_, window)
 		end
 	end
 
+	-- The highlight goes too: a row hidden from under the cursor never gets its
+	-- OnLeave, and would come back lit
 	for index = shown + 1, #window.rows do
 		window.rows[index]:Hide()
+		window.rows[index].highlight:Hide()
 		window.rows[index].source = nil
 	end
 
