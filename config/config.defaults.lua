@@ -256,19 +256,19 @@ DraeUI.config = {
 		},
 
 		left = {
-			relTo = "MicroMenuContainer",
+			relTo = "UIParent",
 			point = "TOPLEFT",
-			relPoint = "TOPRIGHT",
-			x = 15,
-			y = -15,
+			relPoint = "TOPLEFT",
+			x = 55,
+			y = -22,
 		},
 
 		right = {
-			relTo = "MinimapCluster",
+			relTo = "UIParent",
 			point = "TOPRIGHT",
-			relPoint = "TOPLEFT",
-			x = -100,
-			y = -15,
+			relPoint = "TOPRIGHT",
+			x = -400,
+			y = -22,
 		},
 	},
 
