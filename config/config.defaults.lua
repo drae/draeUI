@@ -356,7 +356,7 @@ DraeUI.config = {
 			showRank = false,
 
 			-- Thickness of the flat edge around each row, 0 for none
-			outline = 1,
+			outline = 0,
 		},
 
 		--[[
@@ -375,7 +375,7 @@ DraeUI.config = {
 		-- row that knocks the texture's contrast back
 		bar = {
 			texture = nil,
-			alpha = 0.5,
+			alpha = 1.0,
 			overlay = true,
 		},
 
