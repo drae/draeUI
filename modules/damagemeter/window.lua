@@ -174,6 +174,7 @@ Window.Build = function(_, spec, index, previous)
 		readout = spec.readout or "DamageDone",
 		segment = spec.segment or "Current",
 		rowCount = rowCount,
+		offset = 0,
 		rows = {},
 	}
 

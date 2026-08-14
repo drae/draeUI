@@ -152,12 +152,17 @@ Menu.ShowReadouts = function(_, window, anchor, applyToAll)
 			text = Data:ReadoutName(readout),
 			checked = window.readout == readout,
 			onClick = function()
+				-- Back to the top: a list scrolled to rank 20 has nothing to
+				-- show once the window is pointed at a three-line dispel count
+				local Apply = function(each)
+					each.readout = readout
+					each.offset = 0
+				end
+
 				if applyToAll then
-					Meter:GetModule("Window"):ForEach(function(each)
-						each.readout = readout
-					end)
+					Meter:GetModule("Window"):ForEach(Apply)
 				else
-					window.readout = readout
+					Apply(window)
 				end
 
 				Meter:Refresh()
@@ -179,6 +184,7 @@ Menu.ShowSegments = function(_, window, anchor, applyToAll)
 				each.segment = segment
 				each.segmentID = segmentID
 				each.segmentName = segmentName
+				each.offset = 0
 			end
 
 			if applyToAll then

@@ -17,7 +17,7 @@ local Rows = Meter:NewModule("Rows")
 -- Localise a bunch of functions
 local _G = _G
 local CreateFrame, IsShiftKeyDown = CreateFrame, IsShiftKeyDown
-local ipairs = ipairs
+local mmin, mmax = math.min, math.max
 
 local L = DraeUI.L
 
@@ -325,12 +325,42 @@ local SetRow = function(row, window, source, session, rank)
 	row:Show()
 end
 
+--[[
+	Hold the scroll offset inside the list.
+
+	Re-clamped on every refresh rather than only on a wheel turn: the source
+	count moves under us as people join, die and leave, and an offset left past
+	the end shows an empty window with a full list behind it.
+--]]
+local Clamp = function(window, count)
+	window.offset = mmin(mmax(0, window.offset or 0), mmax(0, count - window.rowCount))
+
+	return window.offset
+end
+
 -- Build the pool. The window is sized to hold exactly window.rowCount, so this
 -- is the whole pool rather than a starting point
 Rows.Build = function(_, window)
 	for index = 1, window.rowCount do
 		AcquireRow(window, index)
 	end
+
+	--[[
+		Wheel scrolling, on the body rather than the rows: a frame with no
+		OnMouseWheel of its own passes the event up, so this catches the wheel
+		over a bar as well as over the empty space below.
+
+		Shift pages by a windowful, which is the difference between reading a
+		raid and grinding through it a row at a time.
+	--]]
+	window.body:EnableMouseWheel(true)
+	window.body:SetScript("OnMouseWheel", function(_, delta)
+		local step = IsShiftKeyDown() and window.rowCount or 1
+
+		window.offset = (window.offset or 0) - delta * step
+
+		Rows:Refresh(window)
+	end)
 
 	local empty = DraeUI.CreateFontObject(window.body, {
 		point = "TOP",
@@ -357,15 +387,24 @@ Rows.Refresh = function(_, window)
 	local sources = Data:Sources(window, session)
 	local shown = 0
 
+	--[[
+		Row `index` shows source `index + offset`, and carries that source's real
+		rank rather than its position on screen - scrolled to the bottom of a
+		raid, the numbers still read 21, 22, 23.
+	--]]
 	if sources then
-		for rank, source in ipairs(sources) do
-			if rank > window.rowCount then
+		local offset = Clamp(window, #sources)
+
+		for index = 1, window.rowCount do
+			local source = sources[index + offset]
+
+			if not source then
 				break
 			end
 
-			SetRow(AcquireRow(window, rank), window, source, session, rank)
+			SetRow(AcquireRow(window, index), window, source, session, index + offset)
 
-			shown = rank
+			shown = index
 		end
 	end
 
