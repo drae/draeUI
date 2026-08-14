@@ -91,6 +91,14 @@ end
 
 	justify follows point unless you say otherwise, and width/height save the
 	SetSize call that used to follow most of these.
+
+	`shadow` is a { r, g, b, a } drop shadow, offset by `shadowOffset` = { x, y }
+	and defaulting to one pixel down and right. It replaces the default OUTLINE
+	rather than adding to it, so it pairs with flags = "":
+
+		DraeUI.CreateFontObject(row, {
+			point = "LEFT", flags = "", shadow = { 0, 0, 0, 1 },
+		})
 --]]
 DraeUI.CreateFontObject = function(parent, opts)
 	opts = opts or {}
@@ -104,6 +112,13 @@ DraeUI.CreateFontObject = function(parent, opts)
 	DraeUI.SetFont(fo, font, size, opts.flags)
 
 	fo:SetJustifyH(opts.justify or point)
+
+	if opts.shadow then
+		local offset = opts.shadowOffset
+
+		fo:SetShadowColor(opts.shadow[1], opts.shadow[2], opts.shadow[3], opts.shadow[4] or 1)
+		fo:SetShadowOffset(offset and offset[1] or 1, offset and offset[2] or -1)
+	end
 
 	if opts.relTo then
 		fo:SetPoint(point, opts.relTo, opts.relPoint or point, opts.x or 0, opts.y or 0)

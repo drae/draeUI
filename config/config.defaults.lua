@@ -193,6 +193,31 @@ DraeUI.config = {
 				contested = { 1.0, 0.7, 0.0 },
 				sanctuary = { 0.41, 0.8, 0.94 },
 			},
+
+			-- Default edge for CreateOutline, the flat border any frame too
+			-- small for the nine-slice uses
+			rowOutline = { 0, 0, 0, 1 },
+
+			--[[
+				The damage meter. A bar is three layers: `barBackground` under
+				the class-coloured fill, then `overlay` washed across the whole
+				row. All three are low-alpha because the window itself has no
+				background.
+
+				`unknown` is not an error case - classFilename is secret
+				mid-combat, so this is what other players' rows wear in M+ and
+				raid. Keep it legible.
+			--]]
+			damagemeter = {
+				barBackground = { 0, 0, 0, 0.2 },
+				overlay = { 0.7, 0.7, 0.7, 0.2 },
+				text = { 1, 1, 1, 1 },
+				highlight = { 1, 1, 1, 0.08 },
+				unknown = { 0.5, 0.5, 0.5 },
+
+				-- Rows in the EnemyDamageTaken readout, which are mobs and have no class
+				enemy = { 0.87, 0.19, 0.19 },
+			},
 		},
 	},
 
@@ -244,6 +269,136 @@ DraeUI.config = {
 			relPoint = "TOPLEFT",
 			x = -100,
 			y = -15,
+		},
+	},
+
+	--[[
+		The damage meter.
+	--]]
+	damagemeter = {
+		-- Seconds between repaints in combat. Out of combat the meter redraws
+		-- only on Blizzard's session events
+		refreshRate = 1,
+
+		strata = "LOW",
+
+		--[[
+			Windows, in the order they stack. Each needs a `readout`, a key of
+			Enum.DamageMeterType: DamageDone, Dps, HealingDone, Hps, Absorbs,
+			Interrupts, Dispels, DamageTaken, AvoidableDamageTaken, Deaths,
+			EnemyDamageTaken. `segment` is Current or Overall. Both are only the
+			starting state; the header menus change either at runtime.
+
+			Only the first window carries an anchor while `grouped` is on. Turn
+			it off and give each its own point, relTo, relPoint, x and y.
+
+			A window may also override `width` and `rows`.
+		--]]
+		windows = {
+			{
+				readout = "DamageDone",
+				segment = "Current",
+				point = "TOPLEFT",
+				relTo = "UIParent",
+				relPoint = "TOPLEFT",
+				x = 64,
+				y = -80,
+			},
+
+			{
+				readout = "HealingDone",
+				segment = "Current",
+			},
+		},
+
+		-- Stack every window after the first below the one before it
+		grouped = true,
+		gap = 6,
+
+		-- Only the width is set. Height follows from `rows` and the row and
+		-- header sizes below, so a window can never show a part of a bar
+		window = {
+			width = 240,
+			rows = 5,
+
+			-- Alpha of the window's own backing. 0 floats the bars on nothing
+			backdrop = 0,
+
+			-- Thickness of a flat edge around the whole window, 0 for none
+			outline = 0,
+		},
+
+		-- The readout name, the combat timer and the buttons, with no bar behind
+		header = {
+			enabled = true,
+			height = 18,
+			fontSize = 12,
+			timer = true,
+
+			-- Icon size, and which of them appear at all
+			iconSize = 14,
+			icons = {
+				readout = true,
+				segment = true,
+				reset = true,
+				close = false,
+			},
+		},
+
+		-- Pitch is `height` plus `spacing`. At 0 padding the bars run edge to
+		-- edge and the icon sits on top of the fill rather than beside it
+		rows = {
+			height = 20,
+			spacing = 2,
+			padding = { left = 0, right = 0 },
+
+			-- "1." ahead of the name
+			showRank = false,
+
+			-- Thickness of the flat edge around each row, 0 for none
+			outline = 1,
+		},
+
+		--[[
+			"spec" uses the specIconID Blizzard gives per source, falling back to
+			the class icon; "class" always uses the class icon. `zoom` trims the
+			icon's border, as texcoords do elsewhere.
+		--]]
+		icon = {
+			enabled = true,
+			style = "spec",
+			zoom = 0.06,
+		},
+
+		-- `texture` is an LSM key; nil takes general.statusbar, keeping the meter
+		-- and the unit frames on the same art. `overlay` is a flat wash over the
+		-- row that knocks the texture's contrast back
+		bar = {
+			texture = nil,
+			alpha = 0.5,
+			overlay = true,
+		},
+
+		--[[
+			Bar text. `font` nil takes general.font.
+
+			flags = "" with a shadow rather than the addon's usual OUTLINE: at
+			12px over a striped bar an outline blurs the glyphs.
+
+			The three `right` flags choose the right-hand end, in that order.
+			All three on reads "1.2M (412K, 38%)".
+		--]]
+		text = {
+			font = nil,
+			size = 12,
+			flags = "",
+			shadow = true,
+
+			right = {
+				total = false,
+				perSecond = true,
+				percent = false,
+			},
 		},
 	},
 

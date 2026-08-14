@@ -66,6 +66,21 @@ modules\infobar\plugins\gold.lua
 modules\infobar\plugins\durability.lua
 modules\infobar\plugins\res.lua
 
+# Damage meter - bars over Blizzard's C_DamageMeter. init.lua first: it creates
+# the module, the window registry and the tooltip helper the others read off the
+# module table. The rest may be listed in any order. Must follow the skins
+# module, which owns CreateOutline and CreateBackdrop.
+modules\damagemeter\init.lua
+modules\damagemeter\data.lua
+modules\damagemeter\window.lua
+modules\damagemeter\rows.lua
+modules\damagemeter\menu.lua
+modules\damagemeter\tooltip.lua
+
+# Fake sessions for /draeui meter test. Optional - drop this line and the meter
+# loses the command and nothing else.
+modules\damagemeter\test.lua
+
 # Unitframes
 modules\unitframes\init.lua
 modules\unitframes\common.lua

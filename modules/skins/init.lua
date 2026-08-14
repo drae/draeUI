@@ -65,6 +65,35 @@ DraeUI.CreateBackdrop = function(frame, layer)
 end
 
 --[[
+		A flat single-colour edge, for a frame too small to carry CreateBorder's
+		nine-slice art - a meter's bar rows, an aura icon.
+
+		`size` is the edge thickness and `inset` how far it sits outside the frame
+		rect, both defaulting to 1. `colour` is { r, g, b, a }, defaulting to
+		colours.rowOutline.
+
+		A BackdropTemplate frame rather than four textures, so edgeSize tracks a
+		frame that resizes.
+--]]
+DraeUI.CreateOutline = function(frame, size, colour, inset)
+	if not frame then
+		return
+	end
+
+	size = size or 1
+	inset = inset or 1
+	colour = colour or DraeUI.config["general"].colours.rowOutline
+
+	local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+	border:SetPoint("TOPLEFT", frame, -inset, inset)
+	border:SetPoint("BOTTOMRIGHT", frame, inset, -inset)
+	border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", tile = false, edgeSize = size })
+	border:SetBackdropBorderColor(colour[1], colour[2], colour[3], colour[4] or 1)
+
+	return border
+end
+
+--[[
 		A hand-rolled nine-slice from one 64x64 sheet quartered into a 4x4 grid:
 		four corners pinned at their own texcoord quadrants, four edges taken from
 		the 1/4..3/4 bands and double-anchored between the corners so they stretch

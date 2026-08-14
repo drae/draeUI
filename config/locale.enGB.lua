@@ -114,6 +114,54 @@ L["INFOBAR_SLOT_WAIST"] = "Belt"
 L["INFOBAR_SLOT_WRIST"] = "Wrist"
 
 --[[
+	Damage meter
+
+	Only the gaps again. Blizzard names every readout itself -
+	DAMAGE_METER_TYPE_DAMAGE_DONE and friends - and the module reads those, so
+	the eleven readout names aren't here. The DAMAGEMETER_TYPE_* keys below are
+	the safety net for that: the L metatable returns the key when a string is
+	missing, so a Blizzard global that turns out not to exist in some future
+	build resolves to one of these rather than to nil.
+--]]
+L["DAMAGEMETER_CURRENT"] = "Current"
+L["DAMAGEMETER_OVERALL"] = "Overall"
+L["DAMAGEMETER_SEGMENT"] = "Segment"
+L["DAMAGEMETER_READOUT"] = "Readout"
+
+-- Second line of both menu buttons' tooltips
+L["DAMAGEMETER_APPLY_ALL"] = "Hold Shift to change every window"
+
+-- The reset button, and the confirmation in its tooltip
+L["DAMAGEMETER_RESET"] = "Reset all segments"
+
+-- Shown in place of a breakdown for anyone but yourself while auras are secret
+L["DAMAGEMETER_SECRET"] = "Details are hidden while in combat"
+
+L["DAMAGEMETER_NO_DATA"] = "Nothing recorded yet"
+
+-- Printed at login with the failure reason IsDamageMeterAvailable gives back
+L["DAMAGEMETER_UNAVAILABLE"] = "The damage meter is unavailable: %s"
+
+-- /draeui meter test
+L["DAMAGEMETER_TEST_ON"] = "Meter test mode on - every number on screen is invented"
+L["DAMAGEMETER_TEST_OFF"] = "Meter test mode off"
+L["DAMAGEMETER_TEST_NO_WINDOWS"] = "No meter windows exist to draw into - check /draeui meter"
+
+-- Fallbacks for Blizzard's DAMAGE_METER_TYPE_* globals, keyed by the
+-- Enum.DamageMeterType key so the lookup is a single concatenation
+L["DAMAGEMETER_TYPE_DamageDone"] = "Damage Done"
+L["DAMAGEMETER_TYPE_Dps"] = "DPS"
+L["DAMAGEMETER_TYPE_HealingDone"] = "Healing Done"
+L["DAMAGEMETER_TYPE_Hps"] = "HPS"
+L["DAMAGEMETER_TYPE_Absorbs"] = "Absorbs"
+L["DAMAGEMETER_TYPE_Interrupts"] = "Interrupts"
+L["DAMAGEMETER_TYPE_Dispels"] = "Dispels"
+L["DAMAGEMETER_TYPE_DamageTaken"] = "Damage Taken"
+L["DAMAGEMETER_TYPE_AvoidableDamageTaken"] = "Avoidable Damage Taken"
+L["DAMAGEMETER_TYPE_Deaths"] = "Deaths"
+L["DAMAGEMETER_TYPE_EnemyDamageTaken"] = "Enemy Damage Taken"
+
+--[[
 	Presence
 --]]
 L["FOCUS_DELVE_COMPLETE"] = "Delve Complete"

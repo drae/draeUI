@@ -17,6 +17,8 @@ local UnitInRaid, UnitIsGroupAssistant = UnitInRaid, UnitIsGroupAssistant
 local HasLFGRestrictions, IsInInstance = HasLFGRestrictions, IsInInstance
 local UnitPlayerControlled, UnitIsTapDenied = UnitPlayerControlled, UnitIsTapDenied
 local UnitIsPlayer, UnitInPartyIsAI = UnitIsPlayer, UnitInPartyIsAI
+local UnitFactionGroup, UnitIsMercenary = UnitFactionGroup, UnitIsMercenary
+local UnitIsPVP, UnitIsPVPFreeForAll = UnitIsPVP, UnitIsPVPFreeForAll
 local UnitClass, UnitReaction = UnitClass, UnitReaction
 local pcall, select, unpack = pcall, select, unpack
 
@@ -433,12 +435,59 @@ local AssistantOverride = function(self)
 	end
 end
 
+--[[
+		oUF's own PvPIndicator update opens with
+
+			C_PvP.GetHonorRewardInfo(UnitHonorLevel(unit))
+
+		and UnitHonorLevel is secret for anyone but you, which throws from addon
+		execution. It fires on UNIT_FACTION, so a busy target frame produces it by
+		the dozen.
+
+		The result only feeds element.Badge, and draeUI's indicator is a bare
+		texture with no Badge - so this is the same update with the honor lookup
+		dropped rather than a reimplementation.
+--]]
+local PvPOverride = function(self)
+	local element = self.PvPIndicator
+	local unit = self.__unit
+
+	local status
+	local factionGroup = UnitFactionGroup(unit) or "Neutral"
+
+	if UnitIsPVPFreeForAll(unit) then
+		status = "FFA"
+	else
+		local isPvP = UnitIsPVP(unit)
+
+		if factionGroup ~= "Neutral" and DraeUI.CanAccessValue(isPvP) and isPvP then
+			-- Mercenary mode shows you fighting for the other side
+			if unit == "player" and UnitIsMercenary(unit) then
+				factionGroup = factionGroup == "Horde" and "Alliance" or "Horde"
+			end
+
+			status = factionGroup
+		end
+	end
+
+	if not status then
+		element:Hide()
+
+		return
+	end
+
+	element:SetTexture("Interface\\TargetingFrame\\UI-PVP-" .. status)
+	element:SetTexCoord(0, 0.65625, 0, 0.65625)
+	element:Show()
+end
+
 -- Leader, PvP, Role, etc.
 UF.FlagIcons = function(frame, reverse)
 	-- pvp icon
 	local pvp = frame:CreateTexture(nil, "OVERLAY", nil, 1)
 	pvp:SetSize(48, 48)
 	pvp:SetPoint("CENTER", frame, reverse and "LEFT" or "RIGHT", -12, -4)
+	pvp.Override = PvPOverride
 	frame.PvPIndicator = pvp
 
 	-- Leader icon

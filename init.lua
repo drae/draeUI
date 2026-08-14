@@ -582,6 +582,28 @@ do
 				else
 					minimap:Report()
 				end
+			elseif smatch(msg, "^meter") then
+				--[[
+					meter - which layer is at fault when a window is empty: the
+					meter being unavailable, an empty session, or our own
+					placement.
+
+					meter test - fake animated sessions, for looking at the
+					windows without a group.
+				--]]
+				local meter = DraeUI:GetModule("DamageMeter", true)
+
+				if not meter then
+					return
+				end
+
+				if smatch(msg, "^meter%s+test") then
+					if meter.Test then
+						meter.Test:Toggle()
+					end
+				else
+					meter:Report()
+				end
 			end
 		end
 	end

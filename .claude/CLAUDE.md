@@ -82,6 +82,37 @@ Modules are initialized through AceAddon's `:NewModule()` and loaded via the .to
 - **skins/** (modules/skins/): Static decorative UI artwork (actionbar surround, minimap ring, micro menu)
 - **infobar/** (modules/infobar/): FPS, latency, durability, gold, XP/reputation and Rebirth-charge readouts in the strip between the micro menu and the minimap. See the registration contract below. Restored from `55e4c81^` and brought up to 12.0 — fps, latency, durability and gold are confirmed working; the res plugin has never been exercised in a raid or M+, so treat it with suspicion.
 - **presence/** (modules/presence/): Cinematic centre-screen toasts for zone changes, quests, achievements, level ups and scenarios, replacing Blizzard's zone text and banner frames. Ported from HorizonSuite (MIT). `init.lua` is both the AceAddon module and the host table the four still-verbatim `core/quest/scenario/achievement` files read as `addon`. Those four are StyLua-ignored so they stay diffable against upstream; every deliberate divergence in them carries a `-- draeUI:` comment.
+- **damagemeter/** (modules/damagemeter/): Stacked bar windows over Blizzard's
+  `C_DamageMeter`.
+
+  **There is no combat log parsing here and there should never be any.**
+  `COMBAT_LOG_EVENT_UNFILTERED` is not a viable meter source in 12.1 - Details! and
+  EllesmereUIDamageMeters have both migrated off it. Blizzard aggregates the session,
+  attributes pets to their owner and returns `combatSources` already sorted; re-sorting
+  would mean comparing secret amounts, which throws. `data.lua` is the only file that
+  touches the API, which is what keeps the secret-value rules in one place. The others are
+  `init.lua` (module, window registry, `ShowTip`, combat state machine, `Report`),
+  `window.lua`, `rows.lua`, `menu.lua` and `tooltip.lua`.
+
+  Blizzard's own meter window is turned off at enable with
+  `SetCVar("damageMeterEnabled", 0)`. That CVar governs their UI, not the collection - the
+  API keeps working.
+
+  Windows are placed from `config.damagemeter.windows` and are **not draggable**, since
+  nothing in draeUI saves a setting. A window's height is never set: it derives from
+  `window.rows` and the row and header sizes, so a window can't show part of a bar. Each
+  window's readout is a key of `Enum.DamageMeterType` and its segment is Current, Overall
+  or a past fight; config sets only the starting state, and the header menus change either
+  at runtime.
+
+  **Known gap: Feign Death registers as a death.** `C_DamageMeter` gives a feign a valid
+  `deathRecapID`, so a hunter feigning shows up in the Deaths readout.
+
+  `test.lua` stands in for the API when `/draeui meter test` is on, so the windows can be
+  judged without a group. It is optional - every getter in `data.lua` asks for it and
+  copes with it being absent, so dropping its .toc line costs the command and nothing
+  else. Its fake segment IDs are negative, which is how leaving the mode knows to clear
+  them off a window.
 
 ### Library Dependencies
 
@@ -394,7 +425,7 @@ fresh `oUF:CreateColor()` over it silently drops the atlas.
 
 ### Secret Values and Taint
 
-Two separate rules, both of which this codebase has been bitten by.
+Separate rules, all of which this codebase has been bitten by.
 
 **You cannot branch on a secret value.** `if secret then` from addon-tainted execution
 errors with *"attempted to perform boolean test on ... (a secret boolean value)"*. You
@@ -435,6 +466,25 @@ when an addon calls it while auras are secret — `GetAuraDataByIndex`, `GetAura
 survive, which is why `candidateFilters.includeSpellIDs` is the one exact filter the
 buffbar can offer. `SECURE_ACTIONS.cancelaura` is dead for the same reason: it needs an
 aura index.
+
+**Combat meter data is secret** in a raid, M+ or PvP, and never secret in the world - so
+everything below fires only in group content and never against a target dummy. Three shapes
+the damage meter has to write around, all of which look like ordinary Lua:
+
+- **`value or fallback` boolean-tests its left side.** Where a field may be secret, that is
+  a boolean test on a secret. Test for genuine *absence* instead: comparing a secret to nil
+  throws, so a failed `pcall` on the nil check is the test. `Data.IsAbsent` in
+  `modules/damagemeter/data.lua` is the implementation, and `Data.Amount` the wrapper that
+  substitutes only for a field that really isn't there.
+- **`AbbreviateNumbers` returns a secret string** for a secret amount. It may only reach
+  `SetFormattedText`, never concatenation - so build the arguments and let the engine join
+  them.
+- **Never compute a bar fraction.** `SetMinMaxValues(0, max)` then `SetValue(amount)`, so
+  the division happens engine-side. Dividing secrets throws, and zeroing them instead
+  leaves every row empty for the whole fight.
+
+The failure signature is worth knowing because it is quiet: a swallowed secret shows up as
+rows that are present but grey and blank, not as an error.
 
 ### The 12.1 AuraContainer
 
@@ -485,6 +535,12 @@ FrameName.Show = FrameName.Hide  -- Prevent re-showing
 - `/rar` - Ready check
 - `/draeui grid [size]` - Toggle alignment grid (4-256 pixels, default 128)
 - `/draeui hide` - Toggle UI visibility and friendly nameplates (for screenshots)
+- `/draeui meter` - Dump the damage meter's state: whether the API is available and why not,
+  the `damageMeterEnabled` CVar, session duration, and each window's readout and segment.
+  Says which layer is at fault when a window is empty rather than leaving you to guess
+- `/draeui meter test` - Toggle fake animated sessions, for judging the windows without a
+  group. Every readout is populated and the amounts follow a sine, so bars overtake each
+  other and the row pool is exercised
 
 ## Development Environment
 
@@ -504,12 +560,12 @@ Controlled by draeUI.toc (TOC = Table of Contents):
 3. Core init (init.lua)
 4. Config defaults
 5. Functions
-6. Modules (BuffBar, Skins, Minimap, Presence, Infobar, Unitframes)
+6. Modules (BuffBar, Skins, Minimap, Presence, Infobar, DamageMeter, Unitframes)
 
 Two module orderings are load-bearing:
 
-- **Skins before Minimap and Unitframes.** Skins owns `DraeUI.CreateBorder`, and both of
-  those frame themselves with it.
+- **Skins before Minimap, DamageMeter and Unitframes.** Skins owns the shared framing
+  helpers those three decorate themselves with.
 - **Within Infobar**, `init.lua` then `plugin.lua` then the `plugins/` sources, since each of
   those calls `InfoBar:Register` at load. The plugins themselves may be listed in any order -
   placement comes from `order`, not the .toc.
@@ -518,6 +574,10 @@ Within Minimap, `init.lua` must come first: it creates the module table, the anc
 vocabulary (`Mod.Place`), the square mouse surface and the tooltip helper that the other six
 files read off it. Those six may be listed in any order - none touches another at load, only
 at enable, and `OnEnable` calls their `Build` methods in a fixed sequence.
+
+Within DamageMeter, the same contract: `init.lua` first, creating the module table, the
+window registry and the tooltip helper the other five read off it. Those five may be listed
+in any order.
 
 Order matters for dependencies - libs before core, config before modules.
 
