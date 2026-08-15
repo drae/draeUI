@@ -1,23 +1,9 @@
---[[
-
-
---]]
 local DraeUI = select(2, ...)
 
---[[
-		Default configuration settings
---]]
 DraeUI.config = {
 	general = {
-		--[[
-			Textures. LSM keys, resolved by FetchMedia in init.lua.
-
-			The key doesn't have to be one draeUI ships - LSM is a shared
-			registry, so anything any installed addon has registered resolves
-			here. "Striped" is one of those: draeUI's own copy was retired in
-			0a3c414 and media/sharedmedia.lua doesn't list it, but another addon
-			provides it. Don't read an absence there as a broken key.
-		--]]
+		-- LSM keys, resolved by FetchMedia in init.lua. Any key another installed
+		-- addon has registered resolves here too
 		statusbar = "Striped",
 		statusbar_power = "Striped",
 		statusbar_absorb = "DF Stripes Soft",
@@ -34,17 +20,8 @@ DraeUI.config = {
 		texcoords = { 0.1, 0.9, 0.1, 0.9 },
 
 		colours = {
-			--[[
-				The one entry here that isn't a colour: power types allowed to
-				keep Blizzard's own bar artwork, instead of statusbar_power
-				tinted with `power` below. Keyed by oUF's string token.
-
-				To see everything that ships with an atlas, so you can audit
-				this list, log in and run:
-				/run for k,v in pairs(DraeUI.powerAtlases) do print(k,v) end
-
-				Set to false to use statusbar_power for every power type.
-			--]]
+			-- Not a colour: power types allowed to keep Blizzard's own bar artwork
+			-- instead of statusbar_power tinted with `power` below
 			atlas = {
 				EBON_MIGHT = true, -- Augmentation evoker
 				FURY = true, -- Havoc demon hunter
@@ -55,18 +32,10 @@ DraeUI.config = {
 			},
 
 			--[[
-				Everything from `power` down to `quest` is applied onto oUF.colors
-				by DraeUI:OnEnable. They are partial overrides - any key left
-				out keeps oUF's Blizzard-derived default.
-
-				Keyed by oUF's own key names. Power uses the string token
-				because that's oUF's canonical key; it aliases the numeric
-				power-type IDs to the same colour objects, so overriding the
-				token updates both.
-
-				Deliberately absent: `class`. oUF rebuilds colors.class from a
-				CUSTOM_CLASS_COLORS callback with fresh objects, which would
-				throw any override away - class colours must stay oUF's.
+				`power` down to `quest` is applied onto oUF.colors by DraeUI:OnEnable
+				as partial overrides - any key left out keeps oUF's default.
+				Deliberately absent: `class`. oUF rebuilds it from a
+				CUSTOM_CLASS_COLORS callback and would throw an override away.
 			--]]
 			power = {
 				MANA = { 46 / 255, 158 / 255, 255 / 255 },
@@ -92,17 +61,9 @@ DraeUI.config = {
 			disconnected = { 230 / 255, 230 / 255, 230 / 255 },
 			tapped = { 153 / 255, 153 / 255, 153 / 255 },
 
-			--[[
-				Aura border tint per dispel type, keyed by the dispel name oUF
-				takes from AuraUtil.GetDebuffDisplayInfoTable(). Bleed and
-				Enrage are left out and keep oUF's defaults.
-
-				There is no None entry any more. The old step curve resolved a
-				dispel-less aura to a None colour rather than nil, so one had
-				to be supplied to stop Blizzard's dark-red DEBUFF_TYPE_NONE_COLOR
-				tinting every ordinary debuff border. AuraButton has no such
-				fallback - an aura with no dispel type simply gets no tint.
-			--]]
+			-- Keyed by the dispel name oUF takes from
+			-- AuraUtil.GetDebuffDisplayInfoTable(). No None entry: no dispel type
+			-- means no tint. Bleed and Enrage keep oUF's defaults
 			dispel = {
 				Magic = { 51 / 255, 153 / 255, 255 / 255 },
 				Curse = { 153 / 255, 0, 255 / 255 },
@@ -110,8 +71,7 @@ DraeUI.config = {
 				Poison = { 0, 153 / 255, 0 },
 			},
 
-			-- Aura icon border when the aura has no dispel type
-			auraBorder = { 0, 0, 0 },
+			auraBorder = { 0, 0, 0 }, -- aura icon border when there is no dispel type
 
 			healthPrediction = {
 				healingPlayer = { 0, 1.0, 0.3, 0.25 },
@@ -122,15 +82,10 @@ DraeUI.config = {
 				overHealAbsorb = { 1.0, 0, 0, 0.5 },
 			},
 
-			-- Offline/ghost/dead health text
-			healthText = { 170 / 255, 170 / 255, 170 / 255 },
+			healthText = { 170 / 255, 170 / 255, 170 / 255 }, -- offline/ghost/dead
 
-			--[[
-				Presence toast accents, keyed by the category a notification
-				resolves to. Named "quest" because the ported files reach it as
-				QUEST_COLORS, but it covers achievements, scenarios, zones and
-				rares too.
-			--]]
+			-- Presence toast accents. Named "quest" because the ported files reach
+			-- it as QUEST_COLORS, but it covers achievements, scenarios and zones
 			quest = {
 				DEFAULT = { 0.90, 0.90, 0.90 },
 				CURRENT = { 0.95, 0.55, 0.45 },
@@ -164,29 +119,13 @@ DraeUI.config = {
 				ADVENTURE = { 0.90, 0.80, 0.50 },
 			},
 
-			-- The two Presence toasts that aren't category-keyed
 			bossEmote = { 1, 0.2, 0.2 },
 			discovery = { 0.4, 1, 0.5 },
 
-			--[[
-				Chrome rather than game state: the backing behind the minimap's
-				buttons and its zone/clock bands. One knob so they always agree.
+			panel = { 0, 0, 0, 0.8 }, -- backing behind the minimap's buttons and bands
 
-				Black at 0.8 reads as part of the frame against the map without
-				going fully opaque. Lower the alpha to let more map through.
-			--]]
-			panel = { 0, 0, 0, 0.8 },
-
-			--[[
-				Zone PvP ruleset. Two readers: Presence's zone toasts, when
-				presence.zoneTypeColouring is on, and the minimap's zone label,
-				when minimap.text.zone.pvpColour is on. They agreeing on what
-				"hostile" looks like is the point of one table rather than two.
-
-				C_PvP.GetZonePVPInfo also returns "arena" and "combat"; the
-				minimap folds both into hostile, since all three mean the same
-				thing to someone reading a zone name.
-			--]]
+			-- Zone PvP ruleset, read by Presence's zone toasts and the minimap's
+			-- zone label. The minimap folds "arena" and "combat" into hostile
 			zone = {
 				friendly = { 0.1, 1.0, 0.1 },
 				hostile = { 1.0, 0.1, 0.1 },
@@ -194,20 +133,10 @@ DraeUI.config = {
 				sanctuary = { 0.41, 0.8, 0.94 },
 			},
 
-			-- Default edge for CreateOutline, the flat border any frame too
-			-- small for the nine-slice uses
-			rowOutline = { 0, 0, 0, 1 },
+			rowOutline = { 0, 0, 0, 1 }, -- default edge for CreateOutline
 
-			--[[
-				The damage meter. A bar is three layers: `barBackground` under
-				the class-coloured fill, then `overlay` washed across the whole
-				row. All three are low-alpha because the window itself has no
-				background.
-
-				`unknown` is not an error case - classFilename is secret
-				mid-combat, so this is what other players' rows wear in M+ and
-				raid. Keep it legible.
-			--]]
+			-- `unknown` is not an error case - classFilename is secret mid-combat,
+			-- so this is what other players' rows wear in M+ and raid
 			damagemeter = {
 				barBackground = { 0, 0, 0, 0.2 },
 				overlay = { 0.7, 0.7, 0.7, 0.2 },
@@ -215,42 +144,20 @@ DraeUI.config = {
 				highlight = { 1, 1, 1, 0.08 },
 				unknown = { 0.5, 0.5, 0.5 },
 
-				-- Rows in the EnemyDamageTaken readout, which are mobs and have no class
+				-- Rows in EnemyDamageTaken, which are mobs and have no class
 				enemy = { 0.87, 0.19, 0.19 },
 			},
 		},
 	},
 
-	--[[
-		The info bar. Read by modules/infobar/init.lua on enable.
-
-		It stretches between two anchors rather than carrying a width, so by
-		default it fills whatever gap the micro menu and the minimap leave
-		between them and follows either of those moving.
-
-		relTo is a global frame name, resolved at enable and guarded - these are
-		Blizzard's frames and Blizzard has moved them before now
-		(MicroButtonAndBagsBar simply stopped existing). If one can't be found
-		the bar falls back to a UIParent-relative position so the module still
-		loads with something on screen.
-
-		There is deliberately nothing here about which readouts appear or in
-		what order: a plugin exists because it registered, and places itself by
-		the `order` in its own Register call.
-	--]]
+	-- The info bar stretches between two anchors rather than carrying a width.
+	-- relTo is a global frame name, resolved and guarded at enable - if one can't
+	-- be found the bar falls back to a UIParent-relative position
 	infobar = {
 		height = 30,
 
-		--[[
-			Minimum widths, keyed by the name a plugin passes to InfoBar:Register.
-			Anything not listed sizes to its text and nothing more.
-
-			Experience has one because its progress bars span the plugin frame:
-			left to the text alone the readout collapses to a stub of a bar as
-			soon as the numbers are short - "[80] 4%xp" is barely wider than the
-			word. The text stays left-aligned and the surplus extends right, so
-			the bar gets the room rather than the label.
-		--]]
+		-- Keyed by the name a plugin passes to InfoBar:Register; anything not
+		-- listed sizes to its text. Experience needs one or its bars collapse
 		minWidth = {
 			Experience = 250,
 		},
@@ -272,27 +179,19 @@ DraeUI.config = {
 		},
 	},
 
-	--[[
-		The damage meter.
-	--]]
 	damagemeter = {
-		-- Seconds between repaints in combat. Out of combat the meter redraws
-		-- only on Blizzard's session events
+		-- Out of combat the meter redraws only on Blizzard's session events
 		refreshRate = 1,
 
 		strata = "LOW",
 
 		--[[
-			Windows, in the order they stack. Each needs a `readout`, a key of
+			Windows, in the order they stack. `readout` is a key of
 			Enum.DamageMeterType: DamageDone, Dps, HealingDone, Hps, Absorbs,
 			Interrupts, Dispels, DamageTaken, AvoidableDamageTaken, Deaths,
 			EnemyDamageTaken. `segment` is Current or Overall. Both are only the
-			starting state; the header menus change either at runtime.
-
-			Only the first window carries an anchor while `grouped` is on. Turn
-			it off and give each its own point, relTo, relPoint, x and y.
-
-			A window may also override `width` and `rows`.
+			starting state; the header menus change either at runtime. Only the
+			first window carries an anchor while `grouped` is on.
 		--]]
 		windows = {
 			{
@@ -311,31 +210,26 @@ DraeUI.config = {
 			},
 		},
 
-		-- Stack every window after the first below the one before it
 		grouped = true,
 		gap = 6,
 
-		-- Only the width is set. Height follows from `rows` and the row and
-		-- header sizes below, so a window can never show a part of a bar
+		-- Height follows from `rows` and the row and header sizes below, so a
+		-- window can never show a part of a bar
 		window = {
 			width = 240,
 			rows = 5,
 
 			-- Alpha of the window's own backing. 0 floats the bars on nothing
 			backdrop = 0,
-
-			-- Thickness of a flat edge around the whole window, 0 for none
 			outline = 0,
 		},
 
-		-- The readout name, the combat timer and the buttons, with no bar behind
 		header = {
 			enabled = true,
 			height = 18,
 			fontSize = 12,
 			timer = true,
 
-			-- Icon size, and which of them appear at all
 			iconSize = 14,
 			icons = {
 				readout = true,
@@ -345,49 +239,35 @@ DraeUI.config = {
 			},
 		},
 
-		-- Pitch is `height` plus `spacing`. At 0 padding the bars run edge to
-		-- edge and the icon sits on top of the fill rather than beside it
+		-- Pitch is `height` plus `spacing`. At 0 padding the icon sits on top of
+		-- the fill rather than beside it
 		rows = {
 			height = 20,
-			spacing = 2,
+			spacing = 1,
 			padding = { left = 0, right = 0 },
 
-			-- "1." ahead of the name
-			showRank = false,
-
-			-- Thickness of the flat edge around each row, 0 for none
+			showRank = false, -- "1." ahead of the name
 			outline = 0,
 		},
 
-		--[[
-			"spec" uses the specIconID Blizzard gives per source, falling back to
-			the class icon; "class" always uses the class icon. `zoom` trims the
-			icon's border, as texcoords do elsewhere.
-		--]]
+		-- "spec" uses the specIconID Blizzard gives per source, falling back to the
+		-- class icon; "class" always uses the class icon
 		icon = {
 			enabled = true,
 			style = "spec",
 			zoom = 0.06,
 		},
 
-		-- `texture` is an LSM key; nil takes general.statusbar, keeping the meter
-		-- and the unit frames on the same art. `overlay` is a flat wash over the
-		-- row that knocks the texture's contrast back
+		-- `texture` is an LSM key; nil takes general.statusbar
 		bar = {
 			texture = nil,
 			alpha = 1.0,
 			overlay = true,
 		},
 
-		--[[
-			Bar text. `font` nil takes general.font.
-
-			flags = "" with a shadow rather than the addon's usual OUTLINE: at
-			12px over a striped bar an outline blurs the glyphs.
-
-			The three `right` flags choose the right-hand end, in that order.
-			All three on reads "1.2M (412K, 38%)".
-		--]]
+		-- `font` nil takes general.font. flags = "" with a shadow rather than OUTLINE:
+		-- at 12px over a striped bar an outline blurs the glyphs. The `right` flags
+		-- apply in order - all three on reads "1.2M (412K, 38%)"
 		text = {
 			font = nil,
 			size = 12,
@@ -403,51 +283,24 @@ DraeUI.config = {
 	},
 
 	--[[
-		The minimap. Read by modules/minimap/*.lua on enable.
-
-		draeUI skins Blizzard's minimap *in place*. It stays inside
-		MinimapCluster, the cluster keeps its alpha and its mouse, and Edit Mode
-		still owns both where the thing sits and how big it is. That is a
-		deliberate departure from every other minimap addon and it buys three
-		things: Edit Mode keeps working, infobar.right.relTo = "MinimapCluster"
-		keeps measuring something real, and the Minimap is never reparented -
-		which is the manoeuvre that makes Blizzard's map pin code blow up on the
-		protected SetPropagateMouseClicks during a world map open.
-
-		There is deliberately no `size` key. See the header of
-		modules/minimap/init.lua for why forcing one is a fight not worth having.
-
-		Every `pos` below is one of the ten anchors in modules/minimap/init.lua:
-		the eight compass points on the map itself, plus ABOVE and BELOW, which
-		float clear of it. x/y nudge from there in pixels, positive being
-		right/up regardless of which corner you anchored to.
-
-		There are no colours here. Everything draeUI tints lives in
-		general.colours - the zone readout reads general.colours.zone.
+		The minimap is skinned in place, so Edit Mode still owns where it sits and
+		how big it is - there is deliberately no `size` key. Every `pos` below is
+		one of the ten anchors in modules/minimap/init.lua; x/y nudge from there in
+		pixels, positive being right/up.
 	--]]
 	minimap = {
-		--[[
-			Pixel thickness of the framing art, the same unitframe.tga nine-slice
-			the unit frames use. 14 matches a unit frame exactly; 20 is the
-			visual match for the fixed Minimap.tga ring this replaced.
-		--]]
+		-- Thickness of the framing art, the unitframe.tga nine-slice. 14 matches a
+		-- unit frame exactly; 20 matches the fixed Minimap.tga ring
 		border = 20,
 
-		--[[
-			Wheel zoom, 0-5. persist keeps the level in draeUIDB across reloads.
-			That is data the player set with the mouse rather than a setting -
-			the same reason the infobar's Coin plugin is allowed in there.
-		--]]
+		-- Wheel zoom, 0-5. persist keeps the level in draeUIDB across reloads
 		zoom = {
 			wheel = true,
 			persist = true,
 		},
 
-		--[[
-			Middle-click opens the micro menu. The world ping is swallowed either
-			way; the overlay that swallows it is also what makes the square
-			corners scrollable at all.
-		--]]
+		-- Middle-click opens the micro menu. The world ping is swallowed either
+		-- way, by the same overlay that makes the square corners scrollable
 		microMenu = {
 			enabled = true,
 			width = 150,
@@ -455,32 +308,16 @@ DraeUI.config = {
 		},
 
 		--[[
-			Readouts, each on its own small plate straddling an edge of the map.
-
-			Straddling rather than sitting inside is the point: the plate is
-			centred ON the border, so it reads as part of the frame instead of as
-			something floating on the map. Each is only as wide as its own string,
-			and a readout with nothing to say hides its plate rather than leaving
-			an empty tab - which is what the difficulty one does in the open world.
-
-			Blizzard's zone text and clock are hidden whenever ours are on; its
-			difficulty flag is hidden whenever `difficulty` is, since the two say
-			the same thing.
-
-			`band` is top or bottom, `align` is LEFT, CENTER or RIGHT along it.
-			Two readouts can share an edge as long as they don't share an
-			alignment. Corner-hung plates inset themselves clear of the framing
-			art automatically.
-
-			`border` frames each plate in the same nine-slice as the map. 0 is
-			off; try 10 or 12 if you want them to match the map's own edging
-			rather than being flat panels.
+			Readouts, each on a plate centred ON an edge of the map. A readout with
+			nothing to say hides its plate, and Blizzard's zone text, clock and
+			difficulty flag are hidden whenever ours are on. `band` is top or
+			bottom, `align` is LEFT, CENTER or RIGHT along it; two readouts can
+			share an edge if they don't share an alignment.
 		--]]
 		text = {
 			height = 16,
-			border = 10,
-
-			padding = 10, -- padding around text
+			border = 10, -- nine-slice around each plate, 0 for off
+			padding = 10,
 
 			-- y nudges outward from the map, so the same positive value raises a
 			-- top plate and lowers a bottom one
@@ -490,48 +327,23 @@ DraeUI.config = {
 		},
 
 		--[[
-			Two columns of buttons, both hanging off the outside of the map's
-			left edge.
-
-			The split is by what makes a button come and go. `elements` holds the
-			Blizzard-derived indicators, which appear and disappear with game
-			state - mail arrives, a crafting order lands - so they grow DOWN from
-			the top and the movement stays up there. `buttons` holds ours and any
-			third-party ones, which are fixed for the session, so they grow UP
-			from the bottom and don't get shoved around when mail turns up.
-
-			Anything false below is absent from its column entirely rather than
-			present-and-hidden, so the gaps close.
-
-			Our indicators are addon-owned buttons drawn from Blizzard's atlases;
-			Blizzard's own are alpha-zeroed rather than reparented, so nothing of
-			theirs is ever moved and there is no taint surface.
-
-			pos takes the OUT* anchors from modules/minimap/init.lua, which hang
-			a column beside the map rather than on it. grow is DOWN/UP/LEFT/RIGHT.
-			Both are symmetric, so putting the columns on the right edge is
-			OUTRIGHTTOP + OUTRIGHTBOTTOM and nothing else.
+			Two columns hanging off the outside of the map's left edge. `elements`
+			holds the Blizzard-derived indicators, which come and go with game
+			state, so they grow DOWN and the movement stays at the top; `buttons` is
+			fixed for the session and grows UP. Anything false is absent from its
+			column rather than present-and-hidden. pos takes the OUT* anchors and
+			grow is DOWN/UP/LEFT/RIGHT.
 		--]]
 		rows = {
 			size = 20,
-
-			-- 0 so a bordered group reads as one block rather than as tiles with
-			-- map showing between them. The group's backdrop sits behind any gap
 			gap = 0,
 
-			--[[
-				One border around each column, in the same nine-slice as the map
-				and the text plates - per group rather than per button, so a
-				column reads as a single framed object rather than a stack of
-				them. 0 turns it off.
-
-				It draws border/2 - 1 px outside the column, so raising it eats
-				into the gap the x nudge below leaves against the map's own art.
-			--]]
+			-- One nine-slice border per column rather than per button. It draws
+			-- border/2 - 1 px outside the column, eating into the x nudge below
 			border = 10,
 
-			-- x/y are a nudge on top of the automatic border clearance, so 0
-			-- means flush against the framing art rather than on top of it
+			-- x/y nudge on top of the automatic border clearance, so 0 means flush
+			-- against the framing art rather than on top of it
 			elements = { pos = "OUTLEFTTOP", grow = "DOWN", x = 3, y = 0 },
 			buttons = { pos = "OUTLEFTBOTTOM", grow = "UP", x = 3, y = 0 },
 
@@ -543,83 +355,44 @@ DraeUI.config = {
 			crafting = true,
 			friends = true,
 
-			-- Blizzard's addon compartment. Only takes a slot when something
-			-- has actually registered an entry with it
+			-- Only takes a slot when something has registered an entry with it
 			compartment = true,
 		},
 
-		--[[
-			Third-party minimap buttons.
-
-			They are swept off the map and held down - Blizzard's addon
-			compartment is the collector, so an addon that registers an entry is
-			reachable there and one that only scatters a button on the map is
-			simply hidden.
-
-			`standalone` is the exception list: these keep their icon and go in
-			the button column instead. Named with any LibDBIcon10_ prefix already
-			stripped, and the order here is the order in the column.
-
-			`/draeui buttons` lists every child of the Minimap and what was
-			decided about it, for when something is still visible.
-		--]]
+		-- Third-party minimap buttons are swept off the map and hidden; Blizzard's
+		-- addon compartment is the collector. `standalone` keeps an icon and puts it
+		-- in the button column instead, LibDBIcon10_ prefix stripped, in column order
 		buttons = {
 			standalone = {
 				"BugSack",
 			},
 		},
 
-		-- Online guild members and friends. maxRows 0 is uncapped
+		-- Online guild members and friends
 		friends = {
-			maxRows = 0,
+			maxRows = 0, -- 0 is uncapped
 			width = 260,
 			rowHeight = 14,
 		},
 
-		--[[
-			The expansion landing button, centred on a map corner. Blizzard
-			re-anchors it after loading screens without calling Show, so it needs
-			re-asserting; see modules/minimap/buttons.lua.
-
-			A button column anchored to the same corner shifts along its growth
-			direction to clear this, and only while the button actually exists and
-			is shown - so moving the columns to the right edge, or playing an
-			expansion with no landing button, needs no other change here.
-		--]]
+		-- Blizzard re-anchors the landing button after loading screens without
+		-- calling Show, so it needs re-asserting; see modules/minimap/buttons.lua
 		landingPage = { pos = "OVERBOTTOMLEFT", x = 0, y = 0, scale = 0.75 },
 	},
 
 	--[[
-		Cast bars - replicas of Blizzard's player cast bar, on the target and
-		focus frames. Read by UF.CreateCastBar.
+		Cast bars on the target and focus frames, read by UF.CreateCastBar. Only
+		size and placement live here; relTo names a key on the unit frame, or the
+		frame itself when nil. Flags default to Blizzard's own bar:
 
-		The player keeps Blizzard's own PlayerCastingBarFrame, so it isn't
-		listed here. Add an entry and a UF.CreateCastBar call in units/player.lua
-		if you ever want draeUI to own that one too.
-
-		All that lives here is size and placement; everything about how the bar
-		looks is Blizzard's. relTo names a key on the unit frame (the frame
-		itself when nil), so the bar hangs off the health bar the way the rest
-		of the frame does.
-
-		Every flag defaults to whatever Blizzard's own bar does, so leaving them
-		all unset gives you their bar:
-
-			time        off - the cast timer, off in their Edit Mode too
-			tradeSkills off - crafting casts, which they keep off unit frames
+			time        off - the cast timer
+			tradeSkills off - crafting casts
 			icon        on  - the spell icon at the left end
-			fx          on  - interrupt shake, interrupt outer glow, and the
-			                  glow trailing the spark
+			fx          on  - interrupt shake, outer glow, spark glow
 
-		icon is turned off below - the one deliberate departure from their bar.
-
-		sliceCap is how many pixels of each end of the framing art are held back
-		from stretching. Blizzard's border is drawn for a 208-wide bar and the
-		atlas carries no slice data, so on a bar much wider than that the rounded
-		end caps stretch with everything else. Left unset it guesses generously,
-		which is the safe direction - too wide only pins some of the straight
-		middle, too narrow stretches the curve. Raise it if the ends still look
-		pulled; lower it if they look cropped.
+		sliceCap holds that many pixels of each end of the framing art back from
+		stretching - Blizzard's border is drawn for a 208-wide bar and the atlas
+		carries no slice data. Unset, it guesses generously.
 	--]]
 	castbar = {
 		-- 11 is the height of Blizzard's player cast bar
@@ -646,14 +419,8 @@ DraeUI.config = {
 		},
 	},
 
-	--[[
-		Buff bar - the player's own buffs, bottom right, plus temporary
-		weapon enchants in a second container to their left.
-
-		Sizes are in pixels. `pitch` is button size + gap, and it is what the
-		old secure header called xOffset/wrapYOffset; `perRow * pitch` is the
-		line width the flow layout wraps at.
-	--]]
+	-- The player's own buffs, bottom right, plus temporary weapon enchants in a
+	-- second container to their left. `perRow * (size + spacing)` is the wrap width
 	buffbar = {
 		size = 25, -- button edge
 		spacing = 9, -- gap between buttons, and between rows
@@ -664,41 +431,26 @@ DraeUI.config = {
 		enchantOffset = -20, -- gap between the buff bar and the enchant bar
 
 		--[[
-			"Long duration only" mode.
-
-			There is no minDuration/isPermanent candidate filter - Blizzard
-			ships maxDuration and nothing that inverts it - so long-only is
-			not directly expressible. Two mechanisms, allowlist winning:
-
-			- longDurationSpells populated -> exactly those spell IDs show.
-			  Exact, and spell-ID filtering stays legal under secret auras.
-			- left empty -> approximate it by sorting longest-first and
-			  capping at longDurationCount.
-
-			Takes effect on /rl. The container can be reconfigured live
-			(SetAuraGroupCandidateFilters and friends), but with no options
-			UI to drive it there is nothing to gain from the machinery.
+			"Long duration only". Blizzard ships a maxDuration candidate filter and
+			nothing that inverts it, so this is two mechanisms with the allowlist
+			winning: longDurationSpells populated shows exactly those spell IDs and
+			stays legal under secret auras; left empty, sort longest-first and cap
+			at longDurationCount. Takes effect on /rl.
 		--]]
 		longDurationOnly = false,
 		longDurationCount = 8,
 		longDurationSpells = {}, -- [spellID] = true
 	},
 
-	--[[
-		Presence - cinematic zone/quest/achievement toasts.
-	--]]
 	presence = {
-		-- Centre-screen frame. y is measured from the top, so negative is down
+		-- y is measured from the top of the screen, so negative is down
 		frame = {
 			y = -180,
 			scale = 1,
 			uiScale = 1,
 		},
 
-		--[[
-				Durations in seconds. enabled = false makes toasts appear and vanish
-				instantly; hold scales how long each type stays up for.
-		--]]
+		-- Seconds. enabled = false makes toasts appear and vanish instantly
 		animation = {
 			enabled = true,
 			entrance = 0.7,
@@ -715,7 +467,6 @@ DraeUI.config = {
 			battleground = true,
 		},
 
-		-- One switch per kind of toast
 		toasts = {
 			levelUp = true,
 			bossEmote = false, -- Leave boss emotes to Blizzard's own frame
@@ -736,18 +487,9 @@ DraeUI.config = {
 			scenarioComplete = true,
 		},
 
-		--[[
-			Toast text sizes.
-
-			Which set a toast uses is decided by its type, not chosen here:
-			zone changes and level ups are large, quest and scenario toasts
-			medium, progress updates small. primary is the heading, secondary
-			the line under it.
-
-			discovery is the "Discovered <subzone>" line appended to a zone
-			toast. Clamped on read - 12-72 for primary, 12-40 for the rest -
-			so a slip here can't produce an unreadable toast.
-		--]]
+		-- Which set a toast uses is decided by its type: zone changes and level ups
+		-- large, quest and scenario toasts medium, progress updates small. Clamped
+		-- on read - 12-72 for primary, 12-40 for the rest
 		fontSize = {
 			large = { primary = 48, secondary = 24 },
 			medium = { primary = 36, secondary = 22 },
@@ -756,7 +498,7 @@ DraeUI.config = {
 			discovery = 16,
 		},
 
-		-- Font flags per element: OUTLINE, THICKOUTLINE, MONOCHROME or NONE
+		-- OUTLINE, THICKOUTLINE, MONOCHROME or NONE
 		outline = {
 			title = "OUTLINE",
 			subtitle = "OUTLINE",
@@ -769,8 +511,7 @@ DraeUI.config = {
 			alpha = 0.8,
 		},
 
-		-- Append "Discovered <subzone>" to a zone toast when exploring
-		discovery = true,
+		discovery = true, -- append "Discovered <subzone>" to a zone toast
 
 		-- Progress toasts show just the objective line, no "QUEST UPDATE" heading
 		hideQuestUpdateTitle = true,
@@ -780,59 +521,37 @@ DraeUI.config = {
 
 		worldQuestSound = true,
 
-		-- Colour zone toasts by PvP status rather than category, from
-		-- general.colours.zone
+		-- Colour zone toasts by PvP status rather than category
 		zoneTypeColouring = false,
-
-		-- Tint toasts with the player's class colour
 		classColour = false,
 	},
 
-	-- Unit Frame settings
 	frames = {
-		-- Display or hide frames
-		showBoss = true, -- Boss frames
+		showBoss = true,
 		hideArena = true, -- Suppress Blizzard's arena enemy/prep frames
-		--[[
-			Mage only: the spellsteal sparkle over stealable buffs on the
-			target. common.lua has always read this key and it has never been
-			defined, so the overlay has never actually appeared - declaring it
-			here keeps that (false) behaviour and makes it reachable.
-		--]]
+
+		-- Mage only: the spellsteal sparkle over stealable buffs on the target.
+		-- Known gap - common.lua reads this key but the overlay has never appeared
 		showStealableBuffs = false,
 
 		--[[
-			Dispel glow - a coloured wash across the player frame, tinted by
-			the dispel school of a debuff on you.
-
-			Blizzard drives both the colour and whether it shows, reading
-			colours.dispel through the button's customDispelColorMap, so this
-			survives aura data being secret. Nothing here reads the debuff.
-
-			`schools` is the filter, and only schools with a colour belong in
-			it: a debuff with no dispel type lights nothing rather than washing
-			the frame in a fallback colour. Bleed and Enrage can be added -
-			they keep oUF's own colours, since general.colours.dispel doesn't
-			override them.
-
-			`spill` is how far the glow bleeds past the frame edge. It needs to
-			be non-zero to be worth having: the bars are opaque and the glow
-			sits behind them, so with no spill it would only show in the gap
-			between health and power.
+			A coloured glow behind the player health and power bars, tinted by the dispel
+			school of debuff on player.
 		--]]
 		dispelGlow = {
 			enabled = true,
 			spill = 40,
 			schools = { Magic = true, Curse = true, Disease = true, Poison = true },
 		},
-		-- Dimension of frames, large applies to player/target, small everything else
-		-- don't change these, change the scale
+
+		-- Don't change these, change the scale
 		playerWidth = 240,
 		playerHeight = 20,
 		targetWidth = 450,
 		targetHeight = 20,
-		-- Player and Target are positioned relative to center of screen,
-		-- all other frames are positioned relative to those
+
+		-- Player and target are positioned relative to the centre of the screen,
+		-- every other frame relative to those
 		playerXoffset = 0,
 		playerYoffset = -320,
 		targetXoffset = 0,
@@ -843,14 +562,14 @@ DraeUI.config = {
 		focusYoffset = 0,
 		focusTargetXoffset = 30, -- Relative to right of focus target
 		focusTargetYoffset = 0,
-		petXoffset = -50, --62, 	-- Relative to left of player
-		petYoffset = 0, ---100,
+		petXoffset = -50, -- Relative to left of player
+		petYoffset = 0,
 		bossXoffset = 0, -- Relative to left of target
 		bossYoffset = 200,
-		-- Aura settings
+
 		auras = {
-			-- Large are debuffs on players, buffs on targets, Sml are buffs on player,
-			-- debuffs on target and tiny are buffs/debuffs on other units
+			-- Large are debuffs on players and buffs on targets, small are buffs on
+			-- player and debuffs on target, tiny are auras on every other unit
 			auraHge = 32,
 			auraLrg = 22,
 			auraSml = 20,
@@ -886,15 +605,8 @@ DraeUI.config = {
 			showBuffsOnTarget = true,
 			showDebuffsOnTarget = false,
 
-			--[[
-					Blizzard's dispel-school orb, pinned to the top-right corner of
-					a debuff icon. Colour and visibility are Blizzard's - it only
-					appears on a debuff that has a dispel school at all.
-
-					Its scale is a fraction of the icon, not a fixed size: oUF's own
-					18px would be the full width of an 18px aura and a third of a
-					32px one. false, or a scale of 0, turns it off.
-			--]]
+			-- Blizzard's dispel-school orb on a debuff icon; colour and visibility
+			-- are theirs. The scale is a fraction of the icon, not a fixed size
 			showDispelIndicator = true,
 			dispelIndicatorScale = 0.6,
 		},
