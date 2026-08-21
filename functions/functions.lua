@@ -89,8 +89,9 @@ end
 			point = "CENTER", relTo = frame.Health, relPoint = "TOP", y = 4,
 		})
 
-	justify follows point unless you say otherwise, and width/height save the
-	SetSize call that used to follow most of these.
+	justify follows point unless you say otherwise - a corner anchor keeps its
+	horizontal half, so TOPLEFT justifies LEFT and TOP justifies CENTER.
+	width/height save the SetSize call that used to follow most of these.
 
 	`shadow` is a { r, g, b, a } drop shadow, offset by `shadowOffset` = { x, y }
 	and defaulting to one pixel down and right. It replaces the default OUTLINE
@@ -100,6 +101,18 @@ end
 			point = "LEFT", flags = "", shadow = { 0, 0, 0, 1 },
 		})
 --]]
+-- SetJustifyH takes only LEFT, RIGHT or CENTER, so a corner or vertical anchor
+-- has to be reduced to its horizontal half before it can stand in for one
+local Justify = function(point)
+	if point:find("LEFT") then
+		return "LEFT"
+	elseif point:find("RIGHT") then
+		return "RIGHT"
+	end
+
+	return "CENTER"
+end
+
 DraeUI.CreateFontObject = function(parent, opts)
 	opts = opts or {}
 
@@ -111,7 +124,7 @@ DraeUI.CreateFontObject = function(parent, opts)
 
 	DraeUI.SetFont(fo, font, size, opts.flags)
 
-	fo:SetJustifyH(opts.justify or point)
+	fo:SetJustifyH(opts.justify or Justify(point))
 
 	if opts.shadow then
 		local offset = opts.shadowOffset
