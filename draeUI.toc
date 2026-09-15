@@ -3,7 +3,7 @@
 ## Title: draeUI
 ## Category: Unit Frames
 ## SavedVariables: draeUIDB
-## OptionalDeps: SharedMedia
+## OptionalDeps: SharedMedia, Masque
 ## X-Embeds: LibSharedMedia-3.0
 ## X-oUF: draeUF
 
@@ -27,7 +27,10 @@ modules\buffbar\init.lua
 # Skins - static UI artwork, and the addon's shared skinning helpers
 # (DraeUI.CreateBorder, DraeUI.CreateOverlay). Must precede the minimap and
 # unitframes modules, which both frame themselves with CreateBorder.
+# masque.lua only registers a skin, so its position here is free - it needs the
+# Masque OptionalDeps line above, not a load order within the module.
 modules\skins\init.lua
+modules\skins\masque.lua
 
 # Minimap - a square skin on Blizzard's minimap, built in place inside
 # MinimapCluster. init.lua first: it creates the module, the anchor vocabulary,
