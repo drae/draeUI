@@ -1,252 +1,341 @@
 --[[
-	Plugins
-]]
-local T, C, G, P, U, _ = select(2, ...):UnPack()
+	Plugins - the individual readouts on the bar.
 
-local InfoBar = T:GetModule("Infobar")
+	A plugin is a handle, created by InfoBar:Register at file load, and a frame,
+	built for it once the bar exists. The handle is also the value store: every
+	setter writes its field first and only then touches a widget, so a plugin
+	can push values from its OnInitialize, long before there is anything to draw
+	them on.
 
-local Smoothing = LibStub("LibCutawaySmooth-1.0", true)
+	Handles carry, all optional:
 
---[[
+		order       placement, low to high; see InfoBar.Layout
+		statusbar   spec table of bars to build under the text, see CreateStatusBar
+		OnTooltip   fn(tooltip) - add lines; owning, anchoring and showing the
+		            tooltip is done here, so plugins don't repeat it
+		OnEnter     fn(frame) - side effects on hover, beyond the tooltip
+		OnLeave     fn(frame)
+		OnClick     fn(frame, button)
+--]]
+local DraeUI = select(2, ...)
 
-]]
+local InfoBar = DraeUI:GetModule("Infobar")
+
+InfoBar.Plugin = {}
+
+--
+local pairs, type, unpack, mmax = pairs, type, unpack, math.max
+local CanAccessValue = DraeUI.CanAccessValue
+
 local Plugin = InfoBar.Plugin
 
 --[[
+	Whichever plugin currently owns GameTooltip, so RefreshTooltip can tell
+	whether it is still the one on screen.
+--]]
+local tooltipOwner
 
-]]
-local resizePlugin = function(self)
---		local settings = self.settings
---		local textOffset = settings.textOffset or db.textOffset
-		local width = 0
 --[[
-	if self.icon and settings.showIcon then
-		width = width + self.icon:GetWidth() + textOffset
+	Has a value actually changed?
+
+	Not just `old ~= new`: the res plugin's text can be a secret value, and
+	comparing one - to another secret, or to the nil a field starts as - throws.
+	When either side can't be read, call it changed and let the setter run. The
+	comparison exists only to skip needless work, so a false positive is free.
+--]]
+local Changed = function(old, new)
+	if CanAccessValue(old) and CanAccessValue(new) then
+		return old ~= new
 	end
+
+	return true
+end
+
+local ShowTooltip = function(plugin, frame)
+	GameTooltip:SetOwner(frame, "ANCHOR_NONE")
+	GameTooltip:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -10)
+	GameTooltip:ClearLines()
+
+	plugin.OnTooltip(GameTooltip)
+
+	GameTooltip:Show()
+end
+
+--[[
+	Handle methods
 ]]
-	width = width + self.text:GetStringWidth()
+local methods = {}
 
-	self:SetWidth(width)
-end
+--[[
+	Width comes from the text. Called on every text change, so the Changed()
+	guard above is what stops it running once a second per plugin for an
+	unchanged string.
 
-local TextUpdater = function(frame, value)
-	frame.text:SetText(value)
+	A plugin using the right-hand text needs room for both plus a gap between,
+	unless its minimum already covers it.
+--]]
+local TEXT_GAP = 8
 
-	resizePlugin(frame)
-end
+methods.Resize = function(self)
+	local frame = self.frame
 
-local StatusBarMinMax = function(frame, value, name, bar)
-	local _, _, min, max = string.find(value, "(%d+),(%d+)")
-	frame.statusbar[bar]:SetMinMaxValues(min or 0 , max or 1)
-end
-
-local StatusBarCur = function(frame, value, name, bar)
-	frame.statusbar[bar]:SetValue(value or 0)
-
-	if (frame.statusbar[bar].spark) then
-		if (value == 0) then
-			frame.statusbar[bar].spark:Hide()
-		else
-			frame.statusbar[bar].spark:Show()
-		end
-	end
-end
-
-local StatusBarHide = function(frame, value, name, bar)
-	if (value) then
-		frame.statusbar[bar]:Hide()
-	else
-		frame.statusbar[bar]:Show()
-	end
-end
-
-local updaters = {
-	text = TextUpdater,
-	label = TextUpdater,
-	statusbar_min_max = StatusBarMinMax,
-	statusbar_cur = StatusBarCur,
-	statusbar_hide = StatusBarHide,
-	resizePlugin = resizePlugin,
-	updateSettings = SettingsUpdater,
-
-	ShowPlugin = function(frame, value, name)
-		if (value) then
-			frame:Show()
-		else
-			frame:Hide()
-		end
-
-		InfoBar:RepositionPlugins()
-	end,
-
-	OnClick = function(frame, value, name)
-		frame:SetScript("OnClick", value)
-	end
-}
-
-local Update = function(self, f, key, value, name)
-	local bar
-
-	-- Match for statusbar__x_y
-	local _, _, _bar, _key = string.find(key, "statusbar__(%a+)_([_%a]+)")
-	if (_key and _bar) then
-		key = "statusbar_" .. _key
-		bar = _bar
+	if not frame then
+		return
 	end
 
-	local update = updaters[key]
+	local width = frame.text:GetStringWidth()
+	local right = frame.rightText:GetStringWidth()
 
-	if update then
-		update(f, value, name, bar)
+	if right > 0 then
+		width = width + TEXT_GAP + right
+	end
+
+	frame:SetWidth(mmax(width, self.minWidth))
+end
+
+methods.SetText = function(self, value)
+	if not Changed(self.text, value) then
+		return
+	end
+
+	self.text = value
+
+	if self.frame then
+		self.frame.text:SetText(value)
+		self:Resize()
 	end
 end
 
 --[[
-	OnScript and tooltip handling
+	The second readout, pinned to the plugin's right edge rather than following
+	the first. Only worth it where a minimum width leaves a gap to fill - the
+	experience plugin puts its rested figure here so it sits at the far end of
+	its own bar instead of trailing the percentage.
+--]]
+methods.SetRightText = function(self, value)
+	if not Changed(self.rightText, value) then
+		return
+	end
+
+	self.rightText = value
+
+	if self.frame then
+		self.frame.rightText:SetText(value or "")
+		self:Resize()
+	end
+end
+
+methods.SetShown = function(self, shown)
+	shown = shown and true or false
+
+	if self.shown == shown then
+		return
+	end
+
+	self.shown = shown
+
+	if self.frame then
+		self.frame:SetShown(shown)
+		InfoBar:Layout()
+	end
+end
+
+methods.SetBar = function(self, name, cur, min, max)
+	local state = self.bars[name]
+
+	-- Nothing to set a value on if the spec asked for a plain Frame
+	if not (state and state.isStatusBar) then
+		return
+	end
+
+	state.cur, state.min, state.max = cur, min or state.min, max or state.max
+
+	local bar = self.frame and self.frame.statusbar[name]
+
+	if not bar then
+		return
+	end
+
+	bar:SetMinMaxValues(state.min, state.max)
+	bar:SetValue(cur)
+
+	if bar.spark then
+		bar.spark:SetShown(cur ~= 0)
+	end
+end
+
+--[[
+	Tint a bar. Held on the handle like everything else so a plugin can set it
+	before Build; nil clears back to the texture's own colouring.
+--]]
+methods.SetBarColor = function(self, name, r, g, b, a)
+	local state = self.bars[name]
+
+	if not (state and state.isStatusBar) then
+		return
+	end
+
+	state.color = r and { r, g, b, a or 1 } or nil
+
+	local bar = self.frame and self.frame.statusbar[name]
+
+	if bar then
+		bar:SetStatusBarColor(r or 1, g or 1, b or 1, a or 1)
+	end
+end
+
+methods.SetBarShown = function(self, name, shown)
+	local state = self.bars[name]
+
+	if not state then
+		return
+	end
+
+	state.shown = shown and true or false
+
+	local bar = self.frame and self.frame.statusbar[name]
+
+	if bar then
+		bar:SetShown(state.shown)
+	end
+end
+
+-- Re-run OnTooltip, but only while this plugin is the one on screen
+methods.RefreshTooltip = function(self)
+	if tooltipOwner ~= self or not (self.frame and self.OnTooltip) then
+		return
+	end
+
+	ShowTooltip(self, self.frame)
+end
+
+local PluginMeta = { __index = methods }
+
+--[[
+	Frame scripts. Each looks the plugin up off the frame rather than closing
+	over it, so all plugins share one set.
 ]]
-local GetAnchors = function(frame)
-	local x, y = frame:GetCenter()
-	local leftRight
+local OnEnter = function(frame)
+	local plugin = frame.plugin
 
-	if x < _G.GetScreenWidth() / 2 then
-		leftRight = "LEFT"
-	else
-		leftRight = "RIGHT"
+	if plugin.OnTooltip then
+		tooltipOwner = plugin
+
+		ShowTooltip(plugin, frame)
 	end
 
-	if y < _G.GetScreenHeight() / 2 then
-		return "BOTTOM", "TOP"
-	else
-		return "TOP", "BOTTOM"
+	if plugin.OnEnter then
+		plugin.OnEnter(frame)
 	end
 end
 
-local PrepareTooltip = function(frame, anchorFrame)
-	if frame and anchorFrame then
-		frame:ClearAllPoints()
-		if frame.SetOwner then
-			frame:SetOwner(anchorFrame, "ANCHOR_NONE")
-		end
-		local a1, a2 = GetAnchors(anchorFrame)
-		frame:SetPoint(a1, anchorFrame, a2)
-	end
-end
+local OnLeave = function(frame)
+	local plugin = frame.plugin
 
-local OnEnter = function(self)
-	if  InfoBar.dragging then return end
+	if tooltipOwner == plugin then
+		tooltipOwner = nil
 
-	local obj  = self.obj
-	local name = self.name
-	local bar = self.bar
-
-	if bar.autohide then
-		bar:ShowAll()
-	end
-
-	if obj.tooltip then
-		PrepareTooltip(obj.tooltip, self)
-
-		if obj.tooltiptext then
-			obj.tooltip:SetText(obj.tooltiptext)
-		end
-
-		obj.tooltip:Show()
-	elseif obj.OnTooltipShow then
-		PrepareTooltip(GameTooltip, self)
-
-		obj.OnTooltipShow(GameTooltip)
-		GameTooltip:Show()
-	elseif obj.tooltiptext then
-		PrepareTooltip(GameTooltip, self)
-
-		GameTooltip:SetText(obj.tooltiptext)
-		GameTooltip:Show()
-	elseif obj.OnEnter then
-		obj.OnEnter(self)
-	end
-end
-
-local OnLeave = function(self)
-	local obj  = self.obj
-	local name = self.name
-
-	local bar = self.bar
-	if bar.autohide then
-		bar:HideAll()
-	end
-
-	if obj.OnTooltipShow then
 		GameTooltip:Hide()
 	end
 
-	if obj.OnLeave then
-		obj.OnLeave(self)
-	elseif obj.tooltip then
-		obj.tooltip:Hide()
-	else
-		GameTooltip:Hide()
+	if plugin.OnLeave then
+		plugin.OnLeave(frame)
 	end
 end
 
-local OnClick = function(self, ...)
-	if self.obj.OnClick then
-		self.obj.OnClick(self, ...)
+local OnClick = function(frame, ...)
+	local plugin = frame.plugin
+
+	if plugin.OnClick then
+		plugin.OnClick(frame, ...)
 	end
 end
 
-local OnDragStart = function(self)
-end
+local CreateStatusBar = function(parent, settings)
+	local bar = CreateFrame(settings.isStatusBar and "StatusBar" or "Frame", nil, parent)
 
-local OnDragStop = function(self)
-end
-
-local CreateStatusBar = function(self, name, settings)
-	local bar = CreateFrame((settings.isStatusBar) and "StatusBar" or "Frame", nil, self)
-
-	if (settings.isStatusBar) then
-		bar:SetStatusBarTexture(settings.texture)
+	--[[
+		Texture defaults to the configured statusbar, same as every other bar in
+		the addon; settings.texture is an override for a plugin that wants
+		something else. It has to resolve here rather than in the plugin's spec
+		table - those are built at file scope, and DraeUI.media doesn't exist
+		until OnInitialize.
+	--]]
+	if settings.isStatusBar then
+		bar:SetStatusBarTexture(settings.texture or DraeUI.media.statusbar)
 	end
 
-	if (settings.level) then
+	if settings.level then
 		bar:SetFrameLevel(settings.level)
 	end
 
-	if (type(settings.position) == "table") then
+	if type(settings.position) == "table" then
 		for _, v in pairs(settings.position) do
-			if (v.anchorto) then
-				bar:SetPoint(v.anchorat, self, v.anchorto, v.offsetX, v.offsetY)
+			if v.anchorto then
+				bar:SetPoint(v.anchorat, parent, v.anchorto, v.offsetX, v.offsetY)
 			else
 				bar:SetPoint(v.anchorat, v.offsetX, v.offsetY)
 			end
 		end
-	elseif (type(settings.position) == "string") then
-		bar:SetAllPoints(self.statusbar[settings.position])
-	else
-		-- Something
+	elseif type(settings.position) == "string" then
+		bar:SetAllPoints(parent.statusbar[settings.position])
 	end
 
-	if (settings.width) then
+	if settings.width then
 		bar:SetWidth(settings.width)
 	end
 
-	if (settings.height) then
+	if settings.height then
 		bar:SetHeight(settings.height)
 	end
 
-	if (settings.isStatusBar and settings.color and type(settings.color) == "table") then
+	if settings.isStatusBar and type(settings.color) == "table" then
 		bar:SetStatusBarColor(unpack(settings.color))
 	end
 
-	if (settings.bg) then
-		bar:SetBackdrop {
-			bgFile = settings.bg.texture
-		}
-		bar:SetBackdropColor(settings.bg.color)
+	--[[
+		A backing texture rather than a backdrop. The only bg any plugin asks
+		for is a flat colour, and SetColorTexture does that without dragging
+		BackdropTemplate in - backdrops are hand-rolled at each call site here.
+	--]]
+	if settings.bg then
+		local bg = bar:CreateTexture(nil, "BACKGROUND")
+		bg:SetAllPoints()
+
+		if type(settings.bg.color) == "table" then
+			bg:SetColorTexture(unpack(settings.bg.color))
+		else
+			bg:SetTexture(settings.bg.texture)
+		end
+
+		bar.bg = bg
 	end
 
-	if (settings.spark) then
+	--[[
+		A local texture rather than Blizzard's ui-castingbar-pip atlas.
+
+		The pip briefly lived here on the reasoning that it keeps art out of the
+		tree, and it doesn't work: it's drawn for a 208x11 cast bar where it's
+		always in motion, and these are short segments sitting still. Static and
+		ten pixels tall, it reads as a smudge. statusbar-spark-white was drawn
+		for this job.
+
+		The anchors pin the spark to the fill texture's height, so only its
+		width is ours - the art stretches to whatever the bar is.
+
+		`spark = true` takes the default; a string is a texture path.
+
+		isStatusBar as well as spark: the anchors need GetStatusBarTexture, so a
+		spark on a plain Frame would error here.
+	--]]
+	if settings.spark and settings.isStatusBar then
 		local spark = bar:CreateTexture(nil, "OVERLAY", nil, 5)
-		spark:SetTexture("Interface\\AddOns\\draeUI\\media\\statusbars\\statusbar-spark-white")
+
+		spark:SetTexture(
+			type(settings.spark) == "string" and settings.spark
+				or "Interface\\AddOns\\draeUI\\media\\statusbars\\statusbar-spark-white"
+		)
+
 		spark:SetPoint("BOTTOMRIGHT", bar:GetStatusBarTexture(), "BOTTOMRIGHT")
 		spark:SetPoint("TOPRIGHT", bar:GetStatusBarTexture(), "TOPRIGHT")
 		spark:SetWidth(8)
@@ -254,96 +343,117 @@ local CreateStatusBar = function(self, name, settings)
 		bar.spark = spark
 	end
 
-	if (settings.smooth) then
-		Smoothing:EnableBarAnimation(bar)
-	end
-
 	return bar
 end
 
-Plugin.New = function(self, name, obj, settings)
-	local text = obj.text
-	local icon = obj.icon
-	local statusbar = obj.statusbar
-
-	local plugin = CreateFrame("Button", nil)
+--[[
+	The handle. No frame yet - that waits for the bar.
+--]]
+Plugin.NewHandle = function(_, name, opts)
+	local plugin = setmetatable(opts or {}, PluginMeta)
 
 	plugin.name = name
-	plugin.obj = obj
+	plugin.order = plugin.order or 100
+	plugin.shown = plugin.shown ~= false
+	plugin.text = plugin.text or name
 
-	plugin.text = T.CreateFontObject(plugin, T.db["general"].fontsize1, T["media"].font, "LEFT", 0, 0) --
+	--[[
+		Floor on the frame width, for plugins whose statusbars would otherwise
+		collapse with the text. Config rather than the registration so it can be
+		tuned without editing a plugin; safe to read here because the .toc loads
+		config before any module.
+	--]]
+	local cfg = DraeUI.config["infobar"]
+	local minWidths = cfg and cfg.minWidth
 
-	if (statusbar) then
-		plugin.statusbar = {}
+	plugin.minWidth = minWidths and minWidths[name] or 0
 
-		for name, _table in pairs(statusbar) do
-			plugin.statusbar[name] = CreateStatusBar(plugin, name, _table)
+	--[[
+		One state entry per declared bar, so SetBar has somewhere to write
+		before the widgets exist and Build has something to seed them from.
 
-			if (_table.isStatusBar) then
-				local _, min, max, cur, hide
-				if (obj["statusbar__" .. name .. "_min_max"]) then
-					_, _, min, max = string.find(obj["statusbar__" .. name .. "_min_max"], "(%d+),(%d+)")
-				else
-					obj["statusbar__" .. name .. "_min_max"] = "0,1"
-					min, max, hide = 0, 1
-				end
+		isStatusBar is carried across because a spec entry can ask for a plain
+		Frame instead - the xp plugin's `bg` does, it only exists to put a black
+		backing behind the other two. Those have no SetMinMaxValues or SetValue,
+		so everything touching a value has to check first.
+	--]]
+	plugin.bars = {}
 
-				if (obj["statusbar__" .. name .. "_cur"]) then
-					cur = obj["statusbar__" .. name .. "_cur"]
-				else
-					obj["statusbar__" .. name .. "_cur"] = 0
-					cur = 0
-				end
-
-				if (obj["statusbar__" .. name .. "_hide"]) then
-					hide = obj["statusbar__" .. name .. "_hide"]
-				else
-					obj["statusbar__" .. name .. "_hide"] = false
-					hide = false
-				end
-
-				plugin.statusbar[name]:SetMinMaxValues(min, max)
-				plugin.statusbar[name]:SetValue(cur)
-				if (hide) then
-					plugin.statusbar[name]:Hide()
-				else
-					plugin.statusbar[name]:Show()
-				end
-				if (plugin.statusbar[name].spark and cur == 0) then
-					plugin.statusbar[name].spark:Hide()
-				end
-			else
-				plugin.statusbar[name]:Show()
-			end
+	if plugin.statusbar then
+		for barName, settings in pairs(plugin.statusbar) do
+			plugin.bars[barName] = {
+				cur = 0,
+				min = 0,
+				max = 1,
+				shown = true,
+				isStatusBar = settings.isStatusBar and true or false,
+			}
 		end
 	end
 
-	if (icon) then
-	end
-
-	--
-	if text then
-		plugin.text:SetText(text)
-	else
-		obj.text = name
-		plugin.text:SetText(name)
-	end
-
-	plugin:SetMovable(true)
-	plugin:RegisterForClicks("AnyUp")
-	plugin:SetScript("OnEnter", OnEnter)
-	plugin:SetScript("OnLeave", OnLeave)
-	plugin:SetScript("OnClick", OnClick)
-	plugin:SetScript("OnDragStart", OnDragStart)
-	plugin:SetScript("OnDragStop", OnDragStop)
-
-	plugin.Update = Update
-
-	if (obj.ShowPlugin ~= nil and not obj.ShowPlugin) then
-		plugin:Hide()
-	else
-		plugin:Show()
-	end
-
 	return plugin
+end
+
+--[[
+	Give a handle its frame, then replay whatever it has accumulated.
+--]]
+Plugin.Build = function(_, plugin, bar)
+	if plugin.frame then
+		return plugin.frame
+	end
+
+	local frame = CreateFrame("Button", nil, bar)
+
+	frame.plugin = plugin
+	plugin.frame = frame
+
+	frame.text = DraeUI.CreateFontObject(frame, { point = "LEFT" })
+
+	--[[
+		Built for every plugin whether or not it uses one. A FontString holding
+		"" measures zero and draws nothing, and six of them cost less than a
+		flag to declare them and a class of bugs from forgetting to.
+	--]]
+	frame.rightText = DraeUI.CreateFontObject(frame, { point = "RIGHT" })
+
+	if plugin.statusbar then
+		frame.statusbar = {}
+
+		for barName, settings in pairs(plugin.statusbar) do
+			frame.statusbar[barName] = CreateStatusBar(frame, settings)
+		end
+	end
+
+	frame:RegisterForClicks("AnyUp")
+	frame:SetScript("OnEnter", OnEnter)
+	frame:SetScript("OnLeave", OnLeave)
+	frame:SetScript("OnClick", OnClick)
+
+	-- Replay: text first so the width is right before anything measures it
+	frame.text:SetText(plugin.text)
+	frame.rightText:SetText(plugin.rightText or "")
+	plugin:Resize()
+
+	for barName, state in pairs(plugin.bars) do
+		local statusbar = frame.statusbar[barName]
+
+		statusbar:SetShown(state.shown)
+
+		if state.isStatusBar then
+			statusbar:SetMinMaxValues(state.min, state.max)
+			statusbar:SetValue(state.cur)
+
+			if state.color then
+				statusbar:SetStatusBarColor(unpack(state.color))
+			end
+		end
+
+		if statusbar.spark then
+			statusbar.spark:SetShown(state.cur ~= 0)
+		end
+	end
+
+	frame:SetShown(plugin.shown)
+
+	return frame
 end

@@ -1,6 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Include file="mistsofpandaria.lua" />
-	<Include file="warlordsofdraenor.lua" />
-	<Include file="legion.lua" />
-	<Include file="battleforazeroth.lua" />
-</Ui>

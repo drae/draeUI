@@ -2,41 +2,62 @@
 
 
 --]]
+local DraeUI = select(2, ...)
+local oUF = DraeUI.oUF or oUF
 
-local _, ns = ...
-local oUF = ns.oUF or oUF
-
---
-local T, C, G, P, U, _ = select(2, ...):UnPack()
-local UF = T:GetModule("UnitFrames")
+local UF = DraeUI:GetModule("UnitFrames")
 
 -- Target of target frame
-local StyleDrae_TargetTarget = function(frame, unit, isSingle)
-	frame:SetSize(150, 14)
+local StyleDrae_TargetTarget = function(frame)
+	frame:SetSize(150, 27.5)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	local arrow = frame:CreateTexture(nil, "BACKGROUND", nil, 0)
-	arrow:SetSize(14, 30)
-	arrow:SetPoint("RIGHT", frame, "LEFT", -5, -2)
-	arrow:SetTexture("Interface\\AddOns\\draeUI\\media\\textures\\targetArrow")
+	UF.CreateHealthBar(frame, 150, 0, 0, 20)
 
-	frame.Health = UF.CreateHealthBar(frame, 150, 0, 0)
-	frame.Power = UF.CreatePowerBar(frame, 150)
+	local pp = CreateFrame("StatusBar", nil, frame)
+	pp:SetFrameStrata(frame:GetFrameStrata())
+	pp:SetFrameLevel(frame:GetFrameLevel())
+	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+	pp:SetSize(150, 5)
+	pp:SetPoint("TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -2.5)
 
-	frame.Health.value = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "RIGHT", 2, 15)
+	pp.colorTapping = true
+	pp.colorDisconnected = true
+	pp.colorPower = true
+	-- Which powers keep an atlas is decided in init.lua from general.colours.atlas
+	pp.colorPowerAtlas = true
 
-	local info = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "LEFT", -2, 15)
-	info:SetSize(95, 20)
+	frame.Power = pp
+
+	UF.CreateUnitFrameBackground(frame)
+
+	local border = CreateFrame("StatusBar", nil, frame)
+	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
+	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+
+	DraeUI.CreateBorder(border)
+
+	UF.CreateTargetArrow(frame)
+
+	local text = CreateFrame("Frame", nil, frame.Health)
+	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
+	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
+
+	--	frame.Health.value = DraeUI.CreateFontObject(frame.Health, { point = "LEFT", x = 5, y = 15 })
+	local info = DraeUI.CreateFontObject(text, {
+		point = "CENTER",
+		relTo = frame.Health,
+		relPoint = "TOP",
+		y = 4,
+		width = 125,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
---	local level = T.CreateFontObject(frame.Health, T.db["general"].fontsize0, T["media"].font, "RIGHT", 2, 22)
---	level:SetSize(40, 20)
---	frame:Tag(level, "[level]")
-
 	-- Auras - just debuffs for target of target
-	UF.AddDebuffs(frame, "TOPRIGHT", frame.Power, "BOTTOMRIGHT", 0, -12, T.db["frames"].auras.maxTargetDebuff or 15, T.db["frames"].auras.auraSml, 8, "LEFT", "DOWN")
+	--	UF.AddDebuffs(frame, "TOPRIGHT", frame.Health, "BOTTOMRIGHT", 0, -22, DraeUI.config["frames"].auras.maxTargetDebuff or 15, DraeUI.config["frames"].auras.auraLrg, 8, "LEFT", "DOWN")
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

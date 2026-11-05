@@ -2,92 +2,93 @@
 
 
 --]]
-local _, ns = ...
-local oUF = ns.oUF or oUF
+local DraeUI = select(2, ...)
+local oUF = DraeUI.oUF or oUF
 
---
-local T, C, G, P, U, _ = select(2, ...):UnPack()
-local UF = T:GetModule("UnitFrames")
+local UF = DraeUI:GetModule("UnitFrames")
 
 -- Player frame
-local StyleDrae_Player = function(frame, unit, isSingle)
-	frame:SetSize(250, 14)
-	--	frame:SetHitRectInsets(0, 0, 23, 23)
+local StyleDrae_Player = function(frame)
+	frame:SetSize(500, 20)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	frame.Sword = frame.Health
+	UF.CreateHealthBar(frame, 240, 0, 0, 20)
 
-	frame.Health = UF.CreateHealthBar(frame, 250, 0, 0)
-	frame.Health.value = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "RIGHT", 2, 15)
-	frame.Power = UF.CreatePowerBar(frame, 250)
-	frame.AdditionalPower = UF.CreateAdditionalPower(frame, 250, 3)
+	local pp = CreateFrame("StatusBar", nil, frame)
+	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+	pp:SetSize(240, 20)
+	pp:SetPoint("TOPLEFT", frame.Health, "TOPRIGHT", 20, 0)
 
-	local level = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "LEFT", -2, 15)
-	level:SetSize(40, 20)
+	pp.colorTapping = true
+	pp.colorDisconnected = true
+	pp.colorPower = true
+	-- Which powers keep an atlas is decided in init.lua from general.colours.atlas
+	pp.colorPowerAtlas = true
+
+	frame.Power = pp
+
+	UF.CreateUnitFrameBackground(frame.Health)
+	DraeUI.CreateBorder(frame.Health)
+	UF.CreateUnitFrameBackground(frame.Power)
+	DraeUI.CreateBorder(frame.Power)
+
+	-- HP/level
+	local textHp = CreateFrame("Frame", nil, frame.Health)
+	textHp:SetAllPoints(frame.Health)
+
+	frame.Health.value = DraeUI.CreateFontObject(textHp, { point = "RIGHT", x = -5, y = 12 })
+
+	local level = DraeUI.CreateFontObject(textHp, {
+		point = "LEFT",
+		x = 5,
+		y = 12,
+		width = 40,
+		height = 20,
+	})
 	frame:Tag(level, "[level]")
 
-	UF.FlagIcons(frame)
+	-- PP
+	local textPp = CreateFrame("Frame", nil, frame.Power)
+	textPp:SetAllPoints(frame.Power)
+
+	frame.Power.value = DraeUI.CreateFontObject(textPp, { point = "RIGHT", x = 5, y = 12 })
 
 	-- Combat icon
-	local combat = frame.Health:CreateTexture(nil, "OVERLAY")
+	local combat = textHp:CreateTexture(nil, "OVERLAY")
 	combat:SetSize(18, 18)
-	combat:SetPoint("BOTTOMRIGHT", portrait, 0, -5)
+	combat:SetPoint("BOTTOMRIGHT", textHp, 10, -10)
 	combat:SetTexture("Interface\\CharacterFrame\\UI-StateIcon")
 	combat:SetTexCoord(0.58, 0.90, 0.08, 0.41)
 	frame.CombatIndicator = combat
 
+	UF.FlagIcons(textHp)
+
 	-- Auras
-	UF.AddLongBuffs(frame, "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -20, 20)
-	UF.AddBuffs(
-		frame,
-		"TOPLEFT",
-		frame.Power,
-		"BOTTOMLEFT",
-		0,
-		-12,
-		T.db["frames"].auras.maxPlayerBuff or 4,
-		T.db["frames"].auras.auraLrg,
-		8,
-		"RIGHT",
-		"DOWN"
-	)
 	UF.AddDebuffs(
 		frame,
-		"TOPRIGHT",
-		frame.Power,
-		"BOTTOMRIGHT",
+		"BOTTOMLEFT",
+		frame.Health,
+		"TOPLEFT",
 		0,
-		-12,
-		T.db["frames"].auras.maxPlayerDebuff or 15,
-		T.db["frames"].auras.auraSml,
+		15,
+		DraeUI.config["frames"].auras.maxPlayerDebuff or 6,
+		DraeUI.config["frames"].auras.auraHge,
 		8,
-		"LEFT",
-		"DOWN"
+		"RIGHT",
+		"UP"
 	)
 
-	-- Castbars
-	local cbp = T.db["castbar"].player
-	UF.CreateCastBar(
-		frame,
-		cbp.width,
-		cbp.height,
-		cbp.anchor,
-		cbp.anchorat,
-		cbp.anchorto,
-		cbp.xOffset,
-		cbp.yOffset,
-		T.db["castbar"].showLatency,
-		false
-	)
+	-- Coloured wash behind the bars when a dispellable debuff is on us
+	UF.AddDispelGlow(frame)
 
-	UF.CreateMirrorCastbars(frame)
+	-- No cast bar: the player keeps Blizzard's own PlayerCastingBarFrame
 
-	--[[
+	frame.ClassPower = UF.CreateClassPowerBar(frame, "CENTER", UIParent, "CENTER", 0, -275)
 
-	]]
-	UF.CreateTotemBar(frame, "TOP", portrait, "BOTTOM", 0, -12)
+	-- The number here is the size of the raid icon
+	UF.CommonPostInit(frame, 30)
 end
 
 oUF:RegisterStyle("DraePlayer", StyleDrae_Player)

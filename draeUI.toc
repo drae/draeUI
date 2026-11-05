@@ -1,90 +1,101 @@
-## Interface: 80100
+## Interface: 120100, 120105, 16001
 ## Author: Drae
 ## Title: draeUI
-## Version: 3.1
+## Category: Unit Frames
 ## SavedVariables: draeUIDB
-## SavedVariablesPerCharacter: draeUICharDB
-## OptionalDeps: SharedMedia
+## OptionalDeps: SharedMedia, Masque
 ## X-Embeds: LibSharedMedia-3.0
 ## X-oUF: draeUF
 
 libs\libs.xml
 media\media.xml
-oUF\oUF.xml
 
 init.lua
 
+# Settings, then every on-screen string that isn't a Blizzard global. The locale
+# must precede the modules - some of them snapshot DraeUI.L at file scope.
 config\config.defaults.lua
+config\locale.enGB.lua
 
-functions\variables.lua
-functions\colours.lua
-functions\fonts.lua
 functions\functions.lua
-functions\maths.lua
+functions\game.lua
 functions\toolkit.lua
-functions\console.lua
-functions\animation.lua
+
+# BuffBar
+modules\buffbar\init.lua
+
+# Skins - static UI artwork, and the addon's shared skinning helpers
+# (DraeUI.CreateBorder, DraeUI.CreateOverlay). Must precede the minimap and
+# unitframes modules, which both frame themselves with CreateBorder.
+# masque.lua only registers a skin, so its position here is free - it needs the
+# Masque OptionalDeps line above, not a load order within the module.
+modules\skins\init.lua
+modules\skins\masque.lua
+
+# Minimap - a square skin on Blizzard's minimap, built in place inside
+# MinimapCluster. init.lua first: it creates the module, the anchor vocabulary,
+# the square mouse surface and the tooltip helper that the others read off the
+# module table. The rest may be listed in any order - none of them touches
+# another at load, only at enable.
+modules\minimap\init.lua
+modules\minimap\text.lua
+modules\minimap\buttons.lua
+modules\minimap\addonbuttons.lua
+modules\minimap\friends.lua
+modules\minimap\micromenu.lua
+
+# Presence - cinematic zone/quest/achievement notifications.
+modules\presence\init.lua
+modules\presence\core.lua
+modules\presence\scenario.lua
+modules\presence\quest.lua
+modules\presence\achievement.lua
+modules\presence\blizzard.lua
+modules\presence\zone.lua
+modules\presence\errors.lua
+modules\presence\events.lua
+
+# Infobar - readouts between the micro menu and the minimap.
+# init.lua then plugin.lua, then the plugins in any order: each calls
+# InfoBar:Register at load and the bar builds a frame per registration on
+# enable. Listing a plugin here is all that's needed to make it appear;
+# placement comes from the `order` in its own Register call.
+modules\infobar\init.lua
+modules\infobar\plugin.lua
+modules\infobar\plugins\fps.lua
+modules\infobar\plugins\xp.lua
+modules\infobar\plugins\latency.lua
+modules\infobar\plugins\gold.lua
+modules\infobar\plugins\durability.lua
+modules\infobar\plugins\res.lua
+
+# Damage meter - bars over Blizzard's C_DamageMeter. init.lua first: it creates
+# the module, the window registry and the tooltip helper the others read off the
+# module table. The rest may be listed in any order. Must follow the skins
+# module, which owns CreateOutline and CreateBackdrop.
+modules\damagemeter\init.lua
+modules\damagemeter\data.lua
+modules\damagemeter\window.lua
+modules\damagemeter\rows.lua
+modules\damagemeter\menu.lua
+modules\damagemeter\tooltip.lua
+
+# Fake sessions for /draeui meter test. Optional - drop this line and the meter
+# loses the command and nothing else.
+modules\damagemeter\test.lua
 
 # Unitframes
 modules\unitframes\init.lua
-modules\unitframes\core.lua
+modules\unitframes\common.lua
 modules\unitframes\castbar.lua
-modules\unitframes\events.lua
+modules\unitframes\classpower.lua
 modules\unitframes\tags.lua
-
-modules\unitframes\elements\classification.lua
-modules\unitframes\elements\spellrange.lua
-modules\unitframes\elements\sword.lua
-modules\unitframes\elements\totems.lua
-
 modules\unitframes\units\player.lua
 modules\unitframes\units\pet.lua
 modules\unitframes\units\target.lua
 modules\unitframes\units\targettarget.lua
 modules\unitframes\units\focus.lua
 modules\unitframes\units\focustarget.lua
-modules\unitframes\units\partyandraid.lua
 modules\unitframes\units\boss.lua
-modules\unitframes\units\arena.lua
 
-modules\unitframes\statuses\embed.xml
-config\indicators\embed.xml
-config\raiddebuffs\embed.xml
-config\instancedebuffs\embed.xml
-
-# Chat
-#modules\chat\init.lua
-
-# Minimap
-modules\minimap\init.lua
-modules\minimap\minimap.lua
-modules\minimap\buttons.lua
-
-# Infobar
-modules\infobar\init.lua
-modules\infobar\plugin.lua
-modules\infobar\ldb\fps.lua
-modules\infobar\ldb\mem.lua
-modules\infobar\ldb\xp.lua
-modules\infobar\ldb\latency.lua
-modules\infobar\ldb\gold.lua
-modules\infobar\ldb\durability.lua
-modules\infobar\ldb\res.lua
-modules\infobar\ldb\azerite.lua
-
-# Misc
-modules\misc\init.lua
-modules\misc\alreadyknown.lua
-modules\misc\autoinvite.lua
-
-# Blizzard
-modules\blizzard\init.lua
-modules\blizzard\alertframe.lua
-modules\blizzard\altpower.lua
-modules\blizzard\colorpicker.lua
-modules\blizzard\durability.lua
-modules\blizzard\gm.lua
-modules\blizzard\vehicle.lua
-modules\blizzard\watchframe.lua
-modules\blizzard\talkinghead.lua
-
+#modules\unitframes\resources\totems.lua

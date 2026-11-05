@@ -2,33 +2,55 @@
 
 
 --]]
-local _, ns = ...
-local oUF = ns.oUF or oUF
+local DraeUI = select(2, ...)
+local oUF = DraeUI.oUF or oUF
 
---
-local T, C, G, P, U, _ = select(2, ...):UnPack()
-local UF = T:GetModule("UnitFrames")
+local UF = DraeUI:GetModule("UnitFrames")
 
 -- Target frame
-local StyleDrae_Target = function(frame, unit, isSingle)
-	frame:SetSize(250, 14)
-	--	frame:SetHitRectInsets(0, 0, 23, 23)
+local StyleDrae_Target = function(frame)
+	frame:SetSize(450, 27.5)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	frame.Sword = frame.Health
+	UF.CreateHealthBar(frame, 450, 0, 0, 20)
 
-	frame.Health = UF.CreateHealthBar(frame, 250, 0, 0)
-	frame.Health.value = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "LEFT", -2, 15)
-	frame.Power = UF.CreatePowerBar(frame, 250, true, true)
+	local pp = CreateFrame("StatusBar", nil, frame)
+	pp:SetStatusBarTexture(DraeUI.media.statusbar_power)
+	pp:SetSize(450, 5)
+	pp:SetPoint("TOPLEFT", frame.Health, "BOTTOMLEFT", 0, -2.5)
 
-	local level = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "RIGHT", 2, 15)
-	level:SetSize(190, 20)
+	pp.colorTapping = true
+	pp.colorDisconnected = true
+	pp.colorPower = true
+	-- Which powers keep an atlas is decided in init.lua from general.colours.atlas
+	pp.colorPowerAtlas = true
+
+	frame.Power = pp
+
+	UF.CreateUnitFrameBackground(frame)
+
+	local border = CreateFrame("StatusBar", nil, frame)
+	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
+	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+
+	DraeUI.CreateBorder(border)
+
+	local text = CreateFrame("Frame", nil, frame.Health)
+	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
+	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
+
+	frame.Health.value = DraeUI.CreateFontObject(text, { point = "LEFT", x = 5, y = 12 })
+
+	local level = DraeUI.CreateFontObject(text, {
+		point = "RIGHT",
+		x = -5,
+		y = 12,
+		width = 190,
+		height = 20,
+	})
 	frame:Tag(level, "[drae:afk] [drae:shortclassification][drae:unitcolour][name]|r | [level]")
-
-	-- Dragon texture on rare/elite
-	frame.Classification = {}
 
 	-- Flags for PvP, leader, etc.
 	UF.FlagIcons(frame, true)
@@ -36,34 +58,33 @@ local StyleDrae_Target = function(frame, unit, isSingle)
 	-- Auras
 	UF.AddBuffs(
 		frame,
-		"TOPLEFT",
-		frame.Power,
 		"BOTTOMLEFT",
+		frame.Health,
+		"TOPLEFT",
 		0,
-		-12,
-		T.db["frames"].auras.maxTargetBuff or 4,
-		T.db["frames"].auras.auraLrg,
+		22,
+		DraeUI.config["frames"].auras.maxTargetBuff or 8,
+		DraeUI.config["frames"].auras.auraHge,
 		8,
 		"RIGHT",
-		"DOWN"
+		"UP"
 	)
 	UF.AddDebuffs(
 		frame,
-		"TOPRIGHT",
-		frame.Power,
 		"BOTTOMRIGHT",
+		frame.Health,
+		"TOPRIGHT",
 		0,
-		-12,
-		T.db["frames"].auras.maxTargetDebuff or 15,
-		T.db["frames"].auras.auraSml,
+		22,
+		DraeUI.config["frames"].auras.maxTargetDebuff or 6,
+		DraeUI.config["frames"].auras.auraLrg,
 		8,
 		"LEFT",
-		"DOWN"
+		"UP"
 	)
 
 	-- Castbar
-	local cb = T.db["castbar"].target
-	UF.CreateCastBar(frame, cb.width, cb.height, cb.anchor, cb.anchorat, cb.anchorto, cb.xOffset, cb.yOffset, true)
+	UF.CreateCastBar(frame, DraeUI.config["castbar"].target)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)

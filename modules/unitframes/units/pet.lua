@@ -2,40 +2,60 @@
 
 
 --]]
+local DraeUI = select(2, ...)
+local oUF = DraeUI.oUF or oUF
 
-local _, ns = ...
-local oUF = ns.oUF or oUF
-
---
-local T, C, G, P, U, _ = select(2, ...):UnPack()
-local UF = T:GetModule("UnitFrames")
+local UF = DraeUI:GetModule("UnitFrames")
 
 -- Pet frame - this is the same as focus but we do this seperately so we can colour by happiness
-local StyleDrae_Pet = function(frame, unit, isSingle)
-	frame:SetSize(150, 14)
+local StyleDrae_Pet = function(frame)
+	frame:SetSize(150, 27.5)
 	frame:SetFrameStrata("LOW")
 
 	UF.CommonInit(frame)
 
-	frame.Health = UF.CreateHealthBar(frame, 150, 0, 0)
-	frame.Power = UF.CreatePowerBar(frame, 150)
+	UF.CreateHealthBar(frame, 150, 0, 0, 20)
+	UF.CreateUnitFrameBackground(frame)
 
 	frame.Health.colorClassPet = false
 	frame.Health.colorReaction = false
 
-	frame.Health.value = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "RIGHT", -2, 0)
+	UF.CreateUnitFrameBackground(frame)
 
-	local info = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "LEFT", -2, 15)
-	info:SetSize(95, 20)
+	local border = CreateFrame("StatusBar", nil, frame)
+	border:SetPoint("TOPLEFT", frame, "TOPLEFT")
+	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT")
+
+	DraeUI.CreateBorder(border)
+
+	local text = CreateFrame("Frame", nil, frame.Health)
+	text:SetPoint("TOPLEFT", frame.Health, "TOPLEFT")
+	text:SetPoint("BOTTOMRIGHT", frame.Health, "BOTTOMRIGHT")
+
+	local info = DraeUI.CreateFontObject(text, {
+		point = "CENTER",
+		relTo = frame.Health,
+		relPoint = "TOP",
+		y = 4,
+		width = 125,
+		height = 20,
+	})
 	frame:Tag(info, "[drae:shortclassification][drae:unitcolour][name]")
 
-	local level = T.CreateFontObject(frame.Health, T.db["general"].fontsize1, T["media"].font, "RIGHT", 2, 15)
-	level:SetSize(40, 20)
-	frame:Tag(level, "[level]")
-
 	-- Auras - just debuffs for target of target
-	UF.AddBuffs(frame, "BOTTOMLEFT", frame.Health, "TOPLEFT", 1, 28, T.db["frames"].auras.maxPetBuff or 2, T.db["frames"].auras.auraTny, 10, "RIGHT", "UP")
-	UF.AddDebuffs(frame, "BOTTOMRIGHT", frame.Health, "TOPRIGHT", -1, 28, T.db["frames"].auras.maPetDebuff or 4, T.db["frames"].auras.auraSml, 8, "LEFT", "UP")
+	UF.AddDebuffs(
+		frame,
+		"TOPRIGHT",
+		frame.Health,
+		"BOTTOMRIGHT",
+		0,
+		-22,
+		DraeUI.config["frames"].auras.maxPetDebuff or 4,
+		DraeUI.config["frames"].auras.auraLrg,
+		8,
+		"LEFT",
+		"DOWN"
+	)
 
 	-- The number here is the size of the raid icon
 	UF.CommonPostInit(frame, 30)
