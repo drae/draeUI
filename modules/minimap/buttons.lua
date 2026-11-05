@@ -757,8 +757,10 @@ Buttons.OnEnable = function(self)
 	--]]
 	landingButton = _G["ExpansionLandingPageMinimapButton"]
 
+	-- RefreshButton indexes ExpansionLandingPage, which is LoD (and may never load on
+	-- Forever); Blizzard refreshes the button itself once it does load.
 	local landing = Corner(landingButton, Minimap.cfg.landingPage, function(button)
-		if button.RefreshButton then
+		if button.RefreshButton and _G["ExpansionLandingPage"] then
 			button:RefreshButton(true)
 		end
 	end)
